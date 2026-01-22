@@ -1,5 +1,3 @@
-import { Badge } from "@/components/ui/Badge";
-
 export default function Footer() {
   return (
     <footer className="bg-black text-white border-t border-charcoal">
