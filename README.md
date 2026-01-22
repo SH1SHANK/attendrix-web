@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Attendrix Landing Page
 
-## Getting Started
+A high-conversion Next.js landing page for Attendrix - precision academic attendance tracking for NIT Calicut.
 
-First, run the development server:
+## Quick Start
 
-```bash
+\`\`\`bash
+cd attendrix-landing
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+\`\`\`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- \`src/components/sections/\` - Page sections (Hero, Features, Pricing, FAQ, etc.)
+- \`src/components/custom/\` - Custom components (Monitor, Terminal)
+- \`src/components/retroui/\` - RetroUI components from retroui.dev
 
-## Learn More
+## Key Features
 
-To learn more about Next.js, take a look at the following resources:
+✓ Neo-Brutalist RetroUI design
+✓ Fully responsive
+✓ Smooth animations (GSAP + anime.js)
+✓ Built with Next.js 14+ & TypeScript
+✓ RetroUI components throughout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Sections
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Hero - Animated intro with retro monitor
+2. Problem vs Solution - Value proposition
+3. Feature Grid - Bento grid layout  
+4. Lumen AI - Terminal demo
+5. Pricing - Free vs Premium tiers
+6. FAQ - Accordion questions
+7. Footer - Links and status
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built with ❤️ by NITC Students
