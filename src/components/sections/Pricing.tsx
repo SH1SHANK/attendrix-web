@@ -1,181 +1,251 @@
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import React, { useState } from "react";
 import { Check } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
 
-export default function Pricing() {
+// Helper for checklist items
+const CheckList = ({
+  items,
+  checkColor = "text-black",
+}: {
+  items: string[];
+  checkColor?: string;
+}) => {
   return (
-    <section id="pricing" className="section bg-paper border-b border-black">
-      <div className="container-tight">
-        {/* Section Header */}
-        <div className="text-center mb-10 md:mb-16">
-          <p className="label text-muted-foreground mb-3">PRICING</p>
-          <h2 className="heading-2 mb-4">
-            SIMPLE.
-            <br />
-            <span className="text-black">TRANSPARENT.</span>
-          </h2>
-          <p className="body-md text-muted-foreground max-w-md mx-auto">
-            Built by students, for students. Premium launching Q3 2026.
-          </p>
+    <ul className="space-y-4">
+      {items.map((item, index) => (
+        <li key={index} className="flex items-start gap-3">
+          <Check
+            className={`w-5 h-5 mt-0.5 shrink-0 ${checkColor}`}
+            strokeWidth={3}
+          />
+          <span className="text-base font-medium leading-relaxed">{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+const AttendrixPricing = () => {
+  const [billingPeriod, setBillingPeriod] = useState<"semester" | "yearly">(
+    "semester",
+  );
+
+  return (
+    <section className="min-h-screen bg-paper py-24 px-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-16">
+          <h1 className="text-5xl md:text-6xl font-black mb-6 tracking-tight text-black">
+            Simple, Transparent Pricing.
+          </h1>
+
+          {/* Billing Toggle - Gliding Pill Animation */}
+          <div
+            className="inline-grid grid-cols-2 p-1 relative"
+            style={{
+              backgroundColor: "#ffffff",
+              border: "2px solid black",
+              boxShadow: "4px 4px 0px 0px #000000",
+            }}
+          >
+            {/* Gliding Black Pill Background */}
+            <div
+              className="absolute inset-y-1 bg-black transition-all duration-300 ease-out"
+              style={{
+                width: "calc(50% - 0.125rem)",
+                left:
+                  billingPeriod === "semester"
+                    ? "0.25rem"
+                    : "calc(50% + 0.125rem)",
+              }}
+            />
+
+            {/* Semester Button */}
+            <button
+              onClick={() => setBillingPeriod("semester")}
+              className="relative z-10 px-6 py-3 font-bold text-sm uppercase tracking-wider transition-colors duration-300 text-center"
+              style={{
+                color: billingPeriod === "semester" ? "#ffffff" : "#000000",
+              }}
+            >
+              Semester
+            </button>
+
+            {/* Yearly Button */}
+            <button
+              onClick={() => setBillingPeriod("yearly")}
+              className="relative z-10 px-6 py-3 font-bold text-sm uppercase tracking-wider transition-colors duration-300 text-center"
+              style={{
+                color: billingPeriod === "yearly" ? "#ffffff" : "#000000",
+              }}
+            >
+              Yearly (Save 10%)
+            </button>
+          </div>
         </div>
 
         {/* Pricing Cards Grid */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch">
-          {/* Free Tier (Tier 3 - Quiet) */}
-          <Card className="flex flex-col bg-white p-0 rounded-none border-2 border-black shadow-[2px_2px_0_#000] hover:shadow-none transition-all">
-            <div className="p-6 border-b border-black">
-              <Card.Title className="heading-4 mb-1">FREE</Card.Title>
-              <Card.Description className="text-xs text-muted-foreground uppercase tracking-wide">
-                For individual students
-              </Card.Description>
-            </div>
-
-            <div className="p-6 border-b border-black bg-paper">
-              <div className="flex items-baseline gap-1">
-                <span className="font-mono text-4xl font-bold">₹0</span>
-                <span className="text-muted-foreground font-mono text-xs">
-                  /forever
-                </span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+          {/* Card 1: NOVICE */}
+          <div
+            className="p-10 min-h-[420px] shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+            style={{
+              backgroundColor: "#ffffff",
+              color: "#000000",
+              border: "2px solid black",
+            }}
+          >
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-2xl font-black uppercase mb-3 tracking-tight">
+                  Novice
+                </h2>
+                <p className="text-neutral-600 font-medium">
+                  For individual students.
+                </p>
               </div>
+
+              <div className="space-y-2">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-7xl font-black">₹0</span>
+                  <span className="text-xl text-neutral-600 font-medium">
+                    /{billingPeriod === "semester" ? "semester" : "year"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <CheckList
+                  items={[
+                    "Full Attendance Tracking",
+                    "Mobile App Access",
+                    "Basic Lumen AI",
+                    "Google Calendar Sync",
+                  ]}
+                  checkColor="text-green-600"
+                />
+              </div>
+
+              <button className="w-full font-bold uppercase tracking-wide h-12 px-6 text-sm bg-white text-black border-2 border-black shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
+                Get Started
+              </button>
             </div>
+          </div>
 
-            <Card.Content className="flex-1 flex flex-col p-6">
-              <ul className="space-y-3 mb-6 flex-1">
-                {[
-                  "Full subject-wise tracking",
-                  "Safe cut calculator",
-                  "Medical condonation",
-                  "Lumen AI (limited context)",
-                  "5 PDF uploads / sem",
-                ].map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm">
-                    <Check className="w-4 h-4 mt-0.5 shrink-0" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                asChild
-                variant="secondary"
-                size="md"
-                className="w-full text-xs py-3 mt-auto border-2 border-black"
+          {/* Card 2: MASTER MAGE (Center - Premium) - DARK */}
+          <div className="relative">
+            {/* Most Value Badge */}
+            <div className="absolute -top-4 -right-4 z-20 rotate-3">
+              <Badge
+                variant="rose"
+                size="lg"
+                style={{
+                  border: "2px solid black",
+                  boxShadow: "3px 3px 0px 0px #000000",
+                }}
               >
-                <a href="#">GET STARTED</a>
-              </Button>
-            </Card.Content>
-          </Card>
-
-          {/* Premium Tier (Tier 2 - Dominant) */}
-          <Card className="flex flex-col bg-ink text-white p-0 rounded-none border-2 border-black relative z-10 shadow-[8px_8px_0_#000] md:-mt-4 md:-mb-4 hover:shadow-md transition-all">
-            <div className="absolute top-0 right-0 p-3">
-              <Badge variant="warning" className="text-[9px] font-bold">
-                COMING SOON
+                Most Value
               </Badge>
             </div>
 
-            <div className="p-4 lg:p-8 border-b-2 border-charcoal">
-              <Card.Title className="heading-3 text-white mb-1">
-                PREMIUM
-              </Card.Title>
-              <Card.Description className="text-xs text-muted-foreground uppercase tracking-wide">
-                For power users
-              </Card.Description>
-            </div>
+            <div
+              className="scale-105 z-10 py-16 p-10 min-h-[500px] shadow-[8px_8px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[12px_12px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              style={{
+                backgroundColor: "#09090b",
+                color: "#ffffff",
+                border: "2px solid black",
+              }}
+            >
+              <div className="space-y-8">
+                <div>
+                  <h2
+                    className="text-2xl font-black uppercase mb-3 tracking-tight"
+                    style={{ color: "#facc15" }}
+                  >
+                    Master Mage
+                  </h2>
+                  <p className="text-neutral-300 font-medium">
+                    Uncapped power for students.
+                  </p>
+                </div>
 
-            <div className="p-4 lg:p-8 border-b-2 border-charcoal bg-charcoal">
-              <div className="flex items-baseline gap-1">
-                <span className="font-mono text-5xl font-bold text-white">
-                  ₹99
-                </span>
-                <span className="text-muted-foreground font-mono text-xs">
-                  /semester
-                </span>
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-7xl font-black text-white">
+                      ₹{billingPeriod === "semester" ? "49" : "89"}
+                    </span>
+                    <span className="text-xl text-neutral-400 font-medium">
+                      /{billingPeriod === "semester" ? "semester" : "year"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <CheckList
+                    items={[
+                      "Everything in Novice",
+                      "Advanced Lumen AI (Pro)",
+                      "Priority Syllabus Uploads",
+                      "Advanced Analytics",
+                    ]}
+                    checkColor="text-yellow-400"
+                  />
+                </div>
+
+                {/* Go Premium Button - YELLOW */}
+                <button className="w-full font-bold uppercase tracking-wide h-12 px-6 text-sm bg-[#FFD02F] text-black border-2 border-black shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
+                  Go Premium
+                </button>
               </div>
             </div>
+          </div>
 
-            <Card.Content className="flex-1 flex flex-col p-4 lg:p-8">
-              <ul className="space-y-4 mb-8 flex-1">
-                {[
-                  "Everything in Free",
-                  "GPT-4o & Claude 4.5 Sonnet",
-                  "Unlimited PDF uploads",
-                  "128k context windows",
-                  "Priority support",
-                ].map((feature, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start gap-4 text-sm text-white"
-                  >
-                    <Check className="w-4 h-4 text-accent mt-0.5 shrink-0" />
-                    <span className="font-medium">{feature}</span>
-                  </li>
-                ))}
-              </ul>
+          {/* Card 3: CLASS REP */}
+          <div
+            className="p-10 min-h-[420px] shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+            style={{
+              backgroundColor: "#ffffff",
+              color: "#000000",
+              border: "2px solid black",
+            }}
+          >
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-2xl font-black uppercase mb-3 tracking-tight">
+                  Class Rep
+                </h2>
+                <p className="text-neutral-600 font-medium">
+                  For batch onboarding.
+                </p>
+              </div>
 
-              <Button
-                variant="default" /* Accent typically */
-                className="w-full text-xs py-4 opacity-80 cursor-not-allowed mt-auto bg-accent text-black border-black hover:bg-accent hover:opacity-100"
-                disabled
-              >
-                NOTIFY ME
-              </Button>
-            </Card.Content>
-          </Card>
+              <div className="space-y-2">
+                <div className="text-6xl font-black leading-tight">
+                  Let&apos;s Talk
+                </div>
+              </div>
 
-          {/* Batch Tier (Tier 3 - Quiet) */}
-          <Card className="flex flex-col bg-white p-0 rounded-none border-2 border-black shadow-[2px_2px_0_#000] hover:shadow-none transition-all">
-            <div className="p-6 border-b border-black">
-              <Card.Title className="heading-4 mb-1">BATCH</Card.Title>
-              <Card.Description className="text-xs text-muted-foreground uppercase tracking-wide">
-                For Class Reps
-              </Card.Description>
+              <div className="space-y-6">
+                <CheckList
+                  items={[
+                    "Bulk Onboarding",
+                    "Custom Timetable Integration",
+                    "Admin Dashboard",
+                    "Dedicated Support",
+                  ]}
+                  checkColor="text-green-600"
+                />
+              </div>
+
+              <button className="w-full font-bold uppercase tracking-wide h-12 px-6 text-sm bg-white text-black border-2 border-black shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
+                Contact Us
+              </button>
             </div>
-
-            <div className="p-6 border-b border-black bg-paper">
-              <span className="font-mono text-xl font-bold">CUSTOM</span>
-            </div>
-
-            <Card.Content className="flex-1 flex flex-col p-6">
-              <ul className="space-y-3 mb-6 flex-1">
-                {[
-                  "Batch-wide onboarding",
-                  "Shared timetable setup",
-                  "CR admin dashboard",
-                  "48-hour rapid setup",
-                  "Priority fixes",
-                ].map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm">
-                    <Check className="w-4 h-4 mt-0.5 shrink-0" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                asChild
-                variant="secondary"
-                size="md"
-                className="w-full text-xs py-3 mt-auto border-2 border-black"
-              >
-                <a href="mailto:onboarding@attendrix.app">CONTACT US</a>
-              </Button>
-            </Card.Content>
-          </Card>
-        </div>
-
-        {/* Trust indicators */}
-        <div className="mt-12 text-center">
-          <div className="inline-flex items-center gap-6 text-xs font-mono text-muted-foreground border border-border-light px-4 py-2 bg-surface">
-            <span>NO CREDIT CARD</span>
-            <span className="text-border-light">|</span>
-            <span>CANCEL ANYTIME</span>
-            <span className="text-border-light">|</span>
-            <span>STUDENT-BUILT</span>
           </div>
         </div>
       </div>
     </section>
   );
-}
+};
+
+export default AttendrixPricing;

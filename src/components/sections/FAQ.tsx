@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Minus } from "lucide-react";
-import { Card } from "@/components/ui/Card";
+import { Plus, BookOpen } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface FAQItem {
   id: string;
@@ -50,90 +50,97 @@ const faqs: FAQItem[] = [
 ];
 
 export default function FAQ() {
-  const [openId, setOpenId] = useState<string | null>("F01");
+  const [openId, setOpenId] = useState<string | null>(null);
 
   return (
-    <section id="faq" className="section bg-surface border-b border-black">
-      <div className="container-tight">
-        {/* Section Header - Left Aligned */}
-        <div className="mb-10 grid md:grid-cols-3 gap-8 items-start">
-          <div className="md:col-span-1">
-            <p className="label text-muted-foreground mb-3">FAQ</p>
-            <h2 className="heading-2 mb-3">
-              COMMON
-              <br />
-              QUESTIONS
-            </h2>
-            <p className="body-sm text-text-secondary">
-              Straight answers. No fluff.
-            </p>
-          </div>
+    <section
+      id="faq"
+      className="w-full bg-paper pt-8 md:pt-12 pb-16 md:pb-20 px-4"
+    >
+      <div className="max-w-3xl mx-auto">
+        {/* Section Header */}
+        <h2 className="text-4xl md:text-5xl font-black text-center mb-8 md:mb-10 tracking-tight text-black">
+          Frequently Asked Questions
+        </h2>
 
-          <div className="md:col-span-2">
-            <Card className="p-0 border-2 border-black bg-white shadow-[4px_4px_0_rgba(0,0,0,0.1)]">
-              {faqs.map((faq, index) => (
-                <div
-                  key={faq.id}
-                  className={`${index > 0 ? "border-t border-black" : ""}`}
-                >
-                  <button
-                    onClick={() => setOpenId(openId === faq.id ? null : faq.id)}
-                    className="w-full flex items-start justify-between p-4 text-left hover:bg-paper transition-colors group"
-                  >
-                    <div className="flex gap-4 pr-4">
-                      <span
-                        className={`font-mono text-xs font-bold pt-1 transition-colors ${
-                          openId === faq.id
-                            ? "text-accent-dark"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {faq.id}
-                      </span>
-                      <span
-                        className={`text-sm font-medium transition-colors ${
-                          openId === faq.id
-                            ? "text-black"
-                            : "text-text-secondary group-hover:text-black"
-                        }`}
-                      >
-                        {faq.question}
-                      </span>
-                    </div>
-                    <span
-                      className={`flex items-center justify-center transition-transform shrink-0`}
-                    >
-                      {openId === faq.id ? (
-                        <Minus className="w-5 h-5" />
-                      ) : (
-                        <Plus className="w-5 h-5" />
-                      )}
-                    </span>
-                  </button>
+        {/* FAQ Items */}
+        <div className="space-y-4">
+          {faqs.map((faq) => {
+            const isOpen = openId === faq.id;
 
-                  {openId === faq.id && (
-                    <div className="px-4 pb-4 pl-12">
-                      <p className="text-sm text-text-secondary leading-relaxed border-l-2 border-accent pl-3">
-                        {faq.answer}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </Card>
-
-            <div className="mt-6 flex items-center gap-3">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Still have questions?
-              </span>
-              <a
-                href="mailto:support@attendrix.app"
-                className="text-xs font-mono font-bold hover:bg-black hover:text-white px-2 py-1 transition-all"
+            return (
+              <div
+                key={faq.id}
+                className={`border-2 border-black shadow-[4px_4px_0px_0px_#000] transition-colors duration-200 overflow-hidden ${
+                  isOpen ? "bg-[#ffc2d1]" : "bg-white"
+                }`}
               >
-                support@attendrix.app
-              </a>
-            </div>
-          </div>
+                {/* Question Header */}
+                <button
+                  onClick={() => setOpenId(isOpen ? null : faq.id)}
+                  className={`w-full flex items-center justify-between p-6 cursor-pointer text-left transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${
+                    !isOpen
+                      ? "hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000] active:translate-y-0 active:shadow-[2px_2px_0px_0px_#000]"
+                      : ""
+                  }`}
+                >
+                  <h3 className="text-lg font-bold text-black pr-4">
+                    {faq.question}
+                  </h3>
+                  <span
+                    className={`shrink-0 transition-transform duration-300 ${
+                      isOpen ? "rotate-45" : "rotate-0"
+                    }`}
+                  >
+                    <Plus className="w-6 h-6 text-black" strokeWidth={3} />
+                  </span>
+                </button>
+
+                {/* Answer Content - Animated with Framer Motion */}
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{
+                        duration: 0.3,
+                        ease: [0.25, 0.46, 0.45, 0.94],
+                      }}
+                    >
+                      <div className="px-6 pb-6 pt-0">
+                        <p className="text-base text-black/80 leading-relaxed font-medium">
+                          {faq.answer}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer Contact */}
+        <div className="mt-8 md:mt-10 text-center">
+          <p className="text-sm text-neutral-600 mb-2">Still have questions?</p>
+          <a
+            href="mailto:support@attendrix.app"
+            className="inline-block bg-black text-white px-6 py-3 border-2 border-black font-bold uppercase text-sm shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+          >
+            support@attendrix.app
+          </a>
+        </div>
+
+        {/* View Full Documentation CTA */}
+        <div className="mt-10 md:mt-12 flex justify-center">
+          <a
+            href="/docs"
+            className="inline-flex items-center gap-3 bg-white text-black px-8 py-4 border-2 border-black font-bold uppercase text-base shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+          >
+            <BookOpen className="w-5 h-5" strokeWidth={2.5} />
+            Read the Full Docs
+          </a>
         </div>
       </div>
     </section>

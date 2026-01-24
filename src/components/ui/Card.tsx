@@ -1,49 +1,75 @@
+import { HTMLAttributes, forwardRef } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { HTMLAttributes } from "react";
-import { Text } from "@/components/ui/Text";
 
-interface ICardProps extends HTMLAttributes<HTMLDivElement> {
-  className?: string;
-}
-
-const Card = ({ className, ...props }: ICardProps) => {
-  return (
-    <div
-      className={cn(
-        "inline-block border-2 rounded shadow-md transition-all hover:shadow-none bg-card",
-        className,
-      )}
-      {...props}
-    />
-  );
-};
-
-const CardHeader = ({ className, ...props }: ICardProps) => {
-  return (
-    <div
-      className={cn("flex flex-col justify-start p-4", className)}
-      {...props}
-    />
-  );
-};
-
-const CardTitle = ({ className, ...props }: ICardProps) => {
-  return <Text as="h3" className={cn("mb-2", className)} {...props} />;
-};
-
-const CardDescription = ({ className, ...props }: ICardProps) => (
-  <p className={cn("text-muted-foreground", className)} {...props} />
+const cardVariants = cva(
+  "relative flex flex-col border-2 border-black transition-all",
+  {
+    variants: {
+      variant: {
+        default: "bg-white text-black shadow-neo-lg",
+        dark: "bg-neutral-950 text-white shadow-neo-lg", // Hardcoded color to ensure black
+        yellow: "bg-yellow-400 text-black shadow-neo-lg", // Hardcoded color to ensure yellow
+        main: "bg-[#FFD02F] text-black shadow-neo-lg",
+        ghost:
+          "bg-white border-dashed shadow-none hover:border-solid hover:shadow-neo",
+      },
+      padding: {
+        none: "p-0",
+        default: "p-6",
+        lg: "p-8",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      padding: "none",
+    },
+  },
 );
 
-const CardContent = ({ className, ...props }: ICardProps) => {
-  return <div className={cn("p-4", className)} {...props} />;
-};
+interface CardProps
+  extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof cardVariants> {}
 
-const CardComponent = Object.assign(Card, {
-  Header: CardHeader,
-  Title: CardTitle,
-  Description: CardDescription,
-  Content: CardContent,
-});
+const Card = forwardRef<HTMLDivElement, CardProps>(
+  ({ className, variant, padding, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(cardVariants({ variant, padding }), className)}
+        {...props}
+      />
+    );
+  },
+);
+Card.displayName = "Card";
 
-export { CardComponent as Card };
+const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("flex flex-col space-y-1.5 p-6", className)}
+      {...props}
+    />
+  ),
+);
+CardHeader.displayName = "CardHeader";
+
+const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+  ),
+);
+CardContent.displayName = "CardContent";
+
+const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("flex items-center p-6 pt-0", className)}
+      {...props}
+    />
+  ),
+);
+CardFooter.displayName = "CardFooter";
+
+export { Card, CardHeader, CardContent, CardFooter, cardVariants };

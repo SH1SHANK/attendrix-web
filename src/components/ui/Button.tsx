@@ -1,66 +1,58 @@
 import { cn } from "@/lib/utils";
-import { cva, VariantProps } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import React, { ButtonHTMLAttributes } from "react";
 import { Slot } from "@radix-ui/react-slot";
 
+// Neo-Brutalist Button Variants
 export const buttonVariants = cva(
-  "font-head transition-all rounded outline-hidden cursor-pointer duration-200 font-medium flex items-center",
+  "inline-flex items-center justify-center font-bold uppercase tracking-wide transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
   {
     variants: {
       variant: {
         default:
-          "shadow-md hover:shadow active:shadow-none bg-primary text-primary-foreground border-2 border-black transition hover:translate-y-1 active:translate-y-2 active:translate-x-1 hover:bg-primary-hover",
-        secondary:
-          "shadow-md hover:shadow active:shadow-none bg-secondary shadow-primary text-secondary-foreground border-2 border-black transition hover:translate-y-1 active:translate-y-2 active:translate-x-1 hover:bg-secondary-hover",
+          "bg-white text-black border-2 border-black shadow-neo hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:translate-x-[4px] active:translate-y-[4px]",
+        main: "bg-[#FFD02F] text-black border-2 border-black shadow-neo hover:bg-[#E5B800] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:translate-x-[4px] active:translate-y-[4px]",
+        yellow:
+          "bg-yellow-400 text-black border-2 border-black shadow-neo hover:bg-yellow-500 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:translate-x-[4px] active:translate-y-[4px]",
+        ghost: "bg-transparent text-black hover:bg-black/5",
         outline:
-          "shadow-md hover:shadow active:shadow-none bg-transparent border-2 transition hover:translate-y-1 active:translate-y-2 active:translate-x-1",
-        link: "bg-transparent hover:underline",
-        ghost: "bg-transparent hover:bg-accent",
+          "border-2 border-black bg-transparent hover:bg-black hover:text-white",
+        destructive:
+          "bg-destructive text-white border-2 border-black shadow-neo hover:bg-red-600",
       },
       size: {
-        sm: "px-3 py-1 text-sm shadow hover:shadow-none",
-        md: "px-4 py-1.5 text-base",
-        lg: "px-6 lg:px-8 py-2 lg:py-3 text-md lg:text-lg",
-        icon: "p-2",
+        sm: "h-9 px-4 text-xs",
+        default: "h-12 px-6 text-sm",
+        lg: "h-14 px-8 text-base",
+        icon: "h-10 w-10",
       },
     },
     defaultVariants: {
-      size: "md",
       variant: "default",
+      size: "default",
     },
   },
 );
 
-export interface IButtonProps
+export interface ButtonProps
   extends
     ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }
 
-export const Button = React.forwardRef<HTMLButtonElement, IButtonProps>(
-  (
-    {
-      children,
-      size = "md",
-      className = "",
-      variant = "default",
-      asChild = false,
-      ...props
-    }: IButtonProps,
-    forwardedRef,
-  ) => {
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
-        ref={forwardedRef}
-        className={cn(buttonVariants({ variant, size }), className)}
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
         {...props}
-      >
-        {children}
-      </Comp>
+      />
     );
   },
 );
-
 Button.displayName = "Button";
+
+export { Button };

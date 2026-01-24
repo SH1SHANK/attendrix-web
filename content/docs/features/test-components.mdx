@@ -1,0 +1,46 @@
+---
+title: Component Test
+description: Testing new MDX components
+---
+
+# Component Test
+
+This page tests the new Mermaid diagrams and Retro Callouts.
+
+## Mermaid Diagram
+
+```mermaid
+graph TD
+  A[Start] --> B{Is it working?}
+  B -- Yes --> C[Great!]
+  B -- No --> D[Debug]
+  C --> E[Deploy]
+  D --> F[Fix Code]
+  F --> B
+```
+
+## Retro Callouts
+
+> This is a default note (Blue).
+
+> Using a warning requires custom syntax in MDX or just reliance on the component props if manually used.
+> For standard blockquotes, we default to "note" style.
+
+## Code Window
+
+<CodeWindow title="config.ts">
+
+```typescript
+export const config = {
+  theme: "retro",
+  version: "1.0.0",
+};
+```
+
+</CodeWindow>
+
+## Standard Code
+
+```typescript
+console.log("This is standard code, not mermaid");
+```

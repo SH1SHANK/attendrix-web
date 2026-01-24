@@ -1,0 +1,236 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { ShieldCheck, X, Cookie, ChevronDown, ChevronUp } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/Switch";
+import Link from "next/link";
+import { trackEvent } from "@/lib/analytics";
+
+export default function CookieConsent() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [hasConsented, setHasConsented] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Granular Preferences State
+  const [preferences, setPreferences] = useState({
+    essential: true, // Always true
+    analytics: true,
+    functional: true,
+    advertising: false,
+  });
+
+  useEffect(() => {
+    setIsMounted(true);
+    const storedConsent = localStorage.getItem("attendrix-cookie-consent");
+    if (storedConsent) {
+      setHasConsented(true);
+      const parsed = JSON.parse(storedConsent);
+      // Merge stored prefs with defaults (in case we added new categories)
+      setPreferences((prev) => ({ ...prev, ...parsed }));
+    } else {
+      // First visit -> Show Open
+      setIsOpen(true);
+    }
+  }, []);
+
+  const handleSave = () => {
+    const dataToSave = {
+      ...preferences,
+      timestamp: new Date().toISOString(),
+    };
+    localStorage.setItem(
+      "attendrix-cookie-consent",
+      JSON.stringify(dataToSave),
+    );
+    trackEvent("cookie_consent_custom", {
+      analytics: preferences.analytics,
+      advertising: preferences.advertising,
+    });
+    setHasConsented(true);
+    setIsOpen(false);
+  };
+
+  const handleAcceptAll = () => {
+    const allEnabled = {
+      essential: true,
+      analytics: true,
+      functional: true,
+      advertising: true,
+      timestamp: new Date().toISOString(),
+    };
+    setPreferences({
+      essential: true,
+      analytics: true,
+      functional: true,
+      advertising: true,
+    });
+    localStorage.setItem(
+      "attendrix-cookie-consent",
+      JSON.stringify(allEnabled),
+    );
+    trackEvent("cookie_consent_full");
+    setHasConsented(true);
+    setIsOpen(false);
+  };
+
+  const togglePreference = (key: keyof typeof preferences) => {
+    if (key === "essential") return; // Locked
+    setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  if (!isMounted) return null;
+
+  return (
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed bottom-4 right-4 z-50 w-full max-w-md pointer-events-auto"
+          >
+            <div className="bg-white border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[90vh]">
+              {/* HEADER */}
+              <div className="bg-[#FFD02F] border-b-2 border-black p-4 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-black stroke-[2.5px]" />
+                  <h3 className="font-black uppercase text-sm tracking-wide text-black">
+                    Your Privacy Matters
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-1 hover:bg-black hover:text-white transition-colors border-2 border-transparent hover:border-black rounded-none"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* BODY (Scrollable) */}
+              <div className="p-6 overflow-y-auto custom-scrollbar">
+                {/* Intro */}
+                <div className="mb-6">
+                  <p className="text-sm font-medium text-neutral-600 mb-2 leading-relaxed">
+                    We use cookies to secure your account and improve your
+                    experience. You can choose which additional data we collect
+                    below.
+                  </p>
+                  <Link
+                    href="/legal/cookies"
+                    className="text-xs font-bold uppercase underline hover:text-[#FFD02F] hover:bg-black transition-colors"
+                  >
+                    Read Full Cookie Policy
+                  </Link>
+                </div>
+
+                {/* Granular Controls List */}
+                <div className="space-y-4 border-t-2 border-dashed border-neutral-200 pt-4">
+                  {/* 1. Essential */}
+                  <div className="flex items-center justify-between group">
+                    <div className="pr-4">
+                      <p className="font-bold text-sm uppercase flex items-center gap-2">
+                        Strictly Necessary
+                        <span className="text-[10px] bg-black text-white px-1.5 py-0.5 rounded-sm">
+                          REQ
+                        </span>
+                      </p>
+                      <p className="text-xs text-neutral-500 mt-0.5">
+                        Login sessions, CSRF security tokens.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={true}
+                      disabled
+                      aria-readonly
+                      className="data-[state=checked]:bg-neutral-300 opacity-50 cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* 2. Performance & Analytics */}
+                  <div className="flex items-center justify-between">
+                    <div className="pr-4">
+                      <p className="font-bold text-sm uppercase">
+                        Performance & Analytics
+                      </p>
+                      <p className="text-xs text-neutral-500 mt-0.5">
+                        Helps us fix bugs and see popular pages.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={preferences.analytics}
+                      onCheckedChange={() => togglePreference("analytics")}
+                      className="data-[state=checked]:!bg-[#FFD02F] data-[state=checked]:!border-black [&_span]:data-[state=checked]:!bg-black"
+                    />
+                  </div>
+
+                  {/* 3. Functional */}
+                  <div className="flex items-center justify-between">
+                    <div className="pr-4">
+                      <p className="font-bold text-sm uppercase">Functional</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">
+                        Remembers your theme and language settings.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={preferences.functional}
+                      onCheckedChange={() => togglePreference("functional")}
+                      className="data-[state=checked]:!bg-[#FFD02F] data-[state=checked]:!border-black [&_span]:data-[state=checked]:!bg-black"
+                    />
+                  </div>
+
+                  {/* 4. Advertising */}
+                  <div className="flex items-center justify-between">
+                    <div className="pr-4">
+                      <p className="font-bold text-sm uppercase">Advertising</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">
+                        We generally don't run ads, but just in case.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={preferences.advertising}
+                      onCheckedChange={() => togglePreference("advertising")}
+                      className="data-[state=checked]:!bg-[#FFD02F] data-[state=checked]:!border-black [&_span]:data-[state=checked]:!bg-black"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* FOOTER - Actions */}
+              <div className="p-4 bg-neutral-50 border-t-2 border-black flex flex-col sm:flex-row gap-3 shrink-0">
+                <button
+                  onClick={handleSave}
+                  className="flex-1 py-2.5 bg-white text-black border-2 border-black font-black uppercase text-xs tracking-wide hover:bg-neutral-100 transition-colors"
+                >
+                  Save Preferences
+                </button>
+                <button
+                  onClick={handleAcceptAll}
+                  className="flex-1 py-2.5 bg-black text-[#FFD02F] border-2 border-black font-black uppercase text-xs tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none active:translate-y-[2px] active:shadow-none transition-all"
+                >
+                  Accept All
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Trigger */}
+      {!isOpen && (
+        <motion.button
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 z-40 w-12 h-12 bg-white border-2 border-black shadow-[4px_4px_0px_0px_#000] flex items-center justify-center hover:bg-[#FFD02F] transition-all group active:translate-y-1 active:shadow-none"
+          title="Privacy Preferences"
+        >
+          <Cookie className="w-5 h-5 text-black group-hover:rotate-12 transition-transform" />
+        </motion.button>
+      )}
+    </>
+  );
+}

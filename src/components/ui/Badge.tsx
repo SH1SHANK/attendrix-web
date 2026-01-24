@@ -1,47 +1,42 @@
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { cva, VariantProps } from "class-variance-authority";
-import React, { HTMLAttributes } from "react";
+import React from "react";
 
-const badgeVariants = cva("font-semibold rounded", {
-  variants: {
-    variant: {
-      default: "bg-muted text-muted-foreground",
-      outline: "outline-2 outline-foreground text-foreground",
-      solid: "bg-foreground text-background",
-      surface: "outline-2 bg-primary text-primary-foreground",
-      warning: "bg-warning text-black border border-black",
-      error: "bg-destructive text-destructive-foreground border border-black",
-      success: "bg-green-500 text-white border border-black",
-      dark: "bg-black text-white border border-black",
+const badgeVariants = cva(
+  "inline-flex items-center border-2 border-black font-bold uppercase tracking-wider transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default: "bg-white text-black shadow-neo",
+        main: "bg-main text-black shadow-neo",
+        rose: "bg-[#ff4d79] text-white shadow-neo", // Specific "Most Popular" brand color
+        dark: "bg-dark text-white shadow-neo",
+        outline: "text-foreground shadow-none hover:bg-black hover:text-white",
+      },
+      size: {
+        default: "px-3 py-1 text-xs",
+        lg: "px-4 py-2 text-sm",
+      },
     },
-    size: {
-      sm: "px-2 py-1 text-xs",
-      md: "px-2.5 py-1.5 text-sm",
-      lg: "px-3 py-2 text-base",
+    defaultVariants: {
+      variant: "default",
+      size: "default",
     },
   },
-  defaultVariants: {
-    variant: "default",
-    size: "md",
-  },
-});
+);
 
-interface ButtonProps
-  extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {}
+export interface BadgeProps
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
 
-export function Badge({
-  children,
-  size = "md",
-  variant = "default",
-  className = "",
-  ...props
-}: ButtonProps) {
+function Badge({ className, variant, size, ...props }: BadgeProps) {
   return (
-    <span
+    <div
       className={cn(badgeVariants({ variant, size }), className)}
       {...props}
-    >
-      {children}
-    </span>
+    />
   );
 }
+
+export { Badge, badgeVariants };
