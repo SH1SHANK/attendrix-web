@@ -55,6 +55,10 @@ export const docsNavigation: NavSection[] = [
     ],
   },
   {
+    title: "Gamification",
+    items: [{ title: "Amplix System", href: "/docs/amplix", isNew: true }],
+  },
+  {
     title: "API Reference",
     items: [
       { title: "Authentication", href: "/docs/api/auth" },

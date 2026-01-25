@@ -1,30 +1,33 @@
 "use server";
 
-import { firestore } from "@/lib/firebase-admin";
+import { getAdminFirestore } from "@/lib/firebase-admin";
 
 /**
  * Checks if a username is available in the 'users' collection.
+ * Returns true if available (not taken), false otherwise.
  */
-export async function checkUsername(username: string) {
-  if (!username || username.length < 3) {
-    return { available: false, message: "Too short" };
+export async function checkUsernameAvailability(
+  username: string,
+): Promise<boolean> {
+  // Simple regex validation (alphanumeric, underscores, 3-20 chars)
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+  if (!usernameRegex.test(username)) {
+    return false;
   }
 
   try {
-    const querySnapshot = await firestore
+    const db = getAdminFirestore();
+    const snapshot = await db
       .collection("users")
       .where("username", "==", username)
       .limit(1)
       .get();
 
-    if (querySnapshot.empty) {
-      return { available: true, message: "Username is available" };
-    } else {
-      return { available: false, message: "Username is taken" };
-    }
+    return snapshot.empty;
   } catch (error) {
     console.error("Error checking username:", error);
-    return { available: false, message: "Error verifying username" };
+    // Fail closed (assume taken or error) to be safe
+    return false;
   }
 }
 
@@ -176,8 +179,8 @@ export async function generateRandomUsername() {
     const candidate = `${adjective}${noun}${number}`;
 
     // Check availability
-    const check = await checkUsername(candidate);
-    if (check.available) {
+    const available = await checkUsernameAvailability(candidate);
+    if (available) {
       return candidate;
     }
   }

@@ -10,10 +10,10 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-white text-black border-2 border-black shadow-neo hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:translate-x-[4px] active:translate-y-[4px]",
-        main: "bg-[#FFD02F] text-black border-2 border-black shadow-neo hover:bg-[#E5B800] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:translate-x-[4px] active:translate-y-[4px]",
+          "bg-white text-black border-2 border-black shadow-neo hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:translate-x-[4px] active:translate-y-[4px] active:scale-95",
+        main: "bg-[#FFD02F] text-black border-2 border-black shadow-neo hover:bg-[#E5B800] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:translate-x-[4px] active:translate-y-[4px] active:scale-95",
         yellow:
-          "bg-yellow-400 text-black border-2 border-black shadow-neo hover:bg-yellow-500 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:translate-x-[4px] active:translate-y-[4px]",
+          "bg-yellow-400 text-black border-2 border-black shadow-neo hover:bg-yellow-500 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:translate-x-[4px] active:translate-y-[4px] active:scale-95",
         ghost: "bg-transparent text-black hover:bg-black/5",
         outline:
           "border-2 border-black bg-transparent hover:bg-black hover:text-white",

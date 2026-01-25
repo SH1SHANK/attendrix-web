@@ -17,13 +17,15 @@ import {
   HelpCircle,
   Book,
   ShieldCheck,
-  Mail,
 } from "lucide-react";
 import {
   getAvailableBatches,
   getBatchCurriculum,
 } from "@/app/actions/onboarding";
-import { checkUsername, generateRandomUsername } from "@/app/actions/username";
+import {
+  checkUsernameAvailability,
+  generateRandomUsername,
+} from "@/app/actions/username";
 import {
   BatchRecord,
   CourseRecord,
@@ -88,9 +90,11 @@ function OnboardingContent() {
     const timer = setTimeout(async () => {
       if (formData.username.length > 2) {
         setUsernameStatus("CHECKING");
-        const result = await checkUsername(formData.username);
-        setUsernameStatus(result.available ? "AVAILABLE" : "TAKEN");
-        setUsernameMessage(result.message);
+        const isAvailable = await checkUsernameAvailability(formData.username);
+        setUsernameStatus(isAvailable ? "AVAILABLE" : "TAKEN");
+        setUsernameMessage(
+          isAvailable ? "Username is available" : "Username is taken",
+        );
       } else {
         setUsernameStatus("IDLE");
         setUsernameMessage("");
@@ -102,9 +106,17 @@ function OnboardingContent() {
 
   const handleRandomize = async () => {
     setUsernameStatus("CHECKING");
-    const sub = formData.username; // keep old valid
-    const newName = await generateRandomUsername();
-    setFormData((prev) => ({ ...prev, username: newName }));
+    try {
+      const newName = await generateRandomUsername();
+      setFormData((prev) => ({ ...prev, username: newName }));
+      // Username is pre-validated by generateRandomUsername, so mark as available
+      setUsernameStatus("AVAILABLE");
+      setUsernameMessage("Username is available");
+    } catch (error) {
+      console.error("Failed to generate username:", error);
+      setUsernameStatus("IDLE");
+      setUsernameMessage("Failed to generate username");
+    }
   };
 
   // Fetch batches on mount
@@ -341,15 +353,18 @@ function OnboardingContent() {
                       </div>
 
                       {/* Status Text */}
-                      <div className="h-4">
-                        {usernameStatus === "TAKEN" && (
-                          <p className="text-xs font-bold text-red-600 uppercase tracking-wide">
-                            Username Taken
-                          </p>
-                        )}
-                        {usernameStatus === "AVAILABLE" && (
-                          <p className="text-xs font-bold text-green-600 uppercase tracking-wide">
-                            Username Available
+                      <div className="min-h-[18px]">
+                        {usernameMessage && (
+                          <p
+                            className={`text-xs font-bold uppercase tracking-wide ${
+                              usernameStatus === "AVAILABLE"
+                                ? "text-green-600"
+                                : usernameStatus === "TAKEN"
+                                  ? "text-red-600"
+                                  : "text-neutral-600"
+                            }`}
+                          >
+                            {usernameMessage}
                           </p>
                         )}
                       </div>

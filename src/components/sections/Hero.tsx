@@ -269,7 +269,7 @@ export default function Hero({ isVisible = false }: HeroProps) {
   const [isReimaginedHovered, setIsReimaginedHovered] = useState(false);
 
   const subheadingText =
-    "Subject-wise tracking for NITC students. Policy-compliant calculations. Know exactly how many classes you can skip—per subject.";
+    "The Academic Ecosystem for NITC. Track attendance, manage subjects, and stay compliant—on Android, iOS, and Web.";
 
   return (
     <HeroHighlight
@@ -289,10 +289,10 @@ export default function Hero({ isVisible = false }: HeroProps) {
           <motion.div
             variants={badgeVariants}
             whileHover={{ scale: 1.05 }}
-            className="cursor-pointer"
+            className="cursor-pointer rotate-1"
           >
             <div
-              className="inline-flex items-center gap-2.5 bg-neutral-900 text-white px-4 py-1.5 border-2 border-black"
+              className="inline-flex items-center gap-2.5 bg-neutral-900 text-white px-4 py-1.5 border-2 border-yellow-300 shadow-[4px_4px_0px_0px_#FACC15]"
               style={{
                 boxShadow: "3px 3px 0px 0px #000000",
               }}
@@ -303,18 +303,18 @@ export default function Hero({ isVisible = false }: HeroProps) {
                 aria-hidden="true"
               />
               <span className="text-xs font-bold uppercase tracking-wider">
-                Introducing Attendrix v1.3.2
+                Introducing AttendrixWeb v2.1 Beta
               </span>
             </div>
           </motion.div>
 
           {/* Headline Group - Logo Block */}
-          <div className="flex flex-col items-center mt-4">
+          <div className="flex flex-col items-center mt-4 mb-8">
             <h1 className="flex flex-col items-center">
-              {/* ATTENDANCE - Base layer with tight leading */}
+              {/* ATTENDANCE - Base layer with relaxed leading */}
               <motion.span
                 variants={attendanceVariants}
-                className="text-6xl sm:text-8xl lg:text-[8rem] font-black tracking-tighter text-black leading-[0.85] select-none"
+                className="text-6xl sm:text-8xl lg:text-[8rem] font-black tracking-tighter text-black leading-tight select-none mb-4"
               >
                 ATTENDANCE
               </motion.span>
@@ -322,15 +322,15 @@ export default function Hero({ isVisible = false }: HeroProps) {
               {/* REIMAGINED - Sticker Box overlapping ATTENDANCE */}
               <motion.div
                 variants={reimaginedVariants}
-                className="relative z-10 inline-block px-6 sm:px-8 py-2 sm:py-3 -mt-4 sm:-mt-6 cursor-pointer"
+                className="relative z-10 inline-block px-8 py-3 -mt-6 cursor-pointer transform hover:scale-105 transition-transform"
                 onMouseEnter={() => setIsReimaginedHovered(true)}
                 onMouseLeave={() => setIsReimaginedHovered(false)}
                 animate={{
-                  rotate: isReimaginedHovered ? -6 : -2,
+                  rotate: isReimaginedHovered ? -4 : -2,
                   boxShadow: isReimaginedHovered
-                    ? "10px 10px 0px 0px #000000"
-                    : "6px 6px 0px 0px #000000",
-                  y: isReimaginedHovered ? -4 : 0,
+                    ? "8px 8px 0px 0px #000000"
+                    : "3px 3px 0px 0px #000000",
+                  y: isReimaginedHovered ? -2 : 0,
                 }}
                 transition={{
                   type: "spring",
@@ -338,9 +338,9 @@ export default function Hero({ isVisible = false }: HeroProps) {
                   damping: 15,
                 }}
                 style={{
-                  backgroundColor: "#ffffff",
-                  border: "3px solid black",
-                  boxShadow: "6px 6px 0px 0px #000000",
+                  backgroundColor: "#FACC15",
+                  border: "2px solid black",
+                  boxShadow: "3px 3px 0px 0px #000000",
                 }}
               >
                 <span className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-black leading-none select-none">
@@ -351,32 +351,32 @@ export default function Hero({ isVisible = false }: HeroProps) {
           </div>
 
           {/* Supporting Paragraph with Proximity Effect */}
-          <motion.div variants={descriptionVariants} className="mt-8">
+          <motion.div variants={descriptionVariants} className="mt-8 mb-10">
             <ProximityHeading text={subheadingText} />
           </motion.div>
 
           {/* CTA Button Group */}
           <motion.div
             variants={buttonContainerVariants}
-            className="flex flex-col sm:flex-row items-center justify-center gap-6 w-full mt-10"
+            className="flex flex-col sm:flex-row items-center justify-center gap-6 w-full mt-4"
           >
             {/* Primary CTA - Download APK (YELLOW) */}
             <NeoButton
-              href="#"
+              href="/download"
               variant="primary"
-              ariaLabel="Download the Attendrix APK file"
+              ariaLabel="Download the Attendrix App"
             >
-              DOWNLOAD APK
+              DOWNLOAD FOR ANDROID
               <Download className="w-5 h-5" aria-hidden="true" />
             </NeoButton>
 
-            {/* Secondary CTA - Read Docs (WHITE) */}
+            {/* Secondary CTA - Launch Web App (WHITE) */}
             <NeoButton
-              href="#docs"
+              href="/app"
               variant="secondary"
-              ariaLabel="Read the documentation"
+              ariaLabel="Try AttendrixWeb (Beta)"
             >
-              READ THE DOCS
+              TRY ATTENDRIXWEB (BETA)
               <BookOpen className="w-5 h-5" aria-hidden="true" />
             </NeoButton>
           </motion.div>

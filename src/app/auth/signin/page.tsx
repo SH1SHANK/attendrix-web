@@ -27,14 +27,42 @@ export default function SignInPage() {
 
     setIsSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // Step 1: Firebase authentication
+      const result = await signInWithEmailAndPassword(auth, email, password);
+
+      // Step 2: Get ID token
+      const idToken = await result.user.getIdToken();
+
+      // Step 3: Create server session
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create session");
+      }
+
+      // Step 4: Check onboarding and redirect
+      const { checkOnboardingStatus } = await import("@/lib/auth-utils");
+      const isOnboarded = await checkOnboardingStatus(result.user.uid);
+
       toast.success("Welcome back!");
-      router.push("/onboarding");
-    } catch (error: any) {
+
+      if (isOnboarded) {
+        router.push("/profile");
+      } else {
+        router.push("/onboarding");
+      }
+    } catch (error: unknown) {
       console.error(error);
       let msg = "Failed to sign in";
-      if (error.code === "auth/invalid-credential")
-        msg = "Invalid email or password";
+      if (typeof error === "object" && error !== null && "code" in error) {
+        const err = error as { code: string };
+        if (err.code === "auth/invalid-credential")
+          msg = "Invalid email or password";
+      }
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -45,7 +73,7 @@ export default function SignInPage() {
     try {
       await signInWithGoogle();
       // Redirect handled in context
-    } catch (error) {
+    } catch {
       toast.error("Google Sign In failed");
     }
   };
@@ -132,11 +160,11 @@ export default function SignInPage() {
 
           {/* Divider */}
           <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t-2 border-neutral-200"></div>
-            <span className="flex-shrink-0 mx-4 text-xs font-black text-neutral-400 uppercase tracking-widest">
+            <div className="grow border-t-2 border-neutral-200"></div>
+            <span className="shrink-0 mx-4 text-xs font-black text-neutral-400 uppercase tracking-widest">
               Or continue with
             </span>
-            <div className="flex-grow border-t-2 border-neutral-200"></div>
+            <div className="grow border-t-2 border-neutral-200"></div>
           </div>
 
           {/* Social Buttons */}
@@ -165,7 +193,7 @@ export default function SignInPage() {
         {/* Footer Link */}
         <div className="bg-neutral-100 border-t-2 border-black p-4 text-center">
           <p className="font-bold text-xs md:text-sm text-neutral-600">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link
               href="/auth/signup"
               className="text-black uppercase underline decoration-2 underline-offset-2 hover:bg-[#FFD02F] transition-colors"

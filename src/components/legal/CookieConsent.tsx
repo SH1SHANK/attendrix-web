@@ -1,39 +1,54 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { ShieldCheck, X, Cookie, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useState, useEffect, useSyncExternalStore } from "react";
+import { ShieldCheck, X, Cookie } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/Switch";
 import Link from "next/link";
 import { trackEvent } from "@/lib/analytics";
 
+// Hydration-safe hook using useSyncExternalStore
+function useHydrated() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
+
+// Safe localStorage reader
+function getStoredConsent() {
+  if (typeof window === "undefined") return null;
+  const stored = localStorage.getItem("attendrix-cookie-consent");
+  return stored ? JSON.parse(stored) : null;
+}
+
 export default function CookieConsent() {
+  const isHydrated = useHydrated();
+  const storedConsent = isHydrated ? getStoredConsent() : null;
+
   const [isOpen, setIsOpen] = useState(false);
-  const [hasConsented, setHasConsented] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const [, setHasConsented] = useState(() => !!storedConsent);
 
-  // Granular Preferences State
-  const [preferences, setPreferences] = useState({
-    essential: true, // Always true
-    analytics: true,
-    functional: true,
-    advertising: false,
-  });
-
+  // Delay modal appearance to avoid overlap with preloader
   useEffect(() => {
-    setIsMounted(true);
-    const storedConsent = localStorage.getItem("attendrix-cookie-consent");
-    if (storedConsent) {
-      setHasConsented(true);
-      const parsed = JSON.parse(storedConsent);
-      // Merge stored prefs with defaults (in case we added new categories)
-      setPreferences((prev) => ({ ...prev, ...parsed }));
-    } else {
-      // First visit -> Show Open
-      setIsOpen(true);
-    }
+    const timer = setTimeout(() => {
+      const saved = getStoredConsent();
+      if (!saved) {
+        setIsOpen(true);
+      }
+    }, 2500);
+
+    return () => clearTimeout(timer);
   }, []);
+
+  // Granular Preferences State - initialize from stored or defaults
+  const [preferences, setPreferences] = useState(() => ({
+    essential: true,
+    analytics: storedConsent?.analytics ?? true,
+    functional: storedConsent?.functional ?? true,
+    advertising: storedConsent?.advertising ?? false,
+  }));
 
   const handleSave = () => {
     const dataToSave = {
@@ -80,7 +95,7 @@ export default function CookieConsent() {
     setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  if (!isMounted) return null;
+  if (!isHydrated) return null;
 
   return (
     <>
@@ -163,7 +178,7 @@ export default function CookieConsent() {
                     <Switch
                       checked={preferences.analytics}
                       onCheckedChange={() => togglePreference("analytics")}
-                      className="data-[state=checked]:!bg-[#FFD02F] data-[state=checked]:!border-black [&_span]:data-[state=checked]:!bg-black"
+                      className="data-[state=checked]:bg-[#FFD02F]! data-[state=checked]:border-black! [&_span]:data-[state=checked]:bg-black!"
                     />
                   </div>
 
@@ -178,7 +193,7 @@ export default function CookieConsent() {
                     <Switch
                       checked={preferences.functional}
                       onCheckedChange={() => togglePreference("functional")}
-                      className="data-[state=checked]:!bg-[#FFD02F] data-[state=checked]:!border-black [&_span]:data-[state=checked]:!bg-black"
+                      className="data-[state=checked]:bg-[#FFD02F]! data-[state=checked]:border-black! [&_span]:data-[state=checked]:bg-black!"
                     />
                   </div>
 
@@ -187,13 +202,13 @@ export default function CookieConsent() {
                     <div className="pr-4">
                       <p className="font-bold text-sm uppercase">Advertising</p>
                       <p className="text-xs text-neutral-500 mt-0.5">
-                        We generally don't run ads, but just in case.
+                        We generally don&apos;t run ads, but just in case.
                       </p>
                     </div>
                     <Switch
                       checked={preferences.advertising}
                       onCheckedChange={() => togglePreference("advertising")}
-                      className="data-[state=checked]:!bg-[#FFD02F] data-[state=checked]:!border-black [&_span]:data-[state=checked]:!bg-black"
+                      className="data-[state=checked]:bg-[#FFD02F]! data-[state=checked]:border-black! [&_span]:data-[state=checked]:bg-black!"
                     />
                   </div>
                 </div>
@@ -209,7 +224,7 @@ export default function CookieConsent() {
                 </button>
                 <button
                   onClick={handleAcceptAll}
-                  className="flex-1 py-2.5 bg-black text-[#FFD02F] border-2 border-black font-black uppercase text-xs tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none active:translate-y-[2px] active:shadow-none transition-all"
+                  className="flex-1 py-2.5 bg-black text-[#FFD02F] border-2 border-black font-black uppercase text-xs tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] hover:translate-x-px hover:translate-y-px hover:shadow-none active:translate-y-[2px] active:shadow-none transition-all"
                 >
                   Accept All
                 </button>

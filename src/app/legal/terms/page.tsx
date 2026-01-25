@@ -5,9 +5,14 @@ export default function TermsPage() {
     <LegalLayout title="Terms of Service" lastUpdated="January 24, 2026">
       <h2>1. Acceptance of Terms</h2>
       <p>
-        By accessing or using the Attendrix application ("The Service"), you
-        agree to comply with and be bound by these Terms of Service. If you do
-        not agree to these terms, please do not use our Service.
+        By accessing or using the Attendrix application (&quot;The
+        Service&quot;), you agree to comply with and be bound by these Terms of
+        Service. If you do not agree to these terms, please do not use our
+        Service.
+      </p>
+      <p>
+        By using Attendrix, you agree to these terms. If you don&apos;t agree,
+        please don&apos;t use the app.
       </p>
 
       <h2>2. Educational Project Disclaimer</h2>

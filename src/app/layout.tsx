@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "sonner";
-import Script from "next/script";
 import CookieConsent from "@/components/legal/CookieConsent";
+import ScrollToTop from "@/components/ui/ScrollToTop";
+import { QueryProvider } from "@/providers/QueryProvider";
 import "./globals.css";
 
 // Display font: Space Grotesk - Bold, geometric, high visual weight
@@ -104,11 +105,14 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="antialiased" suppressHydrationWarning>
-        <AuthProvider>
-          {children}
-          <Toaster />
-        </AuthProvider>
-        <CookieConsent />
+        <QueryProvider>
+          <AuthProvider>
+            {children}
+            <Toaster />
+          </AuthProvider>
+          <CookieConsent />
+          <ScrollToTop />
+        </QueryProvider>
       </body>
     </html>
   );

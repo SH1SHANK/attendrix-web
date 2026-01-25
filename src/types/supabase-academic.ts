@@ -2,13 +2,20 @@ export interface BatchRecord {
   batchID: string;
   batchCode: string; // e.g., "cs_s4_a"
   semester: number;
+  semester_name?: string; // Display name for the semester
   slot?: string;
   courseCatalog: string[]; // Array of courseIDs
   enrollmentCapacity?: number;
   electiveCatalog: string[]; // Array of Category Strings (e.g. "OE", "LAB1")
-  department_id: string;
-  semester_name: string; // e.g., "S4 CSE"
 }
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
 
 export interface CourseRecord {
   courseID: string;
@@ -16,7 +23,7 @@ export interface CourseRecord {
   courseName: string;
   credits?: number;
   syllabusAssets?: string;
-  courseType?: Record<string, any>;
+  courseType?: Record<string, unknown>;
   isElective: boolean;
   electiveScope?: string[]; // Array of Category Strings (e.g. "OE")
   enrolledStudents: number;

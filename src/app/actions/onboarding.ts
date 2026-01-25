@@ -55,7 +55,8 @@ export async function getBatchCurriculum(
       .from("batchRecords")
       .select("courseCatalog, electiveCatalog")
       .eq("batchID", batchID)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (batchError || !batch) {
       console.error("Error fetching batch:", batchError);

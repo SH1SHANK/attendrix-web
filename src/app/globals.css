@@ -8,6 +8,7 @@
 :root {
   /* Global Font Scaling - Bumps 1rem from 16px to 18px for bolder feel */
   font-size: 16px;
+  scroll-behavior: smooth;
 
   /* Shadcn Compat Vars - Mapped to our theme where possible */
   --background: #fffdf5;

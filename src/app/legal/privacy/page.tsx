@@ -44,8 +44,8 @@ export default function PrivacyPage() {
           We <strong>DO NOT</strong> store your historical location coordinates.
         </li>
         <li>
-          Location is only accessed when you explicitly tap the "Mark
-          Attendance" button.
+          Location is only accessed when you explicitly tap the &quot;Mark
+          Attendance&quot; button.
         </li>
       </ul>
 

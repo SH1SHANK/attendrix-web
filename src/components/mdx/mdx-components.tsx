@@ -1,6 +1,6 @@
 import React from "react";
-import RetroCallout from "./RetroCallout";
 import Mermaid from "./mermaid";
+import RetroCallout from "./RetroCallout";
 
 // ============================================
 // RETRO TABLE COMPONENTS
@@ -106,7 +106,13 @@ export function RetroInlineCode({ children }: { children: React.ReactNode }) {
 // ============================================
 
 // We export the default function here to be picked up by the index import
-export { default as RetroCallout } from "./RetroCallout";
+export { RetroCallout };
+export function RetroAlert(props: {
+  children: React.ReactNode;
+  type?: "note" | "warning" | "tip" | "info" | "hazard";
+}) {
+  return <RetroCallout type={props.type}>{props.children}</RetroCallout>;
+}
 export { default as CodeWindow } from "./CodeWindow";
 
 // ============================================

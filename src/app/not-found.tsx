@@ -10,7 +10,7 @@ export default function NotFound() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-neutral-50 relative font-sans text-black">
       {/* Background Pattern */}
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(#00000026_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none opacity-50" />
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(#00000026_1px,transparent_1px)] bg-size-[20px_20px] pointer-events-none opacity-50" />
 
       {/* Main Card */}
       <div className="relative z-10 w-full max-w-lg bg-white border-2 border-black shadow-[8px_8px_0px_0px_#000] p-12 text-center">
@@ -35,7 +35,7 @@ export default function NotFound() {
         {/* Actions */}
         <div className="mt-10 space-y-3">
           <Link
-            href="/dashboard"
+            href="/app/dashboard"
             className="block w-full bg-black text-[#FFD02F] font-black uppercase py-4 border-2 border-black hover:bg-neutral-800 transition-colors"
           >
             Return to Dashboard

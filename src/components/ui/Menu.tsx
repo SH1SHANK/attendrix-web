@@ -7,10 +7,10 @@ import React, { ComponentPropsWithoutRef } from "react";
 const Menu = DropdownMenu.Root;
 const Trigger = DropdownMenu.Trigger;
 
-interface IMenuContent
-  extends ComponentPropsWithoutRef<typeof DropdownMenu.Content> {}
-
-const Content = ({ className, ...props }: IMenuContent) => (
+const Content = ({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<typeof DropdownMenu.Content>) => (
   <DropdownMenu.Portal>
     <DropdownMenu.Content
       side="bottom"

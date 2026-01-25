@@ -15,7 +15,7 @@ const ctaVariants = {
     y: 0,
     transition: {
       duration: 0.6,
-      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
+      ease: "easeOut" as const,
     },
   },
 };
@@ -26,7 +26,7 @@ const dividerVariants = {
     scaleX: 1,
     transition: {
       duration: 0.8,
-      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
+      ease: "easeOut" as const,
       delay: 0.3,
     },
   },
@@ -90,6 +90,7 @@ const productLinks = [
 
 const resourceLinks = [
   { label: "Documentation", href: "/docs" },
+  { label: "Settings", href: "/settings" },
   { label: "Changelog", href: "/changelog" },
   { label: "System Status", href: "/status" },
   { label: "API Reference", href: "/api" },
@@ -104,7 +105,7 @@ const legalLinks = [
 const socialLinks = [
   { icon: Twitter, href: "https://twitter.com/attendrix", label: "Twitter" },
   { icon: Github, href: "https://github.com/attendrix", label: "GitHub" },
-  { icon: Send, href: "https://t.me/AttendrixBot", label: "Telegram" },
+  { icon: Send, href: "https://t.me/HeyLumenBot", label: "Telegram" },
 ];
 
 // ============================================
@@ -246,42 +247,47 @@ export default function Footer() {
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
       >
-        <motion.div
-          className="max-w-7xl mx-auto px-4 py-16 md:py-20 text-center"
-          variants={ctaVariants}
-        >
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-black uppercase tracking-tight mb-6">
-            Ready to Up Your
-            <br />
-            <span className="text-[#FFD02F]">Attendance Game?</span>
-          </h2>
-          <p className="text-neutral-400 font-medium mb-8 max-w-lg mx-auto">
-            Join thousands of NITC students who never worry about attendance
-            percentages again.
-          </p>
-
-          {/* CTA Button with Neo-Bounce */}
-          <motion.a
-            href="https://t.me/AttendrixBot"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center px-8 py-4 bg-[#FFD02F] text-black border-2 border-white font-bold uppercase text-sm tracking-wider will-change-transform"
-            initial={{ boxShadow: "4px 4px 0px 0px #FFFFFF" }}
-            whileHover={{
-              y: -4,
-              x: -4,
-              boxShadow: "8px 8px 0px 0px #FFFFFF",
-            }}
-            whileTap={{
-              y: 2,
-              x: 2,
-              boxShadow: "0px 0px 0px 0px #FFFFFF",
-            }}
-            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+        <div className="bg-[#fffdf5] py-20 px-4">
+          <motion.div
+            className="max-w-5xl mx-auto px-6 py-16 md:py-20 text-center border-[3px] border-dashed border-black bg-[#fffdf5] relative overflow-hidden"
+            variants={ctaVariants}
           >
-            Get Attendrix Now
-          </motion.a>
-        </motion.div>
+            {/* Decorative corners */}
+            <div className="absolute top-0 left-0 w-4 h-4 border-t-[3px] border-l-[3px] border-black" />
+            <div className="absolute top-0 right-0 w-4 h-4 border-t-[3px] border-r-[3px] border-black" />
+            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-[3px] border-l-[3px] border-black" />
+            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-[3px] border-r-[3px] border-black" />
+
+            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight mb-6 text-black leading-tight">
+              Ready to take control of
+              <br />
+              <span className="bg-[#FFD02F] px-2 box-decoration-clone">
+                your academics?
+              </span>
+            </h2>
+
+            {/* CTA Button with Neo-Bounce */}
+            <motion.a
+              href="/app"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-black text-[#FFD02F] border-2 border-black font-bold uppercase text-sm tracking-wider will-change-transform mt-8"
+              initial={{ boxShadow: "6px 6px 0px 0px #FFD02F" }}
+              whileHover={{
+                y: -4,
+                x: -4,
+                boxShadow: "10px 10px 0px 0px #FFD02F",
+              }}
+              whileTap={{
+                y: 2,
+                x: 2,
+                boxShadow: "0px 0px 0px 0px #FFD02F",
+              }}
+              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+            >
+              <span className="text-lg">Launch Web Access</span>
+              <ChevronRight className="w-5 h-5" strokeWidth={3} />
+            </motion.a>
+          </motion.div>
+        </div>
 
         {/* Animated Divider Line */}
         <motion.div

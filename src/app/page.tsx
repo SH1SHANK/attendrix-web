@@ -5,7 +5,9 @@ import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/sections/Hero";
 import Preloader from "@/components/sections/Preloader";
 import FeaturesGrid from "@/components/sections/FeaturesGrid";
+import WebAccessSpotlight from "@/components/sections/WebAccessSpotlight";
 import HowItWorks from "@/components/sections/HowItWorks";
+import Gamification from "@/components/sections/Gamification";
 import Pricing from "@/components/sections/Pricing";
 import FAQ from "@/components/sections/FAQ";
 import Footer from "@/components/sections/Footer";
@@ -23,7 +25,9 @@ export default function Home() {
           <main>
             <Hero isVisible={!isLoading} />
             <FeaturesGrid />
+            <WebAccessSpotlight />
             <HowItWorks />
+            <Gamification />
             <Pricing />
             <FAQ />
           </main>

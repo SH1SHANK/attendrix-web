@@ -1,21 +1,33 @@
-import { auth } from "firebase-admin";
-import { firestore } from "./firebase-admin"; // Ensure admin is init
+import "server-only";
+import { getAdminAuth } from "./firebase-admin";
+import type { DecodedIdToken } from "firebase-admin/auth";
 
 /**
- * Verifies the Firebase ID Token.
- * @param token The raw ID token string sent from the client.
- * @returns The decoded token object if valid, throws error if invalid.
+ * Verifies a Session Cookie (NOT an ID Token)
+ *
+ * @param sessionCookie The session cookie value from cookies()
+ * @param checkRevoked If true, checks if tokens have been revoked (slower)
+ * @returns The decoded claims if valid
+ * @throws Error if invalid or expired
  */
-export async function verifySession(token: string | undefined | null) {
-  if (!token) {
-    throw new Error("Unauthorized: No token provided");
+export async function verifySession(
+  sessionCookie: string | undefined | null,
+  checkRevoked: boolean = false,
+): Promise<DecodedIdToken> {
+  if (!sessionCookie) {
+    throw new Error("Unauthorized: No session cookie");
   }
 
   try {
-    const decodedToken = await auth().verifyIdToken(token);
-    return decodedToken;
+    const auth = getAdminAuth();
+    // CRITICAL: Use verifySessionCookie, NOT verifyIdToken
+    const decodedClaims = await auth.verifySessionCookie(
+      sessionCookie,
+      checkRevoked,
+    );
+    return decodedClaims;
   } catch (error) {
-    console.error("Token verification failed:", error);
-    throw new Error("Unauthorized: Invalid session");
+    console.error("[Auth Guard] Session verification failed:", error);
+    throw new Error("Unauthorized: Invalid or expired session");
   }
 }

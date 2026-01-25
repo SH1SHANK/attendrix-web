@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { Plus, BookOpen } from "lucide-react";
+import { Plus, BookOpen, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface FAQItem {
@@ -105,7 +106,7 @@ export default function FAQ() {
                       exit={{ height: 0, opacity: 0 }}
                       transition={{
                         duration: 0.3,
-                        ease: [0.25, 0.46, 0.45, 0.94],
+                        ease: "easeOut" as const,
                       }}
                     >
                       <div className="px-6 pb-6 pt-0">
@@ -121,26 +122,34 @@ export default function FAQ() {
           })}
         </div>
 
-        {/* Footer Contact */}
-        <div className="mt-8 md:mt-10 text-center">
-          <p className="text-sm text-neutral-600 mb-2">Still have questions?</p>
-          <a
-            href="mailto:support@attendrix.app"
-            className="inline-block bg-black text-white px-6 py-3 border-2 border-black font-bold uppercase text-sm shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-          >
-            support@attendrix.app
-          </a>
-        </div>
-
-        {/* View Full Documentation CTA */}
-        <div className="mt-10 md:mt-12 flex justify-center">
-          <a
-            href="/docs"
-            className="inline-flex items-center gap-3 bg-white text-black px-8 py-4 border-2 border-black font-bold uppercase text-base shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-          >
-            <BookOpen className="w-5 h-5" strokeWidth={2.5} />
-            Read the Full Docs
-          </a>
+        {/* Help Console Card */}
+        <div className="mt-16 max-w-2xl mx-auto">
+          <div className="bg-neutral-900 text-white border-2 border-black shadow-[8px_8px_0px_0px_#FFD02F] p-8">
+            <h3 className="text-2xl font-bold uppercase text-yellow-400 mb-2">
+              STILL CONFUSED?
+            </h3>
+            <p className="text-neutral-400 mb-6">
+              Check the detailed documentation or ping us directly.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              {/* Docs Button */}
+              <Link
+                href="/docs"
+                className="inline-flex items-center gap-2 bg-white text-black px-6 py-3 border-2 border-black font-bold uppercase text-sm transition-all duration-200 hover:bg-yellow-400"
+              >
+                <BookOpen className="w-5 h-5" strokeWidth={2.5} />
+                Read Docs
+              </Link>
+              {/* Support Button */}
+              <a
+                href="mailto:support@attendrix.app"
+                className="inline-flex items-center gap-2 bg-transparent text-white px-6 py-3 border-2 border-white font-bold uppercase text-sm transition-all duration-200 hover:bg-white hover:text-black"
+              >
+                <Mail className="w-5 h-5" strokeWidth={2.5} />
+                Support
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </section>

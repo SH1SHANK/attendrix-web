@@ -1,4 +1,3 @@
-import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import Link from "next/link";
@@ -15,6 +14,7 @@ import {
   RetroCodeBlock,
   RetroInlineCode,
   RetroCallout,
+  RetroAlert,
   RetroH1,
   RetroH2,
   RetroH3,
@@ -89,6 +89,10 @@ const mdxComponents = {
   blockquote: (props: React.HTMLAttributes<HTMLQuoteElement>) => (
     <RetroCallout>{props.children}</RetroCallout>
   ),
+  RetroAlert: (props: {
+    children: React.ReactNode;
+    type?: "note" | "warning" | "tip" | "info" | "hazard";
+  }) => <RetroAlert type={props.type}>{props.children}</RetroAlert>,
 
   // Tables
   table: (props: React.HTMLAttributes<HTMLTableElement>) => (

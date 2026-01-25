@@ -46,12 +46,15 @@ export default function SignUpPage() {
 
       toast.success("Account created successfully!");
       router.push("/onboarding");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       let msg = "Failed to create account";
-      if (error.code === "auth/email-already-in-use")
-        msg = "Email already registered";
-      if (error.code === "auth/invalid-email") msg = "Invalid email format";
+      if (typeof error === "object" && error !== null && "code" in error) {
+        const err = error as { code: string };
+        if (err.code === "auth/email-already-in-use")
+          msg = "Email already registered";
+        if (err.code === "auth/invalid-email") msg = "Invalid email format";
+      }
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -61,7 +64,7 @@ export default function SignUpPage() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle();
-    } catch (error) {
+    } catch {
       toast.error("Google Sign In failed");
     }
   };
@@ -155,11 +158,11 @@ export default function SignUpPage() {
 
           {/* Divider */}
           <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t-2 border-neutral-200"></div>
-            <span className="flex-shrink-0 mx-4 text-xs font-black text-neutral-400 uppercase tracking-widest">
+            <div className="grow border-t-2 border-neutral-200"></div>
+            <span className="shrink-0 mx-4 text-xs font-black text-neutral-400 uppercase tracking-widest">
               Or register with
             </span>
-            <div className="flex-grow border-t-2 border-neutral-200"></div>
+            <div className="grow border-t-2 border-neutral-200"></div>
           </div>
 
           {/* Social Buttons */}

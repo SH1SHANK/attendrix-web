@@ -1,14 +1,17 @@
 import { format } from "date-fns";
 
 export interface Release {
+  releaseId: number;
   version: string;
   date: string;
   size: string;
   status: "stable" | "beta";
   downloadUrl: string;
-  githubUrl: string;
-  sha256: string;
-  notes: { tag: "NEW" | "FIX" | "IMPROVEMENT" | "INFO"; text: string }[];
+  htmlUrl: string; // Renamed from githubUrl for consistency
+  commitHash: string;
+  sha256: string | null;
+  body: string; // Raw markdown
+  isPreRelease: boolean;
 }
 
 const GITHUB_OWNER = process.env.NEXT_PUBLIC_GITHUB_OWNER || "SH1SHANK";
@@ -20,52 +23,23 @@ const bytesToMB = (bytes: number) => {
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 };
 
-// Helper to parse body into notes
-// This is a naive heuristic parser for standard release notes styles
-const parseNotes = (body: string): Release["notes"] => {
-  if (!body) return [];
+interface GitHubAsset {
+  name: string;
+  size: number;
+  browser_download_url: string;
+}
 
-  const lines = body.split("\n").filter((line) => line.trim().length > 0);
-  const notes: Release["notes"] = [];
-
-  for (const line of lines) {
-    const cleanLine = line.replace(/^[-*•]\s+/, "").trim();
-    if (!cleanLine) continue;
-
-    // Detect tags based on keywords or prefixes
-    let tag: Release["notes"][0]["tag"] = "INFO";
-    const lower = cleanLine.toLowerCase();
-
-    if (
-      lower.startsWith("feat") ||
-      lower.startsWith("add") ||
-      lower.startsWith("new")
-    )
-      tag = "NEW";
-    else if (
-      lower.startsWith("fix") ||
-      lower.startsWith("bug") ||
-      lower.startsWith("hotfix")
-    )
-      tag = "FIX";
-    else if (
-      lower.startsWith("perf") ||
-      lower.startsWith("improv") ||
-      lower.startsWith("refactor")
-    )
-      tag = "IMPROVEMENT";
-
-    // Clean up "Feat:" prefix if present
-    const text = cleanLine.replace(
-      /^(Feat|Fix|Perf|Chore|Refactor|Docs|Style|Test|Build|Ci|Revert)(\(.*\))?:\s*/i,
-      "",
-    );
-
-    notes.push({ tag, text: text || cleanLine });
-  }
-
-  return notes.slice(0, 5); // Limit to top 5 items for cleaner UI
-};
+interface GitHubRelease {
+  id: number;
+  tag_name: string;
+  name: string;
+  published_at: string;
+  prerelease: boolean;
+  html_url: string;
+  body: string;
+  target_commitish: string;
+  assets?: GitHubAsset[];
+}
 
 export async function getReleases(): Promise<Release[]> {
   try {
@@ -95,9 +69,9 @@ export async function getReleases(): Promise<Release[]> {
 
     if (!Array.isArray(data)) return [];
 
-    return data.map((release: any) => {
+    return data.map((release: GitHubRelease) => {
       // Find APK asset
-      const apkAsset = release.assets?.find((asset: any) =>
+      const apkAsset = release.assets?.find((asset: GitHubAsset) =>
         asset.name.endsWith(".apk"),
       );
 
@@ -109,16 +83,23 @@ export async function getReleases(): Promise<Release[]> {
         ? apkAsset.browser_download_url
         : release.html_url;
 
+      // Extract SHA-256 from body if present
+      // Regex looks for "SHA256: <hash>" or "sha256: <hash>" or just the hash in a code block context if labelled
+      const shaMatch = release.body.match(/sha256:\s*([a-f0-9]{64})/i);
+      const sha256 = shaMatch ? shaMatch[1] : null;
+
       return {
+        releaseId: release.id,
         version: release.tag_name,
         date: format(new Date(release.published_at), "MMM dd, yyyy"),
         size,
         status: release.prerelease ? "beta" : "stable",
         downloadUrl,
-        githubUrl: release.html_url,
-        // Mock SHA since it's not standard in API response unless we parse the body or have a separate file
-        sha256: "Verified by GitHub",
-        notes: parseNotes(release.body),
+        htmlUrl: release.html_url,
+        commitHash: release.target_commitish.substring(0, 7), // Short hash
+        sha256,
+        body: release.body,
+        isPreRelease: release.prerelease,
       };
     });
   } catch (error) {
