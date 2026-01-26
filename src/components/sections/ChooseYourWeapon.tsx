@@ -240,7 +240,7 @@ export default function ChooseYourWeapon() {
                     </div>
                   </div>
                   {/* Browser content */}
-                  <div className="p-4 bg-gradient-to-br from-yellow-400 to-yellow-300 h-32 sm:h-40 flex items-center justify-center">
+                  <div className="p-4 bg-linear-to-br from-yellow-400 to-yellow-300 h-32 sm:h-40 flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-3xl sm:text-4xl font-black mb-1">
                         ⚡

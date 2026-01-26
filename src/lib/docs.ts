@@ -148,8 +148,9 @@ export function extractHeadings(
 
   let match;
   while ((match = headingRegex.exec(content)) !== null) {
-    const level = match[1].length;
-    const text = match[2].trim();
+    if (!match) continue;
+    const level = match![1]!.length;
+    const text = match![2]!.trim();
     const slug = text
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")

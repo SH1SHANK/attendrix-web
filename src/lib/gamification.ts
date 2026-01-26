@@ -23,6 +23,7 @@ export const MAGE_LEVELS = [
 export function calculateMageRank(xp: number) {
   // Find current level (iterate in reverse to find highest matching threshold)
   const current =
+    MAGE_LEVELS.slice()
       .reverse()
       .find((l) => xp >= l.min) ?? MAGE_LEVELS[0]!;
 

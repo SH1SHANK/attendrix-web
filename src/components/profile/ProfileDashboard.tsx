@@ -57,7 +57,7 @@ const bounceVariants = {
 
 function extractDepartment(batchID: string): string {
   const match = batchID.match(/^([A-Z]+)/);
-  return match ? match[1] : "N/A";
+  return match ? match[1]! : "N/A";
 }
 
 // ============================================================================

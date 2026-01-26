@@ -44,14 +44,14 @@ function generateTOCFromDOM(depth: number = 6): TOCItem[] {
       level,
     };
 
-    while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+    while (stack.length > 0 && stack[stack.length - 1]!.level >= level) {
       stack.pop();
     }
 
     if (stack.length === 0) {
       items.push(item);
     } else {
-      const parent = stack[stack.length - 1];
+      const parent = stack[stack.length - 1]!;
       if (!parent.items) parent.items = [];
       parent.items.push(item);
     }

@@ -211,7 +211,7 @@ export function ScheduleTimeline() {
 
       return {
         date,
-        dayName: dayNames[date.getDay()],
+        dayName: dayNames[date.getDay()] || "SUN",
         dayNum: date.getDate(),
         isToday: i === 0,
       };

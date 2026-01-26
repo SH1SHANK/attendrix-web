@@ -34,9 +34,11 @@ export function LevelProgress({ currentAmplix }: LevelProgressProps) {
 
   const levels = MAGE_LEVELS;
 
-  const currentLevelObj = levels.find((l) => l.level === level) || levels[0];
+  const currentLevelObj = levels.find((l) => l.level === level) ?? levels[0]!;
   const nextLevelIndex = levels.indexOf(currentLevelObj) + 1;
-  const nextLevelObj = levels[nextLevelIndex];
+  const nextLevelObj = levels[nextLevelIndex] as
+    | (typeof MAGE_LEVELS)[0]
+    | undefined;
 
   const levelMin = currentLevelObj.min;
   const levelMax = nextLevelObj ? nextLevelObj.min : levelMin + 5000; // Cap for max level
