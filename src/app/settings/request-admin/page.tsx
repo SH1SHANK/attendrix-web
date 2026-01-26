@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -12,14 +12,12 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { verifyAdminCode } from "@/app/actions/admin";
 
 export default function RequestAdminAccessPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
 
   const [status, setStatus] = useState<
     "idle" | "loading" | "approved" | "pending" | "error"
@@ -27,6 +25,10 @@ export default function RequestAdminAccessPage() {
   const [message, setMessage] = useState("");
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
+
+  useEffect(() => {
+    console.log("[RequestAdmin] Component Mounted - Fetch Version");
+  }, []);
 
   const sendRequest = async () => {
     if (!user?.email) {
@@ -38,19 +40,36 @@ export default function RequestAdminAccessPage() {
     setMessage("");
 
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "generate_admin_code",
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error("Missing Supabase configuration");
+      }
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/generate_admin_code`,
         {
-          body: {
-            email: user.email,
-            userId: user.uid,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseAnonKey}`,
           },
+          body: JSON.stringify({
+            email: user.email,
+            userID: user.uid,
+          }),
         },
       );
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || errorData.message || "Request failed",
+        );
       }
+
+      const data = await response.json();
 
       if (data?.status === "approved") {
         setStatus("approved");
