@@ -92,7 +92,9 @@ export async function getMonthAttendance(
     // 4. Fetch Timetable Records
     const { data: timetable, error: ttError } = await supabase
       .from("timetableRecords")
-      .select("*")
+      .select(
+        "classID, courseID, courseName, classStartTime, classEndTime, classVenue, courseType",
+      )
       .eq("batchID", batchID)
       .gte("classStartTime", startIso)
       .lte("classStartTime", endIso);
@@ -192,28 +194,19 @@ export async function getMonthAttendance(
 export async function getHistory(
   range: "7d" | "14d" | "30d" | "all",
 ): Promise<{ success: boolean; data?: CalendarClass[]; error?: string }> {
-  console.log("[getHistory] ACTION CALLED with range:", range);
   try {
     // 1. Auth check
     const { SESSION_COOKIE_NAME } = await import("@/lib/auth-config");
     const cookieStore = await cookies();
 
-    // DEBUG: Log all cookies
-    const allCookieNames = cookieStore.getAll().map((c) => c.name);
-    console.log("[getHistory] Available Cookies:", allCookieNames);
-
     const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
     if (!sessionCookie) {
-      console.log(
-        `[getHistory] No session cookie found. Expected: ${SESSION_COOKIE_NAME}`,
-      );
       return { success: false, error: "Unauthorized" };
     }
 
     const decoded = await verifySession(sessionCookie);
     const uid = decoded.uid;
-    console.log("[getHistory] Authenticated UID:", uid);
 
     // 2. Get Batch ID
     const db = getAdminFirestore();
@@ -241,47 +234,20 @@ export async function getHistory(
     const startIso = startDate.toISOString();
     const endIso = today.toISOString();
 
-    console.log(`[getHistory] Range: ${range}, BatchID: ${batchID}`);
-    console.log(`[getHistory] Query Window: ${startIso} to ${endIso}`);
-
-    // DEBUG PROBE
-    const { data: probeData } = await supabase
-      .from("timetableRecords")
-      .select("classStartTime")
-      .eq("batchID", batchID)
-      .limit(1);
-
-    if (probeData && probeData.length > 0) {
-      console.log(`[getHistory] PROBE Format:`, probeData[0].classStartTime);
-    } else {
-      console.log(
-        `[getHistory] PROBE: No records found for batchID ${batchID}`,
-      );
-    }
-
     // 4. Fetch Timetable Records
     const { data: timetable, error: ttError } = await supabase
       .from("timetableRecords")
-      .select("*")
+      .select(
+        "classID, courseID, courseName, classStartTime, classEndTime, classVenue, courseType",
+      )
       .eq("batchID", batchID)
       .gte("classStartTime", startIso)
       .lte("classStartTime", endIso)
       .order("classStartTime", { ascending: false }); // Newest first
 
     if (ttError) {
-      console.error("[getHistory] Timetable Fetch Error:", ttError);
+      console.error("Timetable Fetch Error:", ttError);
       return { success: false, error: ttError.message };
-    }
-
-    console.log(
-      `[getHistory] Found ${timetable?.length || 0} timetable records`,
-    );
-
-    if (timetable && timetable.length > 0) {
-      console.log(
-        `[getHistory] Sample Record:`,
-        JSON.stringify(timetable[0], null, 2),
-      );
     }
 
     if (!timetable || timetable.length === 0) {
@@ -298,13 +264,9 @@ export async function getHistory(
       .in("classID", classIds);
 
     if (attError) {
-      console.error("[getHistory] Attendance Fetch Error:", attError);
+      console.error("Attendance Fetch Error:", attError);
       return { success: false, error: attError.message };
     }
-
-    console.log(
-      `[getHistory] Found ${attendance?.length || 0} attendance records`,
-    );
 
     const attendanceMap = new Set(attendance?.map((a) => a.classID));
 

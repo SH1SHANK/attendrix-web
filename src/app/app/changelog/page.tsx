@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { AlertTriangle, ArrowLeft, CheckCircle2, FileCode } from "lucide-react";
+import { ArrowLeft, CheckCircle2, FileCode } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -11,60 +11,86 @@ import { cn } from "@/lib/utils";
 
 const CHANGELOG_ENTRIES = [
   {
-    version: "v2.1.0-alpha",
-    date: "Current Build",
+    version: "v2.1.0",
+    date: "Jan 26, 2026",
     status: "active",
-    title: "The Server-State Migration",
-    tag: "MAJOR ALERT",
+    title: "The Growth Update",
+    tag: "BETA",
     details: [
       {
-        text: "Refactored entire data layer to TanStack Query v5",
-        type: "feat",
-      },
-      { text: "Implemented useAttendance hook (Latency: <50ms)", type: "feat" },
-      {
-        text: "Replaced client logic with Supabase RPC class_check_in",
+        text: "GSAP-Powered Landing Page with ScrollTrigger & Bento Grids",
         type: "feat",
       },
       {
-        text: "Added Hybrid Sync: Writes to SQL -> Triggers Edge Function",
-        type: "feat",
-      },
-    ],
-    alert: "Known Issue: Attendance toggle may flicker on slow 3G networks.",
-  },
-  {
-    version: "v2.0.5-alpha",
-    date: "Legacy Shell",
-    status: "history",
-    title: "The 'Lite' Shell Port",
-    tag: "FEATURE",
-    details: [
-      {
-        text: "Initial port of 'AttendrixLite' to Next.js App Router",
+        text: "Admin Self-Declaration Flow and OTP Integration",
         type: "feat",
       },
       {
-        text: "Integrated RetroUI Design System (Neo-Brutalist CSS)",
+        text: "Server Action verifyAdminCode for secure OTP validation",
         type: "feat",
       },
       {
-        text: "Added 'Safe Cut' Calculator Algorithm (75% Logic)",
-        type: "feat",
+        text: "Patched completeOnboarding for Supabase/Firestore sync",
+        type: "fix",
       },
-      { text: "Setup Middleware for Route Protection (/app/*)", type: "feat" },
+      {
+        text: "Launched Developer Portal with interactive Mermaid diagrams",
+        type: "docs",
+      },
     ],
   },
   {
-    version: "v2.0.0-dev",
-    date: "Initialization",
+    version: "v2.0.5",
+    date: "Jan 18, 2026",
     status: "history",
-    title: "Core Initialization",
-    tag: "INIT",
+    title: "Visual Overhaul & Experience",
+    tag: "UI/UX",
     details: [
-      { text: "Project initialized from Android codebase logic", type: "feat" },
-      { text: "Ported Firebase Auth providers", type: "feat" },
-      { text: "Established initial Supabase connection strings", type: "feat" },
+      {
+        text: "Complete Neo-Brutalist UI Refactor (Bold borders, dot-grids)",
+        type: "feat",
+      },
+      {
+        text: "New Challenges Dashboard with state-aware card glows",
+        type: "feat",
+      },
+      {
+        text: "Added Player Card with liquid progress visuals",
+        type: "feat",
+      },
+      {
+        text: "Refactored Home Screen into 'Ticket Stub' layout",
+        type: "feat",
+      },
+    ],
+  },
+  {
+    version: "v2.0.0",
+    date: "Jan 10, 2026",
+    status: "history",
+    title: "The Gamification Engine",
+    tag: "MAJOR",
+    details: [
+      {
+        text: "Introduction of the Amplix Gamification System",
+        type: "feat",
+      },
+      {
+        text: "Supabase RPC functions for automated quest generation",
+        type: "feat",
+      },
+      {
+        text: "Implemented amplixChallenges & Progress database tables",
+        type: "feat",
+      },
+      {
+        text: "Added 12-Level Mage Progression System",
+        type: "feat",
+      },
+      {
+        text: "Weekly/Monthly rotation logic in Firebase documents",
+        type: "feat",
+      },
     ],
   },
 ];
@@ -148,16 +174,6 @@ function LogEntry({ entry }: { entry: (typeof CHANGELOG_ENTRIES)[0] }) {
               </li>
             ))}
           </ul>
-
-          {/* Alert Box if present */}
-          {entry.alert && (
-            <div className="bg-rose-50 border-l-4 border-rose-500 p-4 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
-              <p className="text-xs font-bold text-rose-900 leading-relaxed">
-                {entry.alert}
-              </p>
-            </div>
-          )}
         </div>
       </motion.div>
     </div>

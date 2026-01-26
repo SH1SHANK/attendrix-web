@@ -37,12 +37,9 @@ function safeParseJSON<T>(input: unknown, defaultVal: T): T {
   return input as T;
 }
 
-export async function getAvailableBatches(_token?: string) {
+export async function getAvailableBatches() {
   // Use Admin Client to bypass RLS for this public-facing onboarding data
   try {
-    // We log the attempt for debugging
-    console.log("Fetching available batches...");
-
     const { data, error } = await supabaseAdmin
       .from("batchRecords")
       .select("batchID, batchCode, semester, semester_name, department_id");
@@ -52,7 +49,6 @@ export async function getAvailableBatches(_token?: string) {
       return [];
     }
 
-    console.log(`Found ${data?.length || 0} batches.`);
     return data as Partial<BatchRecord>[];
   } catch (err) {
     console.error("Unexpected error in getAvailableBatches:", err);
@@ -62,7 +58,6 @@ export async function getAvailableBatches(_token?: string) {
 
 export async function getBatchCurriculum(
   batchID: string,
-  _token: string,
 ): Promise<CurriculumState | null> {
   try {
     console.log(`Fetching curriculum for batch: ${batchID}`);
@@ -112,27 +107,7 @@ export async function getBatchCurriculum(
     // However, since 'electiveScope' in DB is likely JSONB or Text, a simple .in() won't work perfectly
     // if we want to match *any* category.
     // OPTIMIZATION: We CAN fetch all electives that *contain* at least one of the categories in their scope.
-    // But Supabase/Postgres `cs` (contains) operator for JSONB requires the column to be JSONB.
-    // If it's text, we might have to fallback to fetching all electives or using `textSearch` if indexed.
-    // GIVEN the prompt "Refactor the query to filter specific electives at the database level using Supabase filters",
-    // we assume we can use .contains() if it's JSONB, or we might need to be careful.
-    //
-    // Safest Approach given typical Supabase setup:
-    // If we assume `electiveScope` is JSONB, we can use `.contains('electiveScope', ['CAT'])` - NO, contains checks if Left contains Right.
-    // We want if `electiveScope` (DB) contains ANY of `electiveCategories` (Input).
-    // Postgres `@>` is "does left contain right".
-    // `electiveScope @> ["OE"]` works if the course has OE.
-    // To match ANY from a list `["OE", "PE"]`, we'd ideally need an `OR` filter with contains.
-    //
-    // Let's implement a slightly better fetch: Fetch ALL courses that are electives (isElective=true),
-    // but we can't easily do a specialized "array overlap" without knowing the DB schema type perfectly (JSONB vs Text[]).
-    // PREVIOUS IMPLEMENTATION fetched *all* electives.
-    // REFACTOR: The user explicitly asked to "filter specific electives at the database level".
-    // If column is JSONB array: .overlaps('electiveScope', electiveCategories)
-    // If column is Text array: .overlaps('electiveScope', electiveCategories)
-    // We will TRY `.overlaps` which maps to `&&` operator in Postgres (Array overlap).
-    // If that fails in runtime (due to column type), we catch error. But assuming standard Supabase setup.
-
+    // 3. Fetch Electives - Optimized Filter
     let electiveSlots: ElectiveSlot[] = [];
 
     if (electiveCategories.length > 0) {
@@ -149,9 +124,7 @@ export async function getBatchCurriculum(
           "Error fetching electives with .overlaps() filter. Ensure 'electiveScope' is an array/jsonb column.",
           electivesError,
         );
-        // Fallback? No, the prompt requested a fix, implying we should rely on DB filtering.
-        // If this fails, the schema might need checking, but we'll stick to the requested solution.
-        return null; // Or return partial?
+        return null;
       }
 
       if (validElectives) {
@@ -171,10 +144,6 @@ export async function getBatchCurriculum(
         });
       }
     }
-
-    console.log(
-      `Returning Curriculum: ${coreCourses.length} core, ${electiveSlots.length} elective slots.`,
-    );
 
     return {
       core: coreCourses,

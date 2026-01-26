@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef } from "react";
-import { ArrowRight, Play } from "lucide-react";
+import { Download, ExternalLink } from "lucide-react";
 import { useHeroIntro } from "@/animations/reveal";
 import { useMagneticHover, useWiggleOnHover } from "@/animations/hover";
 
@@ -38,17 +38,18 @@ export default function Hero({ isVisible = false }: HeroProps) {
       ref={sectionRef}
       className="relative isolate flex min-h-[92vh] flex-col items-center justify-center overflow-hidden px-6 pb-20 pt-28 sm:px-8 lg:px-12"
     >
+      {/* Animated Dot Grid Background */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.06]"
+        className="pointer-events-none absolute inset-0 opacity-[0.08]"
         aria-hidden="true"
         style={{
           backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgba(15,23,42,0.2) 1px, transparent 0)",
-          backgroundSize: "26px 26px",
+            "radial-gradient(circle at 1px 1px, rgba(15,23,42,0.3) 1.5px, transparent 0)",
+          backgroundSize: "32px 32px",
         }}
       />
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/40 via-stone-50 to-stone-50"
+        className="pointer-events-none absolute inset-0 bg-linear-to-b from-white/40 via-stone-50 to-stone-50"
         aria-hidden="true"
       />
       <div
@@ -61,17 +62,19 @@ export default function Hero({ isVisible = false }: HeroProps) {
       />
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-8 text-center">
+        {/* Badge */}
         <div
-          className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-stone-900 shadow-[6px_6px_0_#0a0a0a]"
+          className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-stone-900 shadow-[4px_4px_0_#0a0a0a]"
           data-hero-stagger
         >
           <span
-            className="h-2 w-2 rounded-full bg-green-500"
+            className="h-2 w-2 rounded-full bg-green-500 animate-pulse"
             aria-hidden="true"
           />
-          Beta 2.1 • Built for NITC
+          AttendrixWeb v2.0.5 Alpha-Preview
         </div>
 
+        {/* Main Typography */}
         <div
           className="relative flex flex-col items-center gap-2 text-center"
           aria-hidden="true"
@@ -82,14 +85,15 @@ export default function Hero({ isVisible = false }: HeroProps) {
           >
             ATTENDANCE
           </span>
-          <div className="relative inline-flex items-center justify-center">
+          {/* Yellow Rotated Container for REIMAGINED */}
+          <div className="relative inline-flex items-center justify-center -rotate-2">
             <span
               ref={brushRef}
-              className="absolute inset-x-[-10%] bottom-1 h-5 rounded-md bg-amber-200/90"
+              className="absolute inset-x-[-8%] inset-y-[-12%] bg-yellow-400 border-2 border-black shadow-[4px_4px_0_#0a0a0a]"
             />
             <span
               ref={reimaginedRef}
-              className="relative text-balance text-5xl font-black uppercase leading-[0.9] tracking-[-0.06em] text-stone-950 sm:text-7xl lg:text-8xl"
+              className="relative px-4 py-1 text-balance text-5xl font-black uppercase leading-[0.9] tracking-[-0.06em] text-stone-950 sm:text-7xl lg:text-8xl"
             >
               REIMAGINED
             </span>
@@ -111,31 +115,33 @@ export default function Hero({ isVisible = false }: HeroProps) {
           </p>
         </div>
 
+        {/* CTAs */}
         <div
           className="flex flex-col items-center justify-center gap-4 sm:flex-row"
           data-hero-stagger
         >
+          {/* Primary: Download APK */}
           <Link
             ref={primaryRef}
-            href="/auth/signup"
-            className="group relative inline-flex items-center gap-3 rounded-full border-2 border-black bg-gradient-to-r from-amber-300 to-amber-200 px-6 py-3 text-lg font-semibold uppercase tracking-tight text-black shadow-[10px_10px_0_#0a0a0a] transition-shadow duration-200 hover:shadow-[6px_6px_0_#0a0a0a]"
+            href="/download"
+            className="group relative inline-flex items-center gap-3 border-2 border-black bg-yellow-400 px-6 py-3 text-lg font-bold uppercase tracking-tight text-black shadow-[6px_6px_0_#0a0a0a] transition-all duration-200 hover:shadow-[4px_4px_0_#0a0a0a] hover:-translate-x-[2px] hover:-translate-y-[2px]"
           >
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black text-amber-200 shadow-[4px_4px_0_#0a0a0a]">
-              ⚡
+            <span className="inline-flex h-10 w-10 items-center justify-center bg-black text-yellow-400">
+              <Download className="h-5 w-5" />
             </span>
-            Join the Batch
-            <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
+            Download APK
           </Link>
 
+          {/* Secondary: Launch Web App */}
           <Link
             ref={secondaryRef}
             href="/app"
-            className="group inline-flex items-center gap-3 rounded-full border-2 border-stone-900 bg-white/80 px-6 py-3 text-lg font-semibold text-stone-900 shadow-[8px_8px_0_#0a0a0a] transition-colors duration-200 hover:bg-stone-100"
+            className="group inline-flex items-center gap-3 border-2 border-black bg-white px-6 py-3 text-lg font-bold uppercase tracking-tight text-stone-900 shadow-[6px_6px_0_#0a0a0a] transition-all duration-200 hover:shadow-[4px_4px_0_#0a0a0a] hover:-translate-x-[2px] hover:-translate-y-[2px]"
           >
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-900 bg-stone-900 text-white">
-              <Play className="h-4 w-4" />
+            <span className="inline-flex h-10 w-10 items-center justify-center border-2 border-black bg-stone-900 text-white">
+              <ExternalLink className="h-4 w-4" />
             </span>
-            Watch Demo
+            Launch Web App
           </Link>
         </div>
       </div>

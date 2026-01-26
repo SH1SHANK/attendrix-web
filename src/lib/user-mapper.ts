@@ -113,7 +113,8 @@ export function calculateStreakMetrics(streakHistory: any) {
 
   // 2. Calendar Dates
   const calendarDates = uniqueDays.map(
-    (day) => new Date(day * 86400 * 1000).toISOString().split("T")[0],
+    (day) =>
+      new Date(day * 86400 * 1000).toISOString().split("T")[0] || "1970-01-01",
   );
 
   // Helper to check if a day is Saturday (6) or Sunday (0)
@@ -132,6 +133,7 @@ export function calculateStreakMetrics(streakHistory: any) {
 
   for (let i = 0; i < uniqueDays.length; i++) {
     const day = uniqueDays[i];
+    if (day === undefined) continue;
 
     if (i === 0) {
       currentStreak = 1;

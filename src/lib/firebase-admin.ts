@@ -78,9 +78,14 @@ export function initAdmin(): App {
       }),
       projectId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 4. Recovery: if parallel init happened anyway, return existing
-    if (error.code === "app/duplicate-app") {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "app/duplicate-app"
+    ) {
       return getApp();
     }
     throw error;

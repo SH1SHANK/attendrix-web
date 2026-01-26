@@ -48,7 +48,6 @@ export async function getUserDashboardData(
 ): Promise<
   { success: true; data: DashboardData } | { success: false; error: string }
 > {
-  console.log("DEBUGLOG: getUserDashboardData called", { clientUid });
   try {
     let uid = clientUid;
 
@@ -59,7 +58,6 @@ export async function getUserDashboardData(
       const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
       if (!sessionCookie) {
-        console.log("DEBUGLOG: No session cookie found");
         return { success: false, error: "Unauthorized: No session" };
       }
 
@@ -68,10 +66,8 @@ export async function getUserDashboardData(
     }
 
     if (!uid) {
-      console.log("DEBUGLOG: No UID determined");
       return { success: false, error: "Unauthorized: Invalid token" };
     }
-    console.log(`DEBUGLOG: Fetching for UID: ${uid}`);
 
     // 2. Fetch Firestore User Data (Parallel)
     // Use the robust singleton for Admin Firestore
@@ -79,17 +75,10 @@ export async function getUserDashboardData(
     const userDocRef = db.collection("users").doc(uid);
 
     // 3. Fetch Supabase Academic Data (Parallel)
-    console.log("DEBUGLOG: Calling Supabase RPC getAcademicStats...");
     const [userSnapshot, academicStats] = await Promise.all([
       userDocRef.get(),
       getAcademicStats(uid),
     ]);
-
-    console.log("DEBUGLOG: Firestore User Found:", userSnapshot.exists);
-    console.log(
-      "DEBUGLOG: Supabase Raw Response Length:",
-      academicStats.length,
-    );
 
     if (!userSnapshot.exists) {
       console.error(
@@ -115,7 +104,6 @@ export async function getUserDashboardData(
 
     let finalCourses = mappedUser.coursesEnrolled;
     if (finalCourses.length === 0 && academicStats.length > 0) {
-      console.log("DEBUGLOG: Using Supabase fallback for courses");
       finalCourses = academicStats;
     }
 
@@ -151,13 +139,12 @@ async function getAcademicStats(uid: string): Promise<AttendanceStat[]> {
     throw new Error(`Supabase RPC Failed: ${error.message}`);
   }
 
-  console.log("DEBUGLOG: Supabase Raw Response:", JSON.stringify(data));
-
   // Check for Diagnostic "ERROR" row
   const rpcData = (data as unknown as RPCStat[]) || [];
-  if (rpcData.length > 0 && rpcData[0].course_id === "ERROR") {
-    const dbError = rpcData[0].course_name;
-    console.error("DEBUGLOG: TRAPPED DB ERROR:", dbError);
+  const firstItem = rpcData[0];
+  if (firstItem && firstItem.course_id === "ERROR") {
+    const dbError = firstItem.course_name;
+    console.error("TRAPPED DB ERROR:", dbError);
     throw new Error(`DB Error: ${dbError}`);
   }
 

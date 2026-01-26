@@ -237,8 +237,7 @@ function OnboardingContent() {
     async function init() {
       if (user) {
         try {
-          const token = await user.getIdToken();
-          const data = await getAvailableBatches(token);
+          const data = await getAvailableBatches();
           setBatches(data);
         } catch (error) {
           console.error("Batch fetch failed", error);
@@ -254,8 +253,7 @@ function OnboardingContent() {
       // Transition from Batch Select -> Course Select
       startTransition(async () => {
         if (!user) return;
-        const token = await user.getIdToken();
-        const result = await getBatchCurriculum(formData.batchID, token);
+        const result = await getBatchCurriculum(formData.batchID);
         if (result) {
           setCurriculum(result);
           setStep(3);

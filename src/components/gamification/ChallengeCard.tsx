@@ -1,18 +1,21 @@
+import { memo } from "react";
 import { UserChallenge } from "@/types/challenges";
-// import { cn } from "@/lib/utils"; // Removed unused cn
-import { Zap, CheckCircle2, Star, Loader2, Clock, Flame } from "lucide-react"; // Add generic icons for mapping
+import { cn } from "@/lib/utils";
+import { Zap, CheckCircle2, Star, Loader2, Clock, Flame } from "lucide-react";
 import { Progress } from "@/components/ui/Progress";
 import { Button } from "@/components/ui/Button";
 import { useClaimChallenge } from "@/hooks/queries/useChallenges";
 import { motion } from "framer-motion";
-import canvasConfetti from "canvas-confetti";
 
 interface ChallengeCardProps {
   challenge: UserChallenge;
-  index?: number; // For staggered animation
+  index?: number;
 }
 
-export function ChallengeCard({ challenge, index = 0 }: ChallengeCardProps) {
+export const ChallengeCard = memo(function ChallengeCard({
+  challenge,
+  index = 0,
+}: ChallengeCardProps) {
   const { mutate: claim, isPending } = useClaimChallenge();
 
   const isCompleted = challenge.isCompleted;
@@ -24,23 +27,24 @@ export function ChallengeCard({ challenge, index = 0 }: ChallengeCardProps) {
     Math.round((challenge.progress / challenge.targetValue) * 100),
   );
 
-  const handleClaim = () => {
+  const handleClaim = async () => {
     if (canClaim && challenge.progressID) {
-      // Confetti Explosion
+      // Dynamic import for heavy confetti library
+      const confetti = (await import("canvas-confetti")).default;
+
       const duration = 2000;
       const end = Date.now() + duration;
-
       const colors = ["#fbbf24", "#0ea5e9", "#ef4444", "#a855f7"];
 
       (function frame() {
-        canvasConfetti({
+        confetti({
           particleCount: 5,
           angle: 60,
           spread: 55,
           origin: { x: 0 },
           colors: colors,
         });
-        canvasConfetti({
+        confetti({
           particleCount: 5,
           angle: 120,
           spread: 55,
@@ -57,11 +61,7 @@ export function ChallengeCard({ challenge, index = 0 }: ChallengeCardProps) {
     }
   };
 
-  // Icon mapping helper
   const getConditionIcon = () => {
-    // Default mapping based on condition strings in generic way
-    // In a real app we might map 'attend_full_day' etc, but here we'll use generic logic or pass props
-    // For now, let's use dynamic generic icons or just hardcoded visually distinct ones
     if (challenge.challengeCondition?.includes("streak"))
       return <Flame size={20} />;
     if (challenge.challengeCondition?.includes("early"))
@@ -69,16 +69,17 @@ export function ChallengeCard({ challenge, index = 0 }: ChallengeCardProps) {
     return <Zap size={20} />;
   };
 
-  // --- VISUAL VARIANTS ---
-
-  // 1. CLAIMABLE STATE (High Priority)
+  // 1. CLAIMABLE STATE
   if (canClaim) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.1 }}
-        className="relative flex flex-col gap-4 border-4 border-black bg-yellow-400 p-6 shadow-[8px_8px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[6px_6px_0px_0px_#000] transition-all"
+        className={cn(
+          "relative flex flex-col gap-4 border-4 border-black bg-yellow-400 p-6 transition-all",
+          "shadow-[8px_8px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[6px_6px_0px_0px_#000]",
+        )}
       >
         <div className="absolute -right-3 -top-3 rotate-12 bg-purple-600 px-3 py-1 font-mono text-sm font-bold text-white border-2 border-black shadow-[4px_4px_0px_0px_#000]">
           CLAIM NOW!
@@ -111,7 +112,11 @@ export function ChallengeCard({ challenge, index = 0 }: ChallengeCardProps) {
           <Button
             onClick={handleClaim}
             disabled={isPending}
-            className="w-full h-12 border-2 border-black bg-white text-black text-lg font-black uppercase hover:bg-neutral-100 shadow-[4px_4px_0px_0px_#000] active:translate-y-[2px] active:translate-x-[2px] active:shadow-[2px_2px_0px_0px_#000]"
+            className={cn(
+              "w-full h-12 border-2 border-black bg-white text-black text-lg font-black uppercase",
+              "hover:bg-neutral-100 shadow-[4px_4px_0px_0px_#000]",
+              "active:translate-y-[2px] active:translate-x-[2px] active:shadow-[2px_2px_0px_0px_#000]",
+            )}
           >
             {isPending ? <Loader2 className="animate-spin" /> : "CLAIM REWARD"}
           </Button>
@@ -120,7 +125,7 @@ export function ChallengeCard({ challenge, index = 0 }: ChallengeCardProps) {
     );
   }
 
-  // 2. COMPLETED STATE (Low Noise)
+  // 2. COMPLETED STATE
   if (isCompleted) {
     return (
       <motion.div
@@ -128,7 +133,6 @@ export function ChallengeCard({ challenge, index = 0 }: ChallengeCardProps) {
         animate={{ opacity: 0.6, scale: 1 }}
         className="relative flex flex-col gap-3 border-2 border-neutral-400 bg-neutral-100 p-5 grayscale"
       >
-        {/* Stamped Overlay */}
         <div className="absolute right-4 top-8 rotate-[-15deg] border-4 border-neutral-500 px-2 py-1 text-2xl font-black text-neutral-500 opacity-30 select-none">
           COMPLETED
         </div>
@@ -153,13 +157,16 @@ export function ChallengeCard({ challenge, index = 0 }: ChallengeCardProps) {
     );
   }
 
-  // 3. IN PROGRESS STATE (Informational)
+  // 3. IN PROGRESS STATE
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="flex flex-col justify-between gap-3 border-2 border-black bg-white p-5 shadow-[4px_4px_0px_0px_#000] hover:shadow-[6px_6px_0px_0px_#000] hover:-translate-y-0.5 transition-all"
+      className={cn(
+        "flex flex-col justify-between gap-3 border-2 border-black bg-white p-5 transition-all",
+        "shadow-[4px_4px_0px_0px_#000] hover:shadow-[6px_6px_0px_0px_#000] hover:-translate-y-0.5",
+      )}
     >
       <div>
         <div className="flex justify-between items-start mb-2">
@@ -193,4 +200,4 @@ export function ChallengeCard({ challenge, index = 0 }: ChallengeCardProps) {
       </div>
     </motion.div>
   );
-}
+});

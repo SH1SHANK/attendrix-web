@@ -18,7 +18,7 @@ type WiggleOptions = {
  * Magnetic hover with quick GSAP setters. Disabled on small screens by default.
  */
 export function useMagneticHover(
-  ref: RefObject<HTMLElement>,
+  ref: RefObject<HTMLElement | null>,
   {
     strength = 14,
     restDuration = 0.25,
@@ -82,7 +82,7 @@ export function useMagneticHover(
  * Quick wiggle on hover for primary CTAs.
  */
 export function useWiggleOnHover(
-  ref: RefObject<HTMLElement>,
+  ref: RefObject<HTMLElement | null>,
   { rotation = 1.5 }: WiggleOptions = {},
 ) {
   useGSAP(

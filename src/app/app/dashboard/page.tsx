@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, Coffee } from "lucide-react";
 
-import { RetroSkeleton } from "@/components/ui/RetroSkeleton";
+import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
+
 import { useAttendance } from "@/hooks/queries/useAttendance";
 import { useNextClass, type ParsedClass } from "@/hooks/queries/useNextClass";
 import { CountdownCard } from "@/components/dashboard/CountdownCard";
@@ -138,7 +139,9 @@ export default function DashboardPage() {
   const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
 
   const parseMinutes = (timeStr: string) => {
-    const [h, m] = timeStr.split(":").map(Number);
+    const parts = timeStr.split(":").map(Number);
+    const h = parts[0] ?? 0;
+    const m = parts[1] ?? 0;
     return h * 60 + m;
   };
 
@@ -175,13 +178,7 @@ export default function DashboardPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <RetroSkeleton className="h-20" />
-        <RetroSkeleton className="h-48" />
-        <RetroSkeleton className="h-64" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   // const mageRank = profile?.mageRank; // Unused variable removed

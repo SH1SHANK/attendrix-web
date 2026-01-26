@@ -5,10 +5,10 @@ import { useGSAP } from "@gsap/react";
 gsap.registerPlugin(useGSAP);
 
 type HeroIntroConfig = {
-  containerRef: RefObject<HTMLElement>;
-  attendanceRef: RefObject<HTMLElement>;
-  reimaginedRef: RefObject<HTMLElement>;
-  brushRef?: RefObject<HTMLElement>;
+  containerRef: RefObject<HTMLElement | null>;
+  attendanceRef: RefObject<HTMLElement | null>;
+  reimaginedRef: RefObject<HTMLElement | null>;
+  brushRef?: RefObject<HTMLElement | null>;
   staggerSelector?: string;
   isActive?: boolean;
 };
@@ -147,7 +147,7 @@ export function useHeroIntro({
  * Generic staggered reveal helper for text/lines.
  */
 type StaggerConfig = {
-  containerRef: RefObject<HTMLElement>;
+  containerRef: RefObject<HTMLElement | null>;
   targetSelector: string;
   offset?: number;
   ease?: string;
