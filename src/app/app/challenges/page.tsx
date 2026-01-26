@@ -4,9 +4,11 @@ import { useChallenges } from "@/hooks/queries/useChallenges";
 import { useProfile } from "@/hooks/queries/useProfile";
 import { ChallengeCard } from "@/components/gamification/ChallengeCard";
 import { LevelProgress } from "@/components/gamification/LevelProgress";
-import { Loader2, Trophy } from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
+import { Loader2, Calendar, Target } from "lucide-react";
 import { useMemo } from "react";
+import { Carousel } from "@/components/ui/Carousel";
+import { UserChallenge } from "@/types/challenges";
+import Image from "next/image";
 
 export default function ChallengesPage() {
   const { data: challenges, isLoading: isChallengesLoading } = useChallenges();
@@ -14,112 +16,158 @@ export default function ChallengesPage() {
 
   const isLoading = isChallengesLoading || isProfileLoading;
 
+  // Sorting Logic: Claimable -> In Progress -> Completed/Claimed
+  const sortChallenges = (list: UserChallenge[]) => {
+    return [...list].sort((a, b) => {
+      const aCanClaim = a.isCompleted && !a.isClaimed;
+      const bCanClaim = b.isCompleted && !b.isClaimed;
+
+      if (aCanClaim && !bCanClaim) return -1;
+      if (!aCanClaim && bCanClaim) return 1;
+
+      const aActive = !a.isCompleted && !a.isClaimed;
+      const bActive = !b.isCompleted && !b.isClaimed;
+
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+
+      return 0;
+    });
+  };
+
   const weeklyChallenges = useMemo(
-    () => challenges?.filter((c) => c.challengeType === "weekly") || [],
+    () =>
+      sortChallenges(
+        challenges?.filter((c) => c.challengeType === "weekly") || [],
+      ),
     [challenges],
   );
 
   const monthlyChallenges = useMemo(
-    () => challenges?.filter((c) => c.challengeType === "monthly") || [],
-    [challenges],
-  );
-
-  const semesterChallenges = useMemo(
-    () => challenges?.filter((c) => c.challengeType === "semester") || [],
+    () =>
+      sortChallenges(
+        challenges?.filter((c) => c.challengeType === "monthly") || [],
+      ),
     [challenges],
   );
 
   if (isLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center p-8">
-        <Loader2 className="animate-spin text-neutral-400" size={32} />
+      <div className="flex h-screen w-full items-center justify-center bg-neutral-50">
+        <Loader2 className="animate-spin text-black" size={48} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 p-6 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-400 border-2 border-neutral-900 shadow-[4px_4px_0px_0px_#171717]">
-              <Trophy className="text-neutral-900 fill-white" size={24} />
+    <div className="min-h-screen bg-[radial-gradient(#000_1px,transparent_1px)] bg-size-[20px_20px] p-6 md:p-12 space-y-12 pb-32">
+      {/* HERO SECTION */}
+      <section className="max-w-5xl mx-auto">
+        <div className="flex items-center gap-4 mb-8">
+          <div className="h-4 w-4 bg-black" />
+          <h1 className="text-4xl md:text-6xl font-black text-black tracking-tighter uppercase">
+            Player Dashboard
+          </h1>
+        </div>
+
+        <div className="grid md:grid-cols-[300px_1fr] gap-8 items-start">
+          {/* AVATAR / PROFILE CARD */}
+          <div className="bg-purple-600 border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 flex flex-col items-center justify-center gap-4 text-center h-full min-h-[250px] relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagmonds-light.png')] opacity-10 mix-blend-overlay"></div>
+            <div className="relative z-10 h-24 w-24 rounded-none border-4 border-black bg-white shadow-[4px_4px_0px_0px_#000] overflow-hidden">
+              <Image
+                src={`https://api.dicebear.com/7.x/notionists/svg?seed=${profile?.username || "user"}`}
+                alt="Avatar"
+                className="h-full w-full object-cover"
+              />
             </div>
-            <div>
-              <h1 className="text-3xl font-black text-neutral-900 tracking-tight">
-                CHALLENGES
-              </h1>
-              <p className="text-sm font-medium text-neutral-500">
-                Complete quests to earn Amplix & rank up!
+            <div className="relative z-10">
+              <h2 className="text-xl font-black text-white uppercase tracking-tight bg-black/20 px-2 py-1 inline-block">
+                {profile?.display_name || profile?.name || "Attendrix User"}
+              </h2>
+              <p className="text-white/80 font-mono text-sm mt-1">
+                {profile?.email}
               </p>
             </div>
           </div>
-        </div>
 
-        {/* Level Progress */}
-        <LevelProgress currentAmplix={profile?.mageRank.xpCurrent || 0} />
-      </div>
-
-      {/* Weekly Challenges */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200">
-            WEEKLY RESET
-          </Badge>
-          <div className="h-px flex-1 bg-neutral-200" />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {weeklyChallenges.map((challenge) => (
-            <ChallengeCard key={challenge.challengeID} challenge={challenge} />
-          ))}
-          {weeklyChallenges.length === 0 && (
-            <p className="text-sm text-neutral-400 italic">
-              No weekly challenges active.
-            </p>
-          )}
+          {/* LEVEL PROGRESS */}
+          <LevelProgress currentAmplix={profile?.mageRank.xpCurrent || 0} />
         </div>
       </section>
 
-      {/* Monthly Challenges */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200">
-            MONTHLY GRIND
-          </Badge>
-          <div className="h-px flex-1 bg-neutral-200" />
+      {/* WEEKLY CHALLENGES (CAROUSEL) */}
+      <section className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center gap-3 border-b-4 border-black pb-2 w-fit pr-12">
+          <Calendar className="h-8 w-8 text-black" />
+          <h2 className="text-3xl font-black text-black uppercase tracking-tight">
+            Weekly Drops
+          </h2>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {monthlyChallenges.map((challenge) => (
-            <ChallengeCard key={challenge.challengeID} challenge={challenge} />
-          ))}
-          {monthlyChallenges.length === 0 && (
-            <p className="text-sm text-neutral-400 italic">
-              No monthly challenges active.
-            </p>
-          )}
-        </div>
-      </section>
 
-      {/* Semester Challenges (if any) */}
-      {semesterChallenges.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200">
-              SEMESTER GOALS
-            </Badge>
-            <div className="h-px flex-1 bg-neutral-200" />
+        {weeklyChallenges.length > 0 ? (
+          <Carousel
+            opts={{
+              align: "start",
+              loop: false,
+            }}
+            className="w-full"
+          >
+            <Carousel.Content className="-ml-4 pb-4">
+              {weeklyChallenges.map((challenge, index) => (
+                <Carousel.Item
+                  key={challenge.challengeID}
+                  className="pl-4 md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+                >
+                  <div className="h-full p-1">
+                    {" "}
+                    {/* Padding for hover effects/shadows */}
+                    <ChallengeCard challenge={challenge} index={index} />
+                  </div>
+                </Carousel.Item>
+              ))}
+            </Carousel.Content>
+            <div className="flex justify-end gap-2 mt-4">
+              <Carousel.Previous className="static translate-y-0 rounded-none border-2 border-black bg-white hover:bg-neutral-100 shadow-[2px_2px_0px_0px_#000]" />
+              <Carousel.Next className="static translate-y-0 rounded-none border-2 border-black bg-white hover:bg-neutral-100 shadow-[2px_2px_0px_0px_#000]" />
+            </div>
+          </Carousel>
+        ) : (
+          <div className="p-8 border-2 border-dashed border-neutral-400 bg-neutral-50 text-center font-mono text-neutral-500">
+            NO WEEKLY DROPS ACTIVE
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {semesterChallenges.map((challenge) => (
-              <ChallengeCard
-                key={challenge.challengeID}
-                challenge={challenge}
-              />
+        )}
+      </section>
+
+      {/* MONTHLY CHALLENGES (MASONRY) */}
+      <section className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center gap-3 border-b-4 border-black pb-2 w-fit pr-12">
+          <Target className="h-8 w-8 text-black" />
+          <h2 className="text-3xl font-black text-black uppercase tracking-tight">
+            Monthly Grind
+          </h2>
+        </div>
+
+        {monthlyChallenges.length > 0 ? (
+          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+            {monthlyChallenges.map((challenge, index) => (
+              <div key={challenge.challengeID} className="break-inside-avoid">
+                <ChallengeCard challenge={challenge} index={index + 5} />
+              </div>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <div className="p-8 border-2 border-dashed border-neutral-400 bg-neutral-50 text-center font-mono text-neutral-500">
+            NO MONTHLY CHALLENGES ACTIVE
+          </div>
+        )}
+      </section>
+
+      {/* Background decoration */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-[-1] opacity-5">
+        <div className="absolute top-20 left-10 w-64 h-64 border-4 border-black rounded-full mix-blend-multiply"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 border-4 border-black rotate-12 mix-blend-multiply"></div>
+      </div>
     </div>
   );
 }

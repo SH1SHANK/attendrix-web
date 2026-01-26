@@ -105,6 +105,7 @@ export default function SignInPage() {
               placeholder="student@nitc.ac.in"
               className="w-full h-12 border-2 border-black p-3 font-bold text-base outline-none placeholder:text-neutral-400 focus:shadow-[4px_4px_0px_0px_#000] focus:bg-yellow-50 transition-all"
               disabled={isSubmitting}
+              autoComplete="email"
             />
           </div>
 
@@ -129,6 +130,7 @@ export default function SignInPage() {
                 placeholder="••••••••"
                 className="w-full h-12 border-2 border-black p-3 font-bold text-base outline-none placeholder:text-neutral-400 focus:shadow-[4px_4px_0px_0px_#000] focus:bg-yellow-50 transition-all pr-12"
                 disabled={isSubmitting}
+                autoComplete="current-password"
               />
               <button
                 type="button"

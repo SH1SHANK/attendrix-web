@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, LogOut, History } from "lucide-react";
-import { cn } from "@/lib/utils";
+// import { cn } from "@/lib/utils"; // Removed unused cn
 
 // Define the root tabs where we show the specific title or logo instead of a back button
 const ROOT_TABS = ["/app", "/app/ledger", "/app/profile", "/app/calendar"];

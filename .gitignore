@@ -46,3 +46,6 @@ supabase
 /.agents
 /.agents
 
+.tsconfig.tsbuildinfo
+
+PRD.md

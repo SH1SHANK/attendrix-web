@@ -14,7 +14,6 @@ import {
   Code2,
   Trophy,
   Database,
-  Activity,
 } from "lucide-react";
 import DocsTOC from "@/components/docs/DocsTOC";
 
@@ -141,7 +140,7 @@ function Sidebar({
           <span className="font-bold text-lg">Documentation</span>
           <button
             onClick={onClose}
-            className="w-8 h-8 border-2 border-black flex items-center justify-center bg-white shadow-[2px_2px_0_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+            className="w-8 h-8 border-2 border-black flex items-center justify-center bg-white shadow-[2px_2px_0_#000] active:translate-x-px active:translate-y-px active:shadow-none"
           >
             <X className="w-5 h-5" />
           </button>
@@ -228,7 +227,7 @@ function CommandDialog({
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 bg-black/50 z-[100] backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 z-100 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -237,7 +236,7 @@ function CommandDialog({
 
           {/* Dialog */}
           <motion.div
-            className="fixed top-[20%] left-1/2 -translate-x-1/2 w-full max-w-lg z-[101]"
+            className="fixed top-[20%] left-1/2 -translate-x-1/2 w-full max-w-lg z-101"
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
@@ -328,14 +327,14 @@ export default function DocsLayout({
             {/* Mobile Menu Trigger */}
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden w-10 h-10 border-2 border-black flex items-center justify-center bg-white shadow-[2px_2px_0_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+              className="lg:hidden w-10 h-10 border-2 border-black flex items-center justify-center bg-white shadow-[2px_2px_0_#000] active:shadow-none active:translate-x-px active:translate-y-px"
             >
               <Menu className="w-5 h-5" />
             </button>
 
             {/* Logo */}
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 bg-main border-2 border-black flex items-center justify-center shadow-[4px_4px_0_#000] group-hover:translate-x-[1px] group-hover:translate-y-[1px] group-hover:shadow-[2px_2px_0_#000] transition-all">
+              <div className="w-10 h-10 bg-main border-2 border-black flex items-center justify-center shadow-[4px_4px_0_#000] group-hover:translate-x-px group-hover:translate-y-px group-hover:shadow-[2px_2px_0_#000] transition-all">
                 <span className="font-mono font-black text-xl text-black">
                   A
                 </span>

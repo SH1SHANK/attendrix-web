@@ -1,387 +1,144 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import {
-  motion,
-  type Variants,
-  useMotionValue,
-  useTransform,
-  useSpring,
-  type MotionValue,
-} from "framer-motion";
-import { Download, BookOpen } from "lucide-react";
-import { HeroHighlight } from "@/components/ui/hero-highlight";
+import Link from "next/link";
+import { useRef } from "react";
+import { ArrowRight, Play } from "lucide-react";
+import { useHeroIntro } from "@/animations/reveal";
+import { useMagneticHover, useWiggleOnHover } from "@/animations/hover";
 
 interface HeroProps {
   isVisible?: boolean;
 }
 
-// Animation variants for staggered entrance (typed properly)
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.3,
-    },
-  },
-};
+export default function Hero({ isVisible = false }: HeroProps) {
+  const sectionRef = useRef<HTMLElement>(null);
+  const attendanceRef = useRef<HTMLSpanElement>(null);
+  const reimaginedRef = useRef<HTMLSpanElement>(null);
+  const brushRef = useRef<HTMLSpanElement>(null);
+  const primaryRef = useRef<HTMLAnchorElement>(null);
+  const secondaryRef = useRef<HTMLAnchorElement>(null);
 
-const badgeVariants: Variants = {
-  hidden: { opacity: 0, y: -20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      type: "spring",
-      stiffness: 300,
-      damping: 20,
-    },
-  },
-};
-
-const attendanceVariants: Variants = {
-  hidden: { opacity: 0, y: 40 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      type: "spring",
-      stiffness: 100,
-      damping: 15,
-    },
-  },
-};
-
-const reimaginedVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.8, rotate: -6 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    rotate: -2,
-    transition: {
-      type: "spring",
-      stiffness: 200,
-      damping: 12,
-      mass: 1.2,
-    },
-  },
-};
-
-const descriptionVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      ease: "easeOut",
-      delay: 0.1,
-    },
-  },
-};
-
-const buttonContainerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.15,
-    },
-  },
-};
-
-const buttonVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      type: "spring",
-      stiffness: 200,
-      damping: 20,
-    },
-  },
-};
-
-// ============================================
-// OPTIMIZED PROXIMITY EFFECT COMPONENTS
-// ============================================
-
-// ProximityWord: A single word that responds to cursor proximity via transforms
-function ProximityWord({
-  word,
-  mouseX,
-  mouseY,
-}: {
-  word: string;
-  mouseX: MotionValue<number>;
-  mouseY: MotionValue<number>;
-}) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [center, setCenter] = useState({ x: 0, y: 0 });
-
-  // Measure position once on mount (and on resize for safety)
-  useEffect(() => {
-    const measure = () => {
-      if (ref.current) {
-        const rect = ref.current.getBoundingClientRect();
-        setCenter({
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2,
-        });
-      }
-    };
-
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
-
-  // Map distance to visual properties
-  // Distance range: 0px (close) to 200px (far)
-  const distance = useTransform([mouseX, mouseY], ([x, y]: number[]) => {
-    const dx = x - center.x;
-    const dy = y - center.y;
-    return Math.sqrt(dx * dx + dy * dy);
+  useHeroIntro({
+    containerRef: sectionRef,
+    attendanceRef,
+    reimaginedRef,
+    brushRef,
+    isActive: isVisible,
   });
 
-  // COLOR-ONLY effect for guaranteed visibility (no opacity changes)
-  // Base state: Neutral-500 (readable gray), Hover state: Black (highlighted)
-  const color = useTransform(distance, [0, 150], ["#0a0a0a", "#737373"]); // Black to Neutral-500
-
-  return (
-    <motion.span
-      ref={ref}
-      style={{ color }}
-      className="inline-block cursor-default select-none transition-colors duration-300"
-    >
-      {word}
-    </motion.span>
-  );
-}
-
-// ProximityHeading: Container that tracks mouse/touch into MotionValues
-function ProximityHeading({ text }: { text: string }) {
-  // Initialize far off-screen so text starts at base state
-  const mouseX = useMotionValue(-5000);
-  const mouseY = useMotionValue(-5000);
-
-  // Smooth out the mouse movement slightly for butter feel
-  const smoothX = useSpring(mouseX, { stiffness: 500, damping: 50 });
-  const smoothY = useSpring(mouseY, { stiffness: 500, damping: 50 });
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    mouseX.set(e.clientX);
-    mouseY.set(e.clientY);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length > 0) {
-      const touch = e.touches[0];
-      mouseX.set(touch.clientX);
-      mouseY.set(touch.clientY);
-    }
-  };
-
-  // Reset mouse position to force all words back to base state
-  const resetMousePosition = () => {
-    mouseX.set(-5000);
-    mouseY.set(-5000);
-  };
-
-  const words = text.split(" ");
-
-  return (
-    <div
-      className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed touch-none"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={resetMousePosition}
-      onTouchMove={handleTouchMove}
-      onTouchStart={handleTouchMove}
-      onTouchEnd={resetMousePosition}
-      onTouchCancel={resetMousePosition}
-    >
-      {words.map((word, index) => (
-        <ProximityWord
-          key={`${word}-${index}`}
-          word={word}
-          mouseX={smoothX}
-          mouseY={smoothY}
-        />
-      ))}
-    </div>
-  );
-}
-
-// Neo-Bounce button component with tactile feel
-function NeoButton({
-  children,
-  href,
-  variant = "primary",
-  ariaLabel,
-}: {
-  children: React.ReactNode;
-  href: string;
-  variant?: "primary" | "secondary";
-  ariaLabel: string;
-}) {
-  const isPrimary = variant === "primary";
-
-  return (
-    <motion.a
-      href={href}
-      aria-label={ariaLabel}
-      className={`inline-flex items-center justify-center gap-3 ${
-        isPrimary ? "bg-[#FFD02F]" : "bg-white"
-      } text-black border-2 border-black font-bold uppercase tracking-wide h-14 px-8 text-base cursor-pointer select-none`}
-      variants={buttonVariants}
-      initial="hidden"
-      animate="visible"
-      whileHover={{
-        y: -4,
-        x: -2,
-        boxShadow: "8px 8px 0px 0px #000",
-      }}
-      whileTap={{
-        y: 2,
-        x: 2,
-        boxShadow: "0px 0px 0px 0px #000",
-        scale: 0.98,
-      }}
-      transition={{
-        type: "spring",
-        stiffness: 400,
-        damping: 15,
-      }}
-      style={{
-        boxShadow: "4px 4px 0px 0px #000",
-      }}
-    >
-      {children}
-    </motion.a>
-  );
-}
-
-export default function Hero({ isVisible = false }: HeroProps) {
-  const [isReimaginedHovered, setIsReimaginedHovered] = useState(false);
+  useMagneticHover(primaryRef);
+  useMagneticHover(secondaryRef, { strength: 18 });
+  useWiggleOnHover(primaryRef, { rotation: 1.8 });
 
   const subheadingText =
-    "The Academic Ecosystem for NITC. Track attendance, manage subjects, and stay compliant—on Android, iOS, and Web.";
+    "Stop calculating percentages. Start earning XP. The only attendance tracker that plays as hard as you work.";
 
   return (
-    <HeroHighlight
-      containerClassName="min-h-screen w-screen border-b-2 border-black"
-      className="w-full h-full"
+    <section
+      ref={sectionRef}
+      className="relative isolate flex min-h-[92vh] flex-col items-center justify-center overflow-hidden px-6 pb-20 pt-28 sm:px-8 lg:px-12"
     >
-      <motion.section
-        id="hero"
-        className="relative w-full min-h-screen flex flex-col items-center justify-center py-16 md:py-0"
-        initial="hidden"
-        animate={isVisible ? "visible" : "hidden"}
-        variants={containerVariants}
-      >
-        {/* Inner Content Wrapper - Tighter vertical gap */}
-        <div className="w-full max-w-7xl px-4 md:px-8 flex flex-col items-center text-center z-10">
-          {/* Announcement Badge */}
-          <motion.div
-            variants={badgeVariants}
-            whileHover={{ scale: 1.05 }}
-            className="cursor-pointer rotate-1"
-          >
-            <div
-              className="inline-flex items-center gap-2.5 bg-neutral-900 text-white px-4 py-1.5 border-2 border-yellow-300 shadow-[4px_4px_0px_0px_#FACC15]"
-              style={{
-                boxShadow: "3px 3px 0px 0px #000000",
-              }}
-            >
-              {/* Pulsing Green Dot */}
-              <span
-                className="w-2 h-2 bg-green-400 rounded-full animate-pulse"
-                aria-hidden="true"
-              />
-              <span className="text-xs font-bold uppercase tracking-wider">
-                Introducing AttendrixWeb v2.1 Beta
-              </span>
-            </div>
-          </motion.div>
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.06]"
+        aria-hidden="true"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(15,23,42,0.2) 1px, transparent 0)",
+          backgroundSize: "26px 26px",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/40 via-stone-50 to-stone-50"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-0 mix-blend-multiply opacity-[0.18]"
+        aria-hidden="true"
+        style={{
+          backgroundImage:
+            "url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22200%25%22 height=%22200%25%22 filter=%22url(%23n)%22 opacity=%220.25%22/%3E%3C/svg%3E')",
+        }}
+      />
 
-          {/* Headline Group - Logo Block */}
-          <div className="flex flex-col items-center mt-4 mb-8">
-            <h1 className="flex flex-col items-center">
-              {/* ATTENDANCE - Base layer with relaxed leading */}
-              <motion.span
-                variants={attendanceVariants}
-                className="text-6xl sm:text-8xl lg:text-[8rem] font-black tracking-tighter text-black leading-tight select-none mb-4"
-              >
-                ATTENDANCE
-              </motion.span>
-
-              {/* REIMAGINED - Sticker Box overlapping ATTENDANCE */}
-              <motion.div
-                variants={reimaginedVariants}
-                className="relative z-10 inline-block px-8 py-3 -mt-6 cursor-pointer transform hover:scale-105 transition-transform"
-                onMouseEnter={() => setIsReimaginedHovered(true)}
-                onMouseLeave={() => setIsReimaginedHovered(false)}
-                animate={{
-                  rotate: isReimaginedHovered ? -4 : -2,
-                  boxShadow: isReimaginedHovered
-                    ? "8px 8px 0px 0px #000000"
-                    : "3px 3px 0px 0px #000000",
-                  y: isReimaginedHovered ? -2 : 0,
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 15,
-                }}
-                style={{
-                  backgroundColor: "#FACC15",
-                  border: "2px solid black",
-                  boxShadow: "3px 3px 0px 0px #000000",
-                }}
-              >
-                <span className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-black leading-none select-none">
-                  REIMAGINED
-                </span>
-              </motion.div>
-            </h1>
-          </div>
-
-          {/* Supporting Paragraph with Proximity Effect */}
-          <motion.div variants={descriptionVariants} className="mt-8 mb-10">
-            <ProximityHeading text={subheadingText} />
-          </motion.div>
-
-          {/* CTA Button Group */}
-          <motion.div
-            variants={buttonContainerVariants}
-            className="flex flex-col sm:flex-row items-center justify-center gap-6 w-full mt-4"
-          >
-            {/* Primary CTA - Download APK (YELLOW) */}
-            <NeoButton
-              href="/download"
-              variant="primary"
-              ariaLabel="Download the Attendrix App"
-            >
-              DOWNLOAD FOR ANDROID
-              <Download className="w-5 h-5" aria-hidden="true" />
-            </NeoButton>
-
-            {/* Secondary CTA - Launch Web App (WHITE) */}
-            <NeoButton
-              href="/app"
-              variant="secondary"
-              ariaLabel="Try AttendrixWeb (Beta)"
-            >
-              TRY ATTENDRIXWEB (BETA)
-              <BookOpen className="w-5 h-5" aria-hidden="true" />
-            </NeoButton>
-          </motion.div>
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-8 text-center">
+        <div
+          className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-stone-900 shadow-[6px_6px_0_#0a0a0a]"
+          data-hero-stagger
+        >
+          <span
+            className="h-2 w-2 rounded-full bg-green-500"
+            aria-hidden="true"
+          />
+          Beta 2.1 • Built for NITC
         </div>
-      </motion.section>
-    </HeroHighlight>
+
+        <div
+          className="relative flex flex-col items-center gap-2 text-center"
+          aria-hidden="true"
+        >
+          <span
+            ref={attendanceRef}
+            className="text-balance text-5xl font-black uppercase leading-[0.9] tracking-[-0.06em] text-stone-900 sm:text-7xl lg:text-8xl"
+          >
+            ATTENDANCE
+          </span>
+          <div className="relative inline-flex items-center justify-center">
+            <span
+              ref={brushRef}
+              className="absolute inset-x-[-10%] bottom-1 h-5 rounded-md bg-amber-200/90"
+            />
+            <span
+              ref={reimaginedRef}
+              className="relative text-balance text-5xl font-black uppercase leading-[0.9] tracking-[-0.06em] text-stone-950 sm:text-7xl lg:text-8xl"
+            >
+              REIMAGINED
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-6 text-center">
+          <h1
+            className="text-balance text-3xl font-black leading-tight tracking-tight text-stone-950 sm:text-4xl lg:text-5xl"
+            data-hero-stagger
+          >
+            Your Academic Life. Gamified.
+          </h1>
+          <p
+            className="mx-auto max-w-3xl text-lg leading-relaxed text-stone-700 sm:text-xl"
+            data-hero-stagger
+          >
+            {subheadingText}
+          </p>
+        </div>
+
+        <div
+          className="flex flex-col items-center justify-center gap-4 sm:flex-row"
+          data-hero-stagger
+        >
+          <Link
+            ref={primaryRef}
+            href="/auth/signup"
+            className="group relative inline-flex items-center gap-3 rounded-full border-2 border-black bg-gradient-to-r from-amber-300 to-amber-200 px-6 py-3 text-lg font-semibold uppercase tracking-tight text-black shadow-[10px_10px_0_#0a0a0a] transition-shadow duration-200 hover:shadow-[6px_6px_0_#0a0a0a]"
+          >
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black text-amber-200 shadow-[4px_4px_0_#0a0a0a]">
+              ⚡
+            </span>
+            Join the Batch
+            <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
+          </Link>
+
+          <Link
+            ref={secondaryRef}
+            href="/app"
+            className="group inline-flex items-center gap-3 rounded-full border-2 border-stone-900 bg-white/80 px-6 py-3 text-lg font-semibold text-stone-900 shadow-[8px_8px_0_#0a0a0a] transition-colors duration-200 hover:bg-stone-100"
+          >
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-900 bg-stone-900 text-white">
+              <Play className="h-4 w-4" />
+            </span>
+            Watch Demo
+          </Link>
+        </div>
+      </div>
+    </section>
   );
 }

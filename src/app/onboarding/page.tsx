@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useTransition } from "react";
+import React, { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
+  AlertCircle,
   Check,
   Loader2,
   Lock,
@@ -35,8 +36,20 @@ import { cn } from "@/lib/utils";
 import { Drawer } from "@/components/ui/Drawer";
 import { useAuth } from "@/context/AuthContext";
 import { EVENTS, trackEvent } from "@/lib/analytics";
+import { Switch } from "@/components/ui/Switch";
+import { toast } from "sonner";
+import { createClient } from "@/utils/supabase/client";
+import { verifyAdminCode } from "@/app/actions/admin";
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+
+const SKIPPED_COURSE: CourseRecord = {
+  courseID: "SKIPPED",
+  semesterID: 0,
+  courseName: "Skipped",
+  isElective: true,
+  enrolledStudents: 0,
+};
 
 // ============================================
 // MAIN PAGE WRAPPER
@@ -60,6 +73,7 @@ function OnboardingContent() {
   const [initLoading, setInitLoading] = useState(true);
 
   const { user, logout } = useAuth(); // User is guaranteed here
+  const supabase = useMemo(() => createClient(), []);
 
   // Data State
   const [batches, setBatches] = useState<Partial<BatchRecord>[]>([]);
@@ -84,6 +98,16 @@ function OnboardingContent() {
     "IDLE" | "CHECKING" | "AVAILABLE" | "TAKEN"
   >("IDLE");
   const [usernameMessage, setUsernameMessage] = useState("");
+
+  // Admin Request State
+  const [wantsAdmin, setWantsAdmin] = useState(false);
+  const [adminStatus, setAdminStatus] = useState<
+    "idle" | "loading" | "approved" | "pending" | "error"
+  >("idle");
+  const [adminMessage, setAdminMessage] = useState("");
+  const [adminCode, setAdminCode] = useState("");
+  const [adminVerified, setAdminVerified] = useState(false);
+  const [verifyingAdmin, setVerifyingAdmin] = useState(false);
 
   // Debounce Logic
   useEffect(() => {
@@ -116,6 +140,95 @@ function OnboardingContent() {
       console.error("Failed to generate username:", error);
       setUsernameStatus("IDLE");
       setUsernameMessage("Failed to generate username");
+    }
+  };
+
+  const handleAdminToggle = async (checked: boolean) => {
+    if (!user?.email) {
+      toast.error("Sign in to request admin access.");
+      return;
+    }
+
+    setAdminMessage("");
+    setAdminCode("");
+    setAdminVerified(false);
+
+    if (!checked) {
+      setWantsAdmin(false);
+      setAdminStatus("idle");
+      return;
+    }
+
+    setWantsAdmin(true);
+    setAdminStatus("loading");
+    setAdminMessage("Checking eligibility...");
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "generate_admin_code",
+        {
+          body: {
+            email: user.email,
+            userId: user.uid,
+          },
+        },
+      );
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.status === "approved") {
+        setAdminStatus("approved");
+        setAdminMessage("Admin code sent to your email. Enter it below.");
+        toast.success("Admin code sent to your email.");
+      } else if (data?.status === "pending") {
+        setAdminStatus("pending");
+        setWantsAdmin(false);
+        setAdminMessage(
+          "Request submitted. You can continue as a student while we review.",
+        );
+        toast.info(
+          "Your request has been submitted for review. You can continue as a Student for now.",
+        );
+      } else {
+        const message = data?.message || "Invalid admin request.";
+        setAdminStatus("error");
+        setWantsAdmin(false);
+        setAdminMessage(message);
+        toast.error(message);
+      }
+    } catch (error) {
+      console.error("[Admin Toggle] Failed to request admin code", error);
+      setAdminStatus("error");
+      setWantsAdmin(false);
+      setAdminMessage("Unable to process admin request right now.");
+      toast.error("Could not process admin request. Please try again.");
+    }
+  };
+
+  const handleVerifyAdminCode = async () => {
+    if (!adminCode) {
+      toast.error("Enter the code sent to your email.");
+      return;
+    }
+
+    try {
+      setVerifyingAdmin(true);
+      const result = await verifyAdminCode(adminCode.trim());
+      if (result.success) {
+        setAdminVerified(true);
+        toast.success("Admin verified. Welcome aboard.");
+      } else {
+        setAdminVerified(false);
+        toast.error(result.message || "Invalid verification code.");
+      }
+    } catch (error) {
+      console.error("[Admin Verification] Failed", error);
+      setAdminVerified(false);
+      toast.error("Could not verify the admin code. Try again.");
+    } finally {
+      setVerifyingAdmin(false);
     }
   };
 
@@ -179,8 +292,16 @@ function OnboardingContent() {
 
   // Helper to check validity
   const isStepValid = () => {
-    if (step === 1)
-      return formData.username.length > 2 && usernameStatus === "AVAILABLE";
+    if (step === 1) {
+      const baseValid =
+        formData.username.length > 2 && usernameStatus === "AVAILABLE";
+      const requiresAdminOtp =
+        wantsAdmin && adminStatus === "approved" && !adminVerified;
+
+      if (adminStatus === "loading") return false;
+
+      return baseValid && !requiresAdminOtp;
+    }
     if (step === 2) return !!formData.batchID;
     if (step === 3 && curriculum) {
       // Must select a course for EVERY slot
@@ -205,7 +326,7 @@ function OnboardingContent() {
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col items-center relative font-sans">
       {/* BACKGROUND PATTERN */}
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(#00000026_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none opacity-50" />
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(#00000026_1px,transparent_1px)] bg-size-[20px_20px] pointer-events-none opacity-50" />
 
       {/* 1. HEADER (Top Bar) */}
       <header className="sticky top-0 w-full h-16 border-b-2 border-black bg-white/95 backdrop-blur z-50 px-6 md:px-12 flex items-center justify-between">
@@ -383,6 +504,95 @@ function OnboardingContent() {
                         }
                       />
                     </div>
+
+                    <div className="border-2 border-dashed border-black/20 bg-neutral-50 p-4 md:p-5 space-y-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="space-y-1">
+                          <p className="font-black uppercase text-sm flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4" /> Admin / Batch
+                            Representative
+                          </p>
+                          <p className="text-xs font-bold text-neutral-600">
+                            Toggle if you manage attendance for your batch.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Switch
+                            checked={wantsAdmin}
+                            onCheckedChange={handleAdminToggle}
+                            disabled={adminStatus === "loading"}
+                            aria-label="I am a Batch Representative / Admin"
+                          />
+                          <span className="text-xs font-black uppercase tracking-wide text-neutral-700">
+                            I am a Batch Representative / Admin
+                          </span>
+                        </div>
+                      </div>
+
+                      {adminStatus === "loading" && (
+                        <div className="flex items-center gap-2 text-sm font-bold text-neutral-600">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Checking eligibility...
+                        </div>
+                      )}
+
+                      {adminStatus === "pending" && (
+                        <div className="flex items-center gap-2 text-sm font-bold text-blue-800 bg-blue-50 border-2 border-blue-200 px-3 py-2">
+                          <AlertCircle className="w-4 h-4" />
+                          Your request has been submitted for review. Continue
+                          as a student for now.
+                        </div>
+                      )}
+
+                      {adminStatus === "approved" && (
+                        <div className="space-y-2 bg-yellow-50 border-2 border-yellow-300 p-3">
+                          <div className="flex items-center gap-2 font-black text-sm uppercase text-yellow-800">
+                            <ShieldCheck className="w-4 h-4" />
+                            Admin code sent to your email
+                          </div>
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                            <input
+                              className="w-full sm:w-48 border-2 border-black px-3 py-2 font-mono text-lg tracking-widest uppercase placeholder:text-neutral-300 focus:bg-white focus:shadow-[3px_3px_0_0_#000] outline-none"
+                              placeholder="000000"
+                              maxLength={6}
+                              value={adminCode}
+                              onChange={(e) => setAdminCode(e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleVerifyAdminCode}
+                              disabled={verifyingAdmin}
+                              className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black font-black uppercase text-xs tracking-wide shadow-[3px_3px_0_0_#000] disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              {verifyingAdmin ? (
+                                <>
+                                  Verifying
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                </>
+                              ) : (
+                                "Verify Code"
+                              )}
+                            </button>
+                          </div>
+                          {adminVerified ? (
+                            <p className="text-green-700 text-xs font-bold flex items-center gap-2">
+                              <Check className="w-4 h-4" /> Verified. You can
+                              proceed as admin.
+                            </p>
+                          ) : (
+                            <p className="text-xs font-bold text-neutral-700">
+                              Enter the 6-digit code to continue as admin.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {adminMessage && adminStatus !== "approved" && (
+                        <div className="text-xs font-bold text-neutral-600">
+                          {adminMessage}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -497,7 +707,9 @@ function OnboardingContent() {
                                       )}
                                     >
                                       {selectedCourse
-                                        ? selectedCourse.courseName
+                                        ? selectedCourse.courseID === "SKIPPED"
+                                          ? "Skipped"
+                                          : selectedCourse.courseName
                                         : "Select Course..."}
                                     </h4>
                                   </div>
@@ -505,12 +717,18 @@ function OnboardingContent() {
                                     className={cn(
                                       "w-8 h-8 flex items-center justify-center border-2 border-transparent rounded-full transition-colors",
                                       selectedCourse
-                                        ? "bg-black text-white border-black"
+                                        ? selectedCourse.courseID === "SKIPPED"
+                                          ? "bg-neutral-200 text-neutral-500 border-neutral-300"
+                                          : "bg-black text-white border-black"
                                         : "bg-neutral-200 text-neutral-400 group-hover:bg-white group-hover:border-black group-hover:text-black",
                                     )}
                                   >
                                     {selectedCourse ? (
-                                      <Check className="w-5 h-5" />
+                                      selectedCourse.courseID === "SKIPPED" ? (
+                                        <X className="w-5 h-5" />
+                                      ) : (
+                                        <Check className="w-5 h-5" />
+                                      )
                                     ) : (
                                       <Plus className="w-5 h-5" />
                                     )}
@@ -589,6 +807,25 @@ function OnboardingContent() {
               </Drawer.Description>
             </Drawer.Header>
             <div className="p-4 pb-12 space-y-2 max-h-[60vh] overflow-y-auto">
+              <button
+                onClick={() =>
+                  handleSelectElective(activeSlotCategory!, SKIPPED_COURSE)
+                }
+                className="w-full text-left p-4 border-2 border-dashed border-neutral-300 bg-neutral-50 hover:bg-neutral-100 hover:border-neutral-400 flex justify-between items-center group transition-colors mb-4"
+              >
+                <div>
+                  <h4 className="font-bold uppercase text-lg text-neutral-500 group-hover:text-neutral-700">
+                    Skip Selection
+                  </h4>
+                  <p className="font-mono text-xs text-neutral-400">
+                    Don&apos;t choose an elective for this slot
+                  </p>
+                </div>
+                <X className="w-5 h-5 text-neutral-300 group-hover:text-neutral-500" />
+              </button>
+
+              <div className="w-full h-px bg-neutral-200 my-4" />
+
               {activeSlotCategory &&
                 curriculum?.electiveSlots
                   .find((s) => s.category === activeSlotCategory)

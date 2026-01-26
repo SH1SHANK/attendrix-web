@@ -15,6 +15,7 @@ import {
   Shield,
   Scale,
   Rocket,
+  ShieldCheck,
 } from "lucide-react";
 
 // ============================================================================
@@ -72,10 +73,8 @@ export function UserMenu() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          group flex items-center gap-3 border-2 border-black bg-white pl-2 pr-3 py-1.5 h-10 md:h-12
-          shadow-[2px_2px_0px_0px_#000] cursor-pointer
-          transition-all duration-150
-          ${isOpen ? "translate-x-[2px] translate-y-[2px] shadow-none bg-yellow-50" : "hover:bg-yellow-50 hover:-translate-y-[1px] hover:-translate-x-[1px] hover:shadow-[3px_3px_0px_0px_#000]"}
+          flex items-center gap-2 px-3 py-2 rounded-none border-2 border-transparent hover:border-black hover:shadow-[2px_2px_0px_0px_#000] hover:-translate-y-px hover:-translate-x-px transition-all duration-200
+          ${isOpen ? "translate-x-[2px] translate-y-[2px] shadow-none bg-yellow-50" : "hover:bg-yellow-50 hover:-translate-y-px hover:-translate-x-px hover:shadow-[3px_3px_0px_0px_#000]"}
         `}
         aria-expanded={isOpen}
         aria-haspopup="true"
@@ -89,7 +88,7 @@ export function UserMenu() {
         </span>
 
         <ChevronDown
-          className={`w-4 h-4 text-black transition-transform duration-200 ${isOpen ? "rotate-180" : "group-hover:translate-y-[1px]"}`}
+          className={`w-4 h-4 text-black transition-transform duration-200 ${isOpen ? "rotate-180" : "group-hover:translate-y-px"}`}
         />
       </button>
 
@@ -111,7 +110,7 @@ export function UserMenu() {
             href="/app"
             onClick={() => setIsOpen(false)}
             className="
-              block w-full text-left px-4 py-3
+              w-full text-left px-4 py-3
               font-black uppercase text-sm tracking-wide
               bg-[#FFD02F] text-black
               border-b-2 border-black
@@ -143,6 +142,14 @@ export function UserMenu() {
             >
               <Settings className="w-4 h-4 text-neutral-500" />
               Settings
+            </Link>
+            <Link
+              href="/settings/request-admin"
+              onClick={() => setIsOpen(false)}
+              className="px-4 py-2 hover:bg-neutral-100 flex items-center gap-3 text-sm font-bold uppercase"
+            >
+              <ShieldCheck className="w-4 h-4 text-neutral-500" />
+              Request Admin Access
             </Link>
 
             {/* Resources Section */}

@@ -1,0 +1,100 @@
+---
+title: Logic Layer (Supabase)
+description: The PostgreSQL backend handling complex logic, attendance calculation, and gamification triggers.
+---
+
+# Hybrid Architecture
+
+Attendrix uses a **Hybrid Architecture**:
+
+- **Firebase**: User Identity & Document Store (NoSQL).
+- **Supabase**: Relational Data (Timetables) & Complex Logic (RPCs).
+
+<Mermaid chart={`
+sequenceDiagram
+    participant App
+    participant Firebase
+    participant Supabase
+    participant Gamification
+
+    App->>Firebase: 1. User Marks Attendance
+    Firebase->>Supabase: 2. Sync Attendance Record (Webhook/Action)
+    Supabase->>Supabase: 3. Trigger generate_user_challenges
+    Supabase->>Supabase: 4. Execute calculate_challenge_progress
+    Supabase-->>Gamification: 5. Award XP (Amplix)
+    Gamification-->>Firebase: 6. Update User Stats
+
+`} />
+
+# Remote Procedure Calls (RPCs)
+
+We use Postgres Functions (PL/pgSQL) to handle logic that is too complex for client-side processing or requires heavy relational queries.
+
+## 1. get_missed_classes
+
+Returns a list of classes that the user has marked as _missed_ or has not attended, based on the timetable minus the attendance records.
+
+<Snippet language="sql" filename="RPC Definition">
+  get_missed_classes( user_id UUID, course_ids TEXT[] ) RETURNS JSON
+</Snippet>
+
+**Output Format:**
+
+```json
+{
+  "missed_classes": [
+    {
+      "classID": "...",
+      "courseName": "Mathematics IV",
+      "classStartTime": "2026-01-20T09:00:00Z"
+    }
+  ],
+  "total_count": 5
+}
+```
+
+## 2. calculate_challenge_progress
+
+The core engine for the gamification system. Evaluates if a user has met the specific condition of a challenge using SQL aggregations.
+
+<Callout type="info" title="Performance">
+  This function runs natively in the database to avoid fetching thousands of
+  attendance records to the client for processing.
+</Callout>
+
+<PropertyTable
+  columns={[
+    { key: "param", header: "Parameter", width: "30%" },
+    { key: "type", header: "Type", width: "20%" },
+    { key: "description", header: "Description" },
+  ]}
+  data={[
+    { param: "p_user_id", type: "UUID", description: "Target user." },
+    {
+      param: "p_challenge_id",
+      type: "TEXT",
+      description: "Template ID (e.g., 'W-FDA-01').",
+    },
+    {
+      param: "p_course_ids",
+      type: "TEXT[]",
+      description: "Filter for course-specific challenges.",
+    },
+    {
+      param: "p_existing_progress",
+      type: "INT",
+      description: "Current progress to update incrementally.",
+    },
+  ]}
+/>
+
+### Supported Conditions
+
+- `attend_full_day`: Checked against timetable vs attendance count for a given day.
+- `attend_x_classes`: Simple count of attendance records in the window.
+- `early_checkin`: Checks timestamp difference between `classStartTime` and `checkInTime`.
+- `maintain_streak`: Recursive query for consecutive days.
+
+## 3. generate_user_challenges
+
+Runs a scheduled job (or trigger) to assign new weekly/monthly challenges to users based on the active semester calendar.

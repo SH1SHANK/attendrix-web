@@ -19,7 +19,7 @@ export default function AlphaBanner() {
       <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
         {/* Warning Message */}
         <div className="flex items-center gap-3 text-rose-900">
-          <div className="p-1.5 bg-rose-500 border border-black shadow-[2px_2px_0_#9f1239] flex-shrink-0">
+          <div className="p-1.5 bg-rose-500 border border-black shadow-[2px_2px_0_#9f1239] shrink-0">
             <AlertTriangle className="w-4 h-4 text-white" />
           </div>
           <div>

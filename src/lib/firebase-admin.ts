@@ -21,42 +21,70 @@ import { getAuth, Auth } from "firebase-admin/auth";
 // STRICT STARTUP VALIDATION
 // =============================================================================
 
+// =============================================================================
+// ROBUST SANITIZATION & INITIALIZATION
+// =============================================================================
+
+function sanitizeEnv(val: string | undefined): string | undefined {
+  if (!val) return undefined;
+  return val
+    .trim()
+    .replace(/^-n\s+/, "") // Remove 'echo -n' artifacts
+    .replace(/^"(.*)"$/, "$1") // Remove surrounding double quotes
+    .replace(/^'(.*)'$/, "$1"); // Remove surrounding single quotes
+}
+
 export function initAdmin(): App {
-  if (getApps().length > 0) {
-    return getApp();
+  // 1. Thread-safe Singleton: check existing apps first
+  const apps = getApps();
+  if (apps.length > 0) {
+    return apps[0];
   }
 
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  // 2. Prioritized & Sanitized Lookup
+  const projectId = sanitizeEnv(
+    process.env.FIREBASE_PROJECT_ID || process.env.FIREBASE_ADMIN_PROJECT_ID,
+  );
+  const clientEmail = sanitizeEnv(
+    process.env.FIREBASE_CLIENT_EMAIL ||
+      process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+  );
+  const rawPrivateKey = sanitizeEnv(
+    process.env.FIREBASE_PRIVATE_KEY || process.env.FIREBASE_ADMIN_PRIVATE_KEY,
+  );
 
-  if (!projectId || !clientEmail || !privateKey) {
-    const missingVars = [];
-    if (!projectId) missingVars.push("FIREBASE_PROJECT_ID");
-    if (!clientEmail) missingVars.push("FIREBASE_CLIENT_EMAIL");
-    if (!privateKey) missingVars.push("FIREBASE_PRIVATE_KEY");
-
+  if (!projectId || !clientEmail || !rawPrivateKey) {
+    const missing = [];
+    if (!projectId) missing.push("PROJECT_ID");
+    if (!clientEmail) missing.push("CLIENT_EMAIL");
+    if (!rawPrivateKey) missing.push("PRIVATE_KEY");
     throw new Error(
-      `[Firebase Admin] FATAL: Missing required environment variables: ${missingVars.join(", ")}`,
+      `[Firebase Admin] Missing credentials: ${missing.join(", ")}`,
     );
   }
 
-  // Sanitize private key: handle Vercel/System newlines and quotes
-  if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-    privateKey = privateKey.slice(1, -1);
-  }
-  privateKey = privateKey.replace(/\\n/g, "\n");
+  // 3. Precision Private Key Formatting
+  // Handle literal \n (typed as 2 chars) and real newlines
+  const formattedPrivateKey = rawPrivateKey.replace(/\\n/g, "\n");
 
-  console.log(`[Firebase Admin] Initializing for project: ${projectId}`);
+  console.log(`[Firebase Admin] Booting for ${projectId}`);
 
-  return initializeApp({
-    credential: cert({
+  try {
+    return initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        privateKey: formattedPrivateKey,
+      }),
       projectId,
-      clientEmail,
-      privateKey,
-    }),
-    projectId,
-  });
+    });
+  } catch (error: any) {
+    // 4. Recovery: if parallel init happened anyway, return existing
+    if (error.code === "app/duplicate-app") {
+      return getApp();
+    }
+    throw error;
+  }
 }
 
 // =============================================================================

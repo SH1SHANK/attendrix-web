@@ -1,0 +1,56 @@
+---
+title: Gamification Rules
+description: The "Amplix" system that rewards attendance consistency with Mage Ranks.
+---
+
+# The Amplix System
+
+**Amplix** is the experience point (XP) currency of Attendrix. Users earn Amplix by:
+
+1.  **Attending Classes**: Base reward per class.
+2.  **Completing Challenges**: Large bonuses for Weekly/Monthly goals.
+3.  **Streaks**: Multipliers for consecutive attendance.
+
+# Mage Ranks
+
+As users gain Amplix, they ascend through 12 unique Mage Ranks. This status is displayed on the Profile ID Card.
+
+<Callout type="tip" title="Design Note">
+  The system uses a non-linear progression curve. Early levels are fast to
+  encourage engagement, while higher levels require significant consistency
+  (Semesters of attendance).
+</Callout>
+
+## Level Table
+
+<PropertyTable
+  searchable={false}
+  columns={[
+    { key: "level", header: "Lvl", width: "10%" },
+    { key: "title", header: "Rank Title", width: "40%" },
+    { key: "min", header: "Min XP", width: "20%" },
+    { key: "stars", header: "Stars", width: "15%" },
+  ]}
+  data={[
+    { level: 1, title: "Novice Mage", min: 0, stars: "★" },
+    { level: 2, title: "Apprentice Mage", min: 201, stars: "★" },
+    { level: 3, title: "One-Star Mage", min: 501, stars: "★" },
+    { level: 4, title: "Two-Star Mage", min: 1001, stars: "★★" },
+    { level: 5, title: "Three-Star Mage", min: 2001, stars: "★★★" },
+    { level: 6, title: "Four-Star Mage", min: 3501, stars: "★★★★" },
+    { level: 7, title: "Five-Star Mage", min: 5501, stars: "★★★★★" },
+    { level: 8, title: "Arcane Mage", min: 8001, stars: "★★★★★★" },
+    { level: 9, title: "Lunar Mage", min: 10001, stars: "★★★★★★★" },
+    { level: 10, title: "Solar Mage", min: 13001, stars: "★★★★★★★★" },
+    { level: 11, title: "Starborn Mage", min: 16001, stars: "★★★★★★★★★" },
+    { level: 12, title: "Master Mage", min: 20001, stars: "★★★★★★★★★★" },
+  ]}
+/>
+
+# Anti-Cheat Measures
+
+To ensure fairness, the Logic Layer enforces strictly:
+
+- **Location Check**: GPS radius validation (if enabled).
+- **Time Window**: Attendance cannot be marked > 5 minutes before class starts.
+- **Device ID**: Prevents proxy attendance from the same device (optional feature).

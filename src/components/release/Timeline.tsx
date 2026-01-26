@@ -20,7 +20,8 @@ export function Timeline({ releases }: TimelineProps) {
       // Date format from github.ts is "MMM dd, yyyy"
       const releaseDate = parse(r.date, "MMM dd, yyyy", new Date());
       return differenceInMonths(now, releaseDate) < 6;
-    } catch (e) {
+    } catch {
+      // Date parse fails
       return true; // Keep if date parse fails
     }
   });
@@ -38,14 +39,18 @@ export function Timeline({ releases }: TimelineProps) {
 
   return (
     <div className="relative border-l-2 border-black/20 ml-4 md:ml-8 space-y-12 py-8">
-      {displayReleases.map((release, index) => (
-        <div key={release.releaseId} className="relative pl-8 md:pl-12">
-          {/* Timeline Dot */}
-          <div className="absolute left-[-9px] top-8 w-4 h-4 rounded-full bg-white border-4 border-black box-content z-10" />
+      {displayReleases.map(
+        (
+          release, // Removed unused index
+        ) => (
+          <div key={release.releaseId} className="relative pl-8 md:pl-12">
+            {/* Timeline Dot */}
+            <div className="absolute left-[-9px] top-8 w-4 h-4 rounded-full bg-white border-4 border-black box-content z-10" />
 
-          <ReleaseCard release={release} />
-        </div>
-      ))}
+            <ReleaseCard release={release} />
+          </div>
+        ),
+      )}
 
       {hasHidden && (
         <div className="relative pl-8 md:pl-12 pt-4">

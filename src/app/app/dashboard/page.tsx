@@ -1,25 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  BookOpen,
-  Clock,
-  Coffee,
-  FlaskConical,
-  GraduationCap,
-  MapPin,
-  Zap,
-} from "lucide-react";
+import { Clock, Coffee } from "lucide-react";
 
-import { RetroToggle } from "@/components/app/RetroToggle";
 import { RetroSkeleton } from "@/components/ui/RetroSkeleton";
-import {
-  useAttendance,
-  type AttendanceStatus,
-} from "@/hooks/queries/useAttendance";
+import { useAttendance } from "@/hooks/queries/useAttendance";
 import { useNextClass, type ParsedClass } from "@/hooks/queries/useNextClass";
 import { CountdownCard } from "@/components/dashboard/CountdownCard";
+import { NextUpCard } from "@/components/dashboard/NextUpCard";
+import { ClassCard } from "@/components/dashboard/ClassCard";
+import { CurrentClassCard } from "@/components/dashboard/CurrentClassCard";
+import { AttendanceCalculatorSheet } from "@/components/profile/AttendanceCalculatorSheet";
+import type { AttendanceStat } from "@/types/dashboard";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -37,42 +30,6 @@ const itemVariants = {
     transition: { duration: 0.4, ease: "easeOut" as const },
   },
 };
-
-const pulseVariants = {
-  pulse: {
-    borderColor: ["#FFD02F", "#FBBF24", "#F59E0B", "#FFD02F"],
-    boxShadow: [
-      "8px 8px 0px 0px #000",
-      "10px 10px 0px 0px #000",
-      "12px 12px 0px 0px #000",
-      "8px 8px 0px 0px #000",
-    ],
-    transition: {
-      duration: 1.2,
-      repeat: Infinity,
-      ease: "easeInOut" as const,
-    },
-  },
-};
-
-type NextUpCardProps = {
-  nextClass: ParsedClass | null;
-  minutesUntilNext: number | null;
-};
-
-function GamificationPill({ level, title }: { level: number; title: string }) {
-  return (
-    <div className="inline-flex items-center gap-3 rounded border-2 border-black bg-white px-4 py-2 text-left shadow-[4px_4px_0px_0px_#000]">
-      <span className="font-mono text-[10px] uppercase text-neutral-500">
-        Level
-      </span>
-      <span className="text-2xl font-black leading-none">{level}</span>
-      <span className="font-mono text-xs uppercase tracking-wide text-neutral-500">
-        {title}
-      </span>
-    </div>
-  );
-}
 
 function ChillModeCard() {
   return (
@@ -105,168 +62,22 @@ function ChillModeCard() {
   );
 }
 
-function NextUpCard({ nextClass, minutesUntilNext }: NextUpCardProps) {
-  // If no nextClass provided, render nothing (handled by parent)
-  if (!nextClass || minutesUntilNext === null) return null;
-
-  const hours = Math.floor(minutesUntilNext / 60);
-  const mins = minutesUntilNext % 60;
-  const countdownText = hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`;
-  const isUrgent = minutesUntilNext <= 15;
-  const isImminent = minutesUntilNext <= 5;
-
-  return (
-    <motion.div
-      className={`relative border-4 p-6 md:p-8 overflow-hidden shadow-[8px_8px_0px_0px_#000] ${
-        isImminent
-          ? "border-red-500 bg-red-50"
-          : isUrgent
-            ? "border-yellow-500 bg-yellow-50"
-            : "border-[#FFD02F] bg-white"
-      }`}
-      variants={pulseVariants}
-      animate={isUrgent ? "pulse" : undefined}
-    >
-      <div className="absolute top-0 right-0 h-16 w-16 bg-black" />
-      <div className="absolute top-2 right-2 h-3 w-3 bg-[#FFD02F]" />
-
-      <div className="relative z-10 space-y-6">
-        <div className="flex items-center gap-2">
-          <Zap
-            className={`w-5 h-5 ${isImminent ? "text-red-600" : "text-yellow-600"}`}
-          />
-          <span className="font-mono text-xs font-bold uppercase tracking-widest text-neutral-600">
-            Next Up
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-              Starts in
-            </p>
-            <motion.h2
-              key={countdownText}
-              className={`text-5xl font-black leading-none ${isImminent ? "text-red-600" : "text-black"}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              {countdownText}
-            </motion.h2>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex rounded-full bg-black px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
-                {nextClass.courseID}
-              </span>
-              {nextClass.type === "lab" && (
-                <span className="inline-flex rounded-full bg-purple-500 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
-                  Lab
-                </span>
-              )}
-            </div>
-            <h3 className="font-bold text-xl md:text-2xl">
-              {nextClass.courseName}
-            </h3>
-            <div className="flex flex-wrap gap-4 text-neutral-600">
-              <div className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                <span className="font-mono text-sm">
-                  {nextClass.classVenue || "TBA"}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                <span className="font-mono text-sm">
-                  {nextClass.startTime} - {nextClass.endTime}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function ClassCard({
-  classItem,
-  onToggle,
-  isPast,
-}: {
-  classItem: ParsedClass;
-  onToggle: () => void;
-  isPast: boolean;
-}) {
-  const TypeIcon =
-    classItem.type === "lab"
-      ? FlaskConical
-      : classItem.type === "tutorial"
-        ? GraduationCap
-        : BookOpen;
-
-  const toggleStatus: AttendanceStatus =
-    classItem.status === "present"
-      ? "present"
-      : classItem.status === "absent"
-        ? "absent"
-        : "pending";
-
-  return (
-    <motion.div
-      className={`flex items-center gap-4 overflow-hidden rounded border-2 border-black bg-white p-4 shadow-[4px_4px_0px_0px_#000] ${isPast ? "opacity-70" : ""}`}
-      variants={itemVariants}
-      layout
-    >
-      <div className="flex flex-col items-center min-w-[60px]">
-        <span className="font-mono text-lg font-bold">
-          {classItem.startTime}
-        </span>
-        <div className="my-1 h-px w-full bg-neutral-200" />
-        <span className="text-xs font-mono text-neutral-500">
-          {classItem.endTime}
-        </span>
-      </div>
-
-      <div className="border-l border-neutral-200" />
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <TypeIcon className="w-4 h-4 text-neutral-500" />
-          <span className="font-mono text-xs font-bold text-neutral-500">
-            {classItem.courseID}
-          </span>
-          {classItem.type !== "lecture" && (
-            <span className="rounded bg-purple-100 px-2 py-0.5 text-[10px] font-bold uppercase text-purple-700">
-              {classItem.type}
-            </span>
-          )}
-        </div>
-        <h4 className="font-bold text-base truncate">{classItem.courseName}</h4>
-        <div className="flex items-center gap-1 text-neutral-500 mt-1">
-          <MapPin className="w-3 h-3" />
-          <span className="font-mono text-xs">
-            {classItem.classVenue || "TBA"}
-          </span>
-        </div>
-      </div>
-
-      <RetroToggle
-        status={toggleStatus}
-        onCycle={onToggle}
-        disabled={classItem.status === "upcoming"}
-      />
-    </motion.div>
-  );
-}
-
 export default function DashboardPage() {
   const today = useMemo(() => new Date(), []);
   const { classes, isLoading, toggleAttendance, profile } =
     useAttendance(today);
   const { nextClass: globalNextClass } = useNextClass();
-  const currentTime = useMemo(() => new Date(), []);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update time every minute to check for updates
+  // Note: logic in sub-components handles countdowns, but we need state refresh for "Current Class" switch.
+  // Actually, useAttendance/useNextClass should drive this if they re-run, but for pure time-based checks:
+
+  // Use a simple effect to update "now" for filtering
+  useState(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  });
 
   const greeting = useMemo(() => {
     const hour = currentTime.getHours();
@@ -292,13 +103,31 @@ export default function DashboardPage() {
 
   const todaysClasses = parsedClasses;
 
+  // Determine Current Class (is Happening Now?)
+  // const currentClass = useMemo(() => {
+  //   const now = new Date();
+  //   return (
+  //     todaysClasses.find((c) => now >= c.startDate && now < c.endDate) || null
+  //   );
+  // }, [todaysClasses]); // Dependency on time is implicity via re-render loop if needed, but 'currentTime' state drives it.
+
+  // Actually we need to depend on currentTime to refresh this:
+  const activeClass = useMemo(() => {
+    return (
+      todaysClasses.find(
+        (c) => currentTime >= c.startDate && currentTime < c.endDate,
+      ) || null
+    );
+  }, [todaysClasses, currentTime]);
+
   const nextClass = useMemo(() => {
-    const now = new Date();
+    // const now = new Date(); // Unused variable removed
+    // Use currentTime state to be in sync
     const upcoming = todaysClasses
-      .filter((c) => c.startDate > now)
+      .filter((c) => c.startDate > currentTime)
       .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
     return upcoming[0] ?? null;
-  }, [todaysClasses]);
+  }, [todaysClasses, currentTime]);
 
   const minutesUntilNext = useMemo(() => {
     if (!nextClass) return null;
@@ -313,6 +142,38 @@ export default function DashboardPage() {
     return h * 60 + m;
   };
 
+  // Calculator State
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
+  const [selectedCourseData, setSelectedCourseData] = useState<{
+    courseID: string;
+    courseName: string;
+    attendedClasses: number;
+    totalClasses: number;
+  } | null>(null);
+
+  const handleOpenCalculator = (
+    classItem: ParsedClass,
+    stat?: AttendanceStat,
+  ) => {
+    if (!stat) {
+      // Fallback if no stat found (should rarely happen for enrolled courses)
+      setSelectedCourseData({
+        courseID: classItem.courseID,
+        courseName: classItem.courseName,
+        attendedClasses: 0,
+        totalClasses: 0,
+      });
+    } else {
+      setSelectedCourseData({
+        courseID: stat.courseID,
+        courseName: stat.courseName,
+        attendedClasses: stat.attendedClasses,
+        totalClasses: stat.totalClasses,
+      });
+    }
+    setCalculatorOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -323,11 +184,15 @@ export default function DashboardPage() {
     );
   }
 
-  const mageRank = profile?.mageRank;
+  // const mageRank = profile?.mageRank; // Unused variable removed
+  // Get attendance stats map for easier lookup
+  const attendanceStatsMap = new Map(
+    profile?.coursesEnrolled?.map((c) => [c.courseID, c]),
+  );
 
   return (
     <motion.div
-      className="space-y-8"
+      className="space-y-6 md:space-y-8" // Reduced vertical spacing
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -348,14 +213,12 @@ export default function DashboardPage() {
             })}
           </p>
         </div>
-        <GamificationPill
-          level={mageRank?.level ?? 1}
-          title={mageRank?.title ?? "Novice"}
-        />
       </motion.header>
 
       <motion.section variants={itemVariants}>
-        {nextClass ? (
+        {activeClass ? (
+          <CurrentClassCard currentClass={activeClass} />
+        ) : nextClass ? (
           <NextUpCard
             nextClass={nextClass}
             minutesUntilNext={minutesUntilNext}
@@ -368,23 +231,24 @@ export default function DashboardPage() {
       </motion.section>
 
       <motion.section variants={itemVariants}>
-        <div className="flex items-center gap-3 mb-5">
-          <Clock className="w-6 h-6" />
-          <h2 className="font-black uppercase text-xl">
+        <div className="flex items-center gap-3 mb-4">
+          <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
+          <h2 className="font-black uppercase text-lg sm:text-xl">
             Today&apos;s Schedule
           </h2>
-          <div className="flex-1 h-[3px] bg-black" />
-          <span className="font-mono text-sm text-neutral-500">
+          <div className="flex-1 h-[2px] sm:h-[3px] bg-black" />
+          <span className="font-mono text-xs sm:text-sm text-neutral-500">
             {todaysClasses.length} classes
           </span>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <AnimatePresence>
             {todaysClasses.length > 0 ? (
               todaysClasses.map((classItem) => {
                 const classEndMinutes = parseMinutes(classItem.endTime);
                 const isPast = classEndMinutes <= currentMinutes;
+                const stat = attendanceStatsMap.get(classItem.courseID);
 
                 return (
                   <ClassCard
@@ -392,6 +256,11 @@ export default function DashboardPage() {
                     classItem={classItem}
                     onToggle={() => toggleAttendance.mutate(classItem)}
                     isPast={isPast}
+                    attendanceStat={stat}
+                    onOpenCalculator={() =>
+                      handleOpenCalculator(classItem, stat)
+                    }
+                    attendanceGoal={80} // Default goal, could come from props later
                   />
                 );
               })
@@ -414,6 +283,13 @@ export default function DashboardPage() {
           </AnimatePresence>
         </div>
       </motion.section>
+
+      <AttendanceCalculatorSheet
+        open={calculatorOpen}
+        onOpenChange={setCalculatorOpen}
+        courseData={selectedCourseData}
+        targetGoal={80}
+      />
     </motion.div>
   );
 }

@@ -34,9 +34,7 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
     }
   };
 
-  const borderColor =
-    release.status === "stable" ? "border-green-500" : "border-yellow-500";
-  const bgAccent = release.status === "stable" ? "bg-green-50" : "bg-yellow-50";
+  // Unused variables borderColor and bgAccent removed
 
   return (
     <div

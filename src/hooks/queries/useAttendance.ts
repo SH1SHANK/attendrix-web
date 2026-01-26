@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -46,7 +47,10 @@ export const useAttendance = (date: Date) => {
   const dateKey = format(date, "d/M/yyyy");
   const batchID = profile?.batchID;
 
-  const queryKey = ["attendance", dateKey, user?.uid];
+  const queryKey = useMemo(
+    () => ["attendance", dateKey, user?.uid],
+    [dateKey, user?.uid],
+  );
 
   // FETCH
   const {
@@ -106,6 +110,38 @@ export const useAttendance = (date: Date) => {
     enabled: !!user?.uid && !!batchID && !profileLoading && batchID !== "...",
   });
 
+  // Subscribe to realtime updates
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    console.log("Setting up realtime subscription for user:", user.uid);
+
+    const channel = supabase
+      .channel(`attendance-${user.uid}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "attendanceRecords",
+          filter: `userID=eq.${user.uid}`,
+        },
+        (payload) => {
+          console.log("Realtime event received:", payload);
+          // Invalidate query to refetch fresh data
+          queryClient.invalidateQueries({ queryKey });
+        },
+      )
+      .subscribe((status) => {
+        console.log("Subscription status:", status);
+      });
+
+    return () => {
+      console.log("Cleaning up realtime subscription");
+      supabase.removeChannel(channel);
+    };
+  }, [user?.uid, queryClient, queryKey]);
+
   // MUTATION via RPC + Firestore sync
   const toggleAttendance = useMutation({
     mutationFn: async (classItem: ClassWithAttendance) => {
@@ -113,17 +149,26 @@ export const useAttendance = (date: Date) => {
 
       const targetStatus = classItem.attendance ? "ABSENT" : "PRESENT";
 
-      const enrolledCourseIDs: string[] = Array.isArray(
-        (profile as unknown as { coursesEnrolled?: EnrolledCourse[] })
-          ?.coursesEnrolled,
-      )
-        ? (
-            (profile as unknown as { coursesEnrolled?: EnrolledCourse[] })
-              .coursesEnrolled || []
-          )
-            .map((c) => c.courseID)
-            .filter((id): id is string => Boolean(id))
-        : [classItem.courseID];
+      let enrolledCourseIDs: string[] = [];
+      const profileCourses = (
+        profile as unknown as { coursesEnrolled?: EnrolledCourse[] }
+      )?.coursesEnrolled;
+
+      if (Array.isArray(profileCourses) && profileCourses.length > 0) {
+        enrolledCourseIDs = profileCourses
+          .map((c) => c.courseID)
+          .filter((id): id is string => Boolean(id));
+      }
+
+      // Ensure the current class's courseID is included in the list
+      // This is critical because mark_class_absent strictly enforces enrollment,
+      // but class_check_in might allow it (or user data might be out of sync).
+      if (
+        classItem.courseID &&
+        !enrolledCourseIDs.includes(classItem.courseID)
+      ) {
+        enrolledCourseIDs.push(classItem.courseID);
+      }
 
       const paramsPresent = {
         p_user_id: user.uid,
@@ -146,6 +191,21 @@ export const useAttendance = (date: Date) => {
       if (error) throw error;
       if (!data) throw new Error("Empty RPC response");
 
+      // Check for application-level error (RPC returns 200 but body has error status)
+      // Check for application-level error (RPC returns 200 but body has error status)
+      // Use unknown cast first
+      const dataObj = data as unknown as Record<string, unknown>;
+      if (
+        dataObj &&
+        typeof dataObj === "object" &&
+        "status" in dataObj &&
+        dataObj.status === "error"
+      ) {
+        throw new Error(
+          (dataObj.message as string) || "RPC returned error status",
+        );
+      }
+
       const firebaseUser = auth.currentUser;
       if (!firebaseUser?.uid) {
         throw new Error("Firebase auth user not found for Firestore sync");
@@ -156,9 +216,33 @@ export const useAttendance = (date: Date) => {
       // --- CHALLENGE EVALUATION ---
       const invokeChallengeEvaluation = async () => {
         try {
+          // Fetch user's current progress IDs first
+          const { data: progressData, error: progressFetchError } =
+            await supabase
+              .from("amplixChallengeProgress")
+              .select("progressID")
+              .eq("userID", user.uid);
+
+          if (progressFetchError) {
+            console.error(
+              "Failed to fetch challenge progress:",
+              progressFetchError,
+            );
+            return;
+          }
+
+          const progressIds =
+            progressData?.map((p) => p.progressID).filter(Boolean) || [];
+
+          if (progressIds.length === 0) {
+            console.log("No active challenges found for evaluation");
+            return;
+          }
+
           const { data: challengeData, error: challengeError } =
             await supabase.rpc("evaluate_user_challenges", {
               p_user_id: user.uid,
+              p_progress_ids: progressIds,
             });
 
           if (challengeError) {
@@ -175,6 +259,12 @@ export const useAttendance = (date: Date) => {
 
       if (targetStatus === "PRESENT") {
         const resp = data as RpcCheckInResponse;
+        console.log("Check-in RPC response:", resp);
+        console.log("Updating Firestore with:", {
+          amplix: resp.amplix_gained || 0,
+          courseID: classItem.courseID,
+        });
+
         await updateDoc(userRef, {
           amplix: increment(resp.amplix_gained || 0),
           [`enrolledClasses.${classItem.courseID}.attendedClasses`]:
@@ -187,6 +277,12 @@ export const useAttendance = (date: Date) => {
         rpcResult = { action: "present", rpc: resp };
       } else {
         const resp = data as RpcMarkAbsentResponse;
+        console.log("Mark-absent RPC response:", resp);
+        console.log("Updating Firestore with:", {
+          amplix: -(resp.amplix_lost || 0),
+          courseID: classItem.courseID,
+        });
+
         const lost = resp.amplix_lost || 0;
         await updateDoc(userRef, {
           amplix: increment(-lost),
@@ -234,8 +330,11 @@ export const useAttendance = (date: Date) => {
 
       return { previousClasses };
     },
-    onError: (_err, _vars, context) => {
-      toast.error("Failed to update attendance");
+    onError: (err, _vars, context) => {
+      console.error("Toggle attendance error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update attendance",
+      );
       if (context?.previousClasses) {
         queryClient.setQueryData(queryKey, context.previousClasses);
       }

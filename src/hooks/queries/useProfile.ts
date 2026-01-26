@@ -9,6 +9,9 @@ import { AttendanceStat } from "@/types/dashboard";
 export interface UserProfile {
   name: string;
   username: string;
+  display_name: string | null;
+  email: string | null;
+  photo_url: string | null;
   avatarInitials: string;
   batchID: string;
   batchLabel: string;

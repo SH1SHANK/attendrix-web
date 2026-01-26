@@ -1,7 +1,7 @@
 import React from "react";
-import { cn } from "@/lib/utils";
+
 import { Progress } from "@/components/ui/Progress";
-import { calculateMageRank } from "@/lib/user-mapper";
+import { calculateMageRank, MAGE_LEVELS } from "@/lib/gamification";
 import { Sparkles, Trophy } from "lucide-react";
 
 interface LevelProgressProps {
@@ -9,8 +9,7 @@ interface LevelProgressProps {
 }
 
 export function LevelProgress({ currentAmplix }: LevelProgressProps) {
-  const { level, title, xpCurrent, xpRequired, stars } =
-    calculateMageRank(currentAmplix);
+  const { level, title } = calculateMageRank(currentAmplix);
 
   // Calculate percentage to next level
   // Note: calculateMageRank returns xpCurrent as total XP.
@@ -33,20 +32,7 @@ export function LevelProgress({ currentAmplix }: LevelProgressProps) {
   // Or I can copy the levels array here. It's safe to duplicate for UI or move to shared constant.
   // Let's copy strictly for now to avoid breaking mapper.
 
-  const levels = [
-    { level: 1, title: "Novice Mage", min: 0, stars: 1 },
-    { level: 2, title: "Apprentice Mage", min: 201, stars: 1 },
-    { level: 3, title: "One-Star Mage", min: 501, stars: 1 },
-    { level: 4, title: "Two-Star Mage", min: 1001, stars: 2 },
-    { level: 5, title: "Three-Star Mage", min: 2001, stars: 3 },
-    { level: 6, title: "Four-Star Mage", min: 3501, stars: 4 },
-    { level: 7, title: "Five-Star Mage", min: 5501, stars: 5 },
-    { level: 8, title: "Arcane Mage", min: 8001, stars: 6 },
-    { level: 9, title: "Lunar Mage", min: 10001, stars: 7 },
-    { level: 10, title: "Solar Mage", min: 13001, stars: 8 },
-    { level: 11, title: "Starborn Mage", min: 16001, stars: 9 },
-    { level: 12, title: "Master Mage", min: 20001, stars: 10 },
-  ];
+  const levels = MAGE_LEVELS;
 
   const currentLevelObj = levels.find((l) => l.level === level) || levels[0];
   const nextLevelIndex = levels.indexOf(currentLevelObj) + 1;
@@ -64,48 +50,49 @@ export function LevelProgress({ currentAmplix }: LevelProgressProps) {
   );
 
   return (
-    <div className="w-full bg-white rounded-xl border-2 border-neutral-900 shadow-[4px_4px_0px_0px_#171717] p-4 flex flex-col gap-3">
+    <div className="w-full bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-orange-100 border-2 border-orange-200">
-            <Trophy size={20} className="text-orange-600" />
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 flex items-center justify-center bg-orange-200 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
+            <Trophy size={24} className="text-black" />
           </div>
           <div>
-            <h3 className="font-bold text-lg leading-tight text-neutral-900">
+            <h3 className="font-black text-2xl leading-tight text-black uppercase tracking-tight">
               {title}
             </h3>
-            <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+            <p className="text-sm font-bold text-neutral-600 uppercase tracking-widest border-b-2 border-black inline-block">
               Level {level}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 bg-neutral-100 px-2 py-1 rounded-md border border-neutral-200">
-          <Sparkles size={12} className="text-yellow-600 fill-yellow-600" />
-          <span className="text-xs font-bold text-neutral-700">
+        <div className="flex items-center gap-2 bg-yellow-300 px-3 py-1 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
+          <Sparkles size={16} className="text-black fill-white" />
+          <span className="text-sm font-black text-black mono">
             {currentAmplix} XP
           </span>
         </div>
       </div>
 
       {/* Bar */}
-      <div className="space-y-1">
-        <div className="flex justify-between text-xs font-bold text-neutral-500">
+      <div className="space-y-2">
+        <div className="flex justify-between text-xs font-bold font-mono text-neutral-500">
           <span>{levelMin} XP</span>
           <span>{levelMax} XP</span>
         </div>
         <Progress
           value={progressPercent}
-          className="h-4 border-2 border-neutral-900 bg-neutral-100"
+          className="h-8 border-4 border-black bg-white rounded-none shadow-[2px_2px_0px_0px_#000]"
+          indicatorClassName="bg-orange-500 bg-[linear-gradient(45deg,transparent_25%,rgba(0,0,0,0.2)_25%,rgba(0,0,0,0.2)_50%,transparent_50%,transparent_75%,rgba(0,0,0,0.2)_75%,rgba(0,0,0,0.2))] bg-[length:20px_20px] border-r-4 border-black"
         />
       </div>
 
-      <div className="text-center text-xs font-medium text-neutral-400">
+      <div className="text-right text-xs font-bold font-mono text-neutral-600">
         {nextLevelObj ? (
-          <span>{xpNeededForNext - xpIntoLevel} XP to next rank</span>
+          <span>{xpNeededForNext - xpIntoLevel} XP TO NEXT RANK!</span>
         ) : (
-          <span>Max Level Reached!</span>
+          <span>MAX LEVEL REACHED!</span>
         )}
       </div>
     </div>
