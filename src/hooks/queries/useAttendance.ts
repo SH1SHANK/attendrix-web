@@ -192,8 +192,6 @@ export const useAttendance = (date: Date) => {
       if (!data) throw new Error("Empty RPC response");
 
       // Check for application-level error (RPC returns 200 but body has error status)
-      // Check for application-level error (RPC returns 200 but body has error status)
-      // Use unknown cast first
       const dataObj = data as unknown as Record<string, unknown>;
       if (
         dataObj &&

@@ -1,125 +1,213 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  getMonthAttendance,
-  MonthData,
-  CalendarClass,
-} from "@/app/actions/calendar";
 import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
-
-// Reuse generic mutation logic from useAttendance or keep it specific?
-// Let's implement specific mutation here to handle the CalendarClass type structure mismatch if any.
-// Actually, `CalendarClass` structure is surprisingly similar to `useAttendance`'s output.
 
 const supabase = createClient();
 
-export const useCalendar = (currentMonth: Date) => {
-  const queryClient = useQueryClient();
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
+export interface CalendarClass {
+  id: string;
+  courseID: string;
+  courseCode: string;
+  courseName: string;
+  venue: string;
+  startTime: string;
+  endTime: string;
+  date: Date;
+  type: "lecture" | "lab" | "tutorial";
+  status: "scheduled" | "cancelled" | "completed";
+  attended: boolean;
+}
 
-  const queryKey = ["calendar", year, month];
+export interface MonthData {
+  year: number;
+  month: number;
+  classes: CalendarClass[];
+}
+
+interface RpcCalendarRecord {
+  class_id: string;
+  course_id: string;
+  course_name: string;
+  class_venue: string;
+  class_start_time: string;
+  class_end_time: string;
+  course_type: {
+    isLab: boolean;
+    courseType: string;
+    electiveCategory?: string;
+  };
+  class_status: {
+    status: string;
+  };
+  attended: boolean;
+}
+
+// Extract course code from courseID
+const extractCourseCode = (courseID: string): string => {
+  const match = courseID.match(/^([A-Z]{2}\d{4})/);
+  return match?.[1] ?? courseID;
+};
+
+// Determine class type
+const getClassType = (
+  courseType: RpcCalendarRecord["course_type"],
+): "lecture" | "lab" | "tutorial" => {
+  if (courseType?.isLab) return "lab";
+  return "lecture";
+};
+
+// Get class status
+const getClassStatus = (
+  classStatus: RpcCalendarRecord["class_status"],
+): "scheduled" | "cancelled" | "completed" => {
+  const status = classStatus?.status?.toLowerCase();
+  if (status === "cancelled") return "cancelled";
+  if (status === "completed") return "completed";
+  return "scheduled";
+};
+
+export const useCalendar = (currentMonth: Date) => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth() + 1; // JS months are 0-indexed, SQL expects 1-12
+
+  const queryKey = ["calendar", user?.uid, year, month];
 
   const {
-    data: rawData,
+    data: monthData,
     isLoading,
     error,
-  } = useQuery({
+  } = useQuery<MonthData>({
     queryKey,
     queryFn: async () => {
-      const result = await getMonthAttendance(year, month);
-      if (!result.success || !result.data) {
-        throw new Error(result.error || "Failed to fetch calendar data");
+      if (!user?.uid) throw new Error("User not authenticated");
+
+      const params = new URLSearchParams({
+        year: year.toString(),
+        month: month.toString(),
+      });
+
+      const res = await fetch(`/api/calendar?${params.toString()}`);
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch calendar data");
       }
-      return result.data;
+
+      const data = await res.json();
+
+      const classes: CalendarClass[] = (
+        (data as RpcCalendarRecord[]) || []
+      ).map((record) => {
+        const startDate = new Date(record.class_start_time);
+        const endDate = new Date(record.class_end_time);
+
+        return {
+          id: record.class_id,
+          courseID: record.course_id,
+          courseCode: extractCourseCode(record.course_id),
+          courseName: record.course_name,
+          venue: record.class_venue,
+          startTime: startDate.toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
+          endTime: endDate.toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
+          date: startDate,
+          type: getClassType(record.course_type),
+          status: getClassStatus(record.class_status),
+          attended: record.attended,
+        };
+      });
+
+      return {
+        year,
+        month: month - 1, // Convert back to JS month (0-indexed)
+        classes,
+      };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!user?.uid,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
-
-  // We need to replicate the 'processedData' logic from useCalendarData here or in the component.
-  // It's cleaner to return rawData and let component or a wrapper hook handle the view logic (Days Grid construction).
-  // But to be a drop-in replacement, we might want to return { days, history }.
-  // However, sticking to "Core Data Hooks" usually means returning the data, and UI logic stays in UI hooks.
-  // The existing `useCalendarData` was a "ViewModel" hook.
-
-  // Let's keep `useCalendarData` as the ViewModel hook but make it use `useCalendar` internally!
 
   const toggleAttendance = useMutation({
     mutationFn: async (classItem: CalendarClass) => {
-      // Need User ID. We can get it from auth context or just trust Supabase client to know (but we need it for INSERT)
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not logged in");
+      if (!user?.uid) throw new Error("User not authenticated");
 
-      const isPresent = classItem.attended;
+      const { data, error } = await supabase.rpc("toggle_attendance", {
+        p_user_id: user.uid,
+        p_class_id: classItem.id,
+        p_course_id: classItem.courseID,
+        p_class_time: classItem.date.toISOString(),
+      });
 
-      if (isPresent) {
-        // DELETE
-        const { error } = await supabase
-          .from("attendanceRecords")
-          .delete()
-          .eq("userID", user.id)
-          .eq("classID", classItem.id);
+      if (error) throw error;
 
-        if (error) throw error;
-        return { action: "deleted", classID: classItem.id };
-      } else {
-        // INSERT
-        const newRecord = {
-          classID: classItem.id,
-          userID: user.id,
-          courseID: classItem.courseID,
-          classTime: classItem.date, // ISO string
-          checkinTime: new Date().toISOString(),
-          rowID: uuidv4(),
-        };
-
-        const { error } = await supabase
-          .from("attendanceRecords")
-          .insert(newRecord);
-        if (error) throw error;
-        return { action: "inserted", newRecord };
-      }
+      const result = data?.[0];
+      return {
+        action: result?.action as "inserted" | "deleted",
+        attended: result?.attended as boolean,
+      };
     },
-    onMutate: async (newItem) => {
+    onMutate: async (classItem) => {
+      // Cancel outgoing queries
       await queryClient.cancelQueries({ queryKey });
+
+      // Snapshot previous value
       const previous = queryClient.getQueryData<MonthData>(queryKey);
 
+      // Optimistically update
       queryClient.setQueryData<MonthData>(queryKey, (old) => {
         if (!old) return old;
         return {
           ...old,
-          classes: old.classes.map((c) => {
-            if (c.id === newItem.id) {
-              return { ...c, attended: !c.attended };
-            }
-            return c;
-          }),
+          classes: old.classes.map((c) =>
+            c.id === classItem.id ? { ...c, attended: !c.attended } : c,
+          ),
         };
       });
 
       return { previous };
     },
-    onError: (err, newItem, context) => {
+    onError: (error, classItem, context) => {
+      console.error("Toggle attendance error:", error);
       toast.error("Failed to update attendance");
+
+      // Rollback to previous state
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
       }
     },
+    onSuccess: (result) => {
+      const message =
+        result.action === "inserted"
+          ? "Attendance marked"
+          : "Attendance removed";
+      toast.success(message);
+    },
     onSettled: () => {
+      // Invalidate related queries
       queryClient.invalidateQueries({ queryKey });
-      // Also invalidate 'attendance' (daily) and 'subject-ledger'
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["history"] });
       queryClient.invalidateQueries({ queryKey: ["subject-ledger"] });
     },
   });
 
   return {
-    rawData,
+    monthData,
     isLoading,
     error,
-    toggleAttendance,
+    toggleAttendance: toggleAttendance.mutate,
+    isTogglingAttendance: toggleAttendance.isPending,
   };
 };

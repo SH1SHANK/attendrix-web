@@ -1,23 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
-import { createClient } from "@/utils/supabase/client";
-import {
-  TimetableRecordSchema,
-  AttendanceRecordSchema,
-  type TimetableRecord,
-} from "@/schemas/db";
-
-const supabase = createClient();
 
 export type HistoryRange = "7d" | "14d" | "30d" | "all";
 
 export interface ClassRecord {
-  id: string; // classID
+  id: string;
   courseID: string;
   courseCode: string;
   courseName: string;
   venue: string;
-  startTime: string; // HH:yy
+  startTime: string;
   endTime: string;
   type: "lecture" | "lab" | "tutorial";
   attended: boolean;
@@ -29,6 +21,55 @@ export interface GroupedHistory {
   label: string;
   classes: ClassRecord[];
 }
+
+interface RpcHistoryRecord {
+  class_id: string;
+  course_id: string;
+  course_name: string;
+  class_venue: string;
+  class_start_time: string;
+  class_end_time: string;
+  course_type: {
+    isLab: boolean;
+    courseType: string;
+    electiveCategory?: string;
+  };
+  attended: boolean;
+}
+
+// Extract course code from courseID (e.g., "ME2311EPCD1" -> "ME2311")
+const extractCourseCode = (courseID: string): string => {
+  const match = courseID.match(/^([A-Z]{2}\d{4})/);
+  return match?.[1] ?? courseID;
+};
+
+// Determine class type from course metadata
+const getClassType = (
+  courseType: RpcHistoryRecord["course_type"],
+): "lecture" | "lab" | "tutorial" => {
+  if (courseType?.isLab) return "lab";
+  // You can extend this logic based on your schema
+  return "lecture";
+};
+
+// Format date label (e.g., "Today", "Yesterday", or "Mon, Jan 20")
+const formatDateLabel = (date: Date): string => {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const isToday = date.toDateString() === today.toDateString();
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  if (isToday) return "Today";
+  if (isYesterday) return "Yesterday";
+
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+};
 
 export const useHistory = (range: HistoryRange) => {
   const { user } = useAuth();
@@ -43,105 +84,77 @@ export const useHistory = (range: HistoryRange) => {
     queryFn: async () => {
       if (!user?.uid) return [];
 
-      // 1. Determine Date Range
-      const endDate = new Date();
-      let startDate: Date | null = null;
-
+      // Build query string
+      const params = new URLSearchParams();
       if (range !== "all") {
-        const days = parseInt(range);
-        startDate = new Date();
-        startDate.setDate(endDate.getDate() - days);
-        startDate.setHours(0, 0, 0, 0);
+        params.append("range", range);
       }
 
-      // 2. Fetch Enrolled Courses (Need IDs to fetch timetable)
-      const { data: userCourses } = await supabase
-        .from("userCourseRecords")
-        .select("enrolledCourses")
-        .eq("userID", user.uid)
-        .limit(1)
-        .maybeSingle();
-
-      const courseIDs = (userCourses?.enrolledCourses || [])
-        .map((c: { courseID: string }) => c.courseID)
-        .filter(Boolean);
-
-      if (courseIDs.length === 0) return [];
-
-      // 3. Fetch Timetable Records
-      let query = supabase
-        .from("timetableRecords")
-        .select("*")
-        .in("courseID", courseIDs)
-        .lte("classStartTime", endDate.toISOString());
-
-      if (startDate) {
-        query = query.gte("classStartTime", startDate.toISOString());
+      const res = await fetch(`/api/history?${params.toString()}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch history");
       }
 
-      // Order by latest first
-      query = query.order("classStartTime", { ascending: false });
+      const data = await res.json();
 
-      const { data: timetableData, error: timetableError } = await query;
-      if (timetableError) throw timetableError;
+      if (!data || data.length === 0) return [];
 
-      const timetable: TimetableRecord[] = (timetableData || []).map((t) =>
-        TimetableRecordSchema.parse(t),
-      );
-      const classIDs = timetable.map((t) => t.classID);
-
-      if (classIDs.length === 0) return [];
-
-      // 4. Fetch Attendance Records
-      const { data: attendanceData, error: attendanceError } = await supabase
-        .from("attendanceRecords")
-        .select("*")
-        .eq("userID", user.uid)
-        .in("classID", classIDs);
-
-      if (attendanceError) throw attendanceError;
-
-      const attendanceMap = new Set<string>();
-      (attendanceData || []).forEach((a) => {
-        const parsed = AttendanceRecordSchema.parse(a);
-        attendanceMap.add(parsed.classID);
-      });
-
-      // 5. Group by Date
+      // Group by date
       const groups = new Map<string, ClassRecord[]>();
 
-      timetable.forEach((t) => {
-        const date = new Date(t.classStartTime);
-        const dateKey = date.toDateString(); // "Mon Jan 01 2026"
+      (data as RpcHistoryRecord[]).forEach((record) => {
+        const startDate = new Date(record.class_start_time);
+        const endDate = new Date(record.class_end_time);
+        const dateKey = startDate.toDateString();
 
-        const record: ClassRecord = {
-          id: t.classID,
-          courseID: t.courseID,
-          courseCode: t.courseName.split(" ")[0] || t.courseID,
-          courseName: t.courseName,
-          venue: t.classVenue || "TBA",
-          startTime: date.toTimeString().slice(0, 5),
-          endTime: new Date(t.classEndTime).toTimeString().slice(0, 5),
-          type: (t.courseType as "lecture" | "lab" | "tutorial") || "lecture",
-          attended: attendanceMap.has(t.classID),
-          date: date,
+        const classRecord: ClassRecord = {
+          id: record.class_id,
+          courseID: record.course_id,
+          courseCode: extractCourseCode(record.course_id),
+          courseName: record.course_name,
+          venue: record.class_venue,
+          startTime: startDate.toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
+          endTime: endDate.toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
+          type: getClassType(record.course_type),
+          attended: record.attended,
+          date: startDate,
         };
 
         if (!groups.has(dateKey)) {
           groups.set(dateKey, []);
         }
-        groups.get(dateKey)?.push(record);
+        groups.get(dateKey)!.push(classRecord);
       });
 
-      // Convert to array
-      return Array.from(groups.entries()).map(([dateStr, classes]) => ({
-        date: new Date(dateStr),
-        label: dateStr, // Format better in component if needed
-        classes,
-      }));
+      // Convert to sorted array (most recent first)
+      return Array.from(groups.entries())
+        .sort(([dateStrA], [dateStrB]) => {
+          return new Date(dateStrB).getTime() - new Date(dateStrA).getTime();
+        })
+        .map(([dateStr, classes]) => {
+          const date = new Date(dateStr);
+          return {
+            date,
+            label: formatDateLabel(date),
+            classes: classes.sort((a, b) => {
+              // Sort classes within a day by start time
+              return a.startTime.localeCompare(b.startTime);
+            }),
+          };
+        });
     },
     enabled: !!user?.uid,
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   return {

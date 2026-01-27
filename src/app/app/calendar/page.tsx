@@ -23,7 +23,7 @@ import {
   isSameDay,
   isAfter,
 } from "date-fns";
-import { type CalendarClass } from "@/app/actions/calendar";
+import { type CalendarClass } from "@/hooks/queries/useCalendar";
 import { useCalendar } from "@/hooks/queries/useCalendar";
 import {
   useHistory,
@@ -114,8 +114,7 @@ function CalendarGrid({
 
         {/* Day cells */}
         {days.map((day, index) => {
-          const dateKey = format(day.date, "yyyy-MM-dd");
-          const isStreakDay = streakDates.has(dateKey);
+          const isStreakDay = streakDates.has(format(day.date, "yyyy-MM-dd"));
           const isToday = isSameDay(day.date, today);
           const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6;
 
@@ -358,7 +357,7 @@ export default function CalendarPage() {
 
   // Hooks
   const {
-    rawData: calendarData,
+    monthData: calendarData,
     isLoading: calendarLoading,
     toggleAttendance,
   } = useCalendar(currentMonth);
@@ -388,7 +387,7 @@ export default function CalendarPage() {
     return daysInMonth.map((date) => {
       const dateKey = format(date, "yyyy-MM-dd");
       const dayClasses = calendarData.classes.filter((c) =>
-        c.date.startsWith(dateKey),
+        isSameDay(c.date, date),
       );
 
       let status: DayStatus = "no-classes";
@@ -428,7 +427,7 @@ export default function CalendarPage() {
   const handleToggleHistory = (c: ClassRecord) => {
     // Map ClassRecord to CalendarClass structure for mutation if needed
     // toggleAttendance takes CalendarClass
-    toggleAttendance.mutate({
+    toggleAttendance({
       id: c.id,
       courseID: c.courseID,
       courseCode: c.courseCode,
@@ -438,7 +437,8 @@ export default function CalendarPage() {
       venue: c.venue,
       attended: c.attended,
       type: c.type,
-      date: c.date.toISOString(),
+      date: c.date,
+      status: "completed", // Class history implies completed or past
     });
   };
 

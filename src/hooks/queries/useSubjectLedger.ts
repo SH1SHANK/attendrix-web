@@ -1,8 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-
-const supabase = createClient();
 
 export type LedgerStatus = "safe" | "condonation" | "critical";
 
@@ -14,93 +11,110 @@ export interface SubjectLedgerItem {
   attendedClasses: number;
   percentage: number;
   status: LedgerStatus;
-  safeSkip: number; // How many more can be skipped
-  required: number; // How many need to be attended
+  safeSkip: number;
+  required: number;
+  // Optional enhanced fields
+  departmentId?: string;
+  courseFaculty?: string;
+  isElective?: boolean;
+  courseType?: Record<string, unknown>;
 }
 
-// RPC Response Type
-interface RPCStat {
+// RPC Response matches database output exactly - no transformation needed
+interface RpcLedgerRecord {
   course_id: string;
   course_name: string;
-  attended_classes: number;
+  credits: number;
   total_classes: number;
+  attended_classes: number;
   percentage: number;
+  status: LedgerStatus;
+  safe_skip: number;
+  required: number;
+  // Enhanced fields
+  department_id?: string;
+  course_faculty?: string;
+  is_elective?: boolean;
+  course_type?: Record<string, unknown>;
 }
 
-export const useSubjectLedger = () => {
+export type LedgerMode = "basic" | "enhanced";
+
+export const useSubjectLedger = (mode: LedgerMode = "basic") => {
   const { user } = useAuth();
-  const queryKey = ["subject-ledger", user?.uid];
+  const queryKey = ["subject-ledger", user?.uid, mode];
 
   const {
-    data: ledger,
+    data: ledger = [],
     isLoading,
     error,
+    refetch,
   } = useQuery<SubjectLedgerItem[]>({
     queryKey,
-    queryFn: async (): Promise<SubjectLedgerItem[]> => {
+    queryFn: async () => {
       if (!user?.uid) return [];
 
-      // Call the same RPC used by the Profile page actions
-      const { data, error } = await supabase.rpc(
-        "get_student_attendance_stats",
-        {
-          p_user_id: user.uid,
-        },
-      );
+      const params = new URLSearchParams();
+      if (mode) params.append("mode", mode);
 
-      if (error) {
-        console.error("Supabase RPC Error (Ledger):", error);
-        throw error;
+      const res = await fetch(`/api/ledger?${params.toString()}`);
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Subject Ledger API Error:", errorData);
+        throw new Error(errorData.error || "Failed to fetch ledger");
       }
 
-      // Transform RPC data to SubjectLedgerItem
-      const rpcData = (data as unknown as RPCStat[]) || [];
+      const data = await res.json();
 
-      // Filter out diagnostic errors if any (same logic as profile action)
-      const validData = rpcData.filter((item) => item.course_id !== "ERROR");
-
-      return validData.map((item) => {
-        const total = Number(item.total_classes);
-        const attended = Number(item.attended_classes);
-        const percentage = Number(item.percentage);
-
-        // --- Logic duplicated from previous hook for consistency ---
-
-        // Safe Cuts: floor((Attended - (Total * 0.75)) / 0.75)
-        const rawSafeCuts =
-          total === 0 ? 0 : Math.floor((attended - total * 0.75) / 0.75);
-        const safeSkip = Math.max(0, rawSafeCuts);
-
-        // Required to reach 75%
-        let required = 0;
-        if (percentage < 75) {
-          required = Math.ceil((0.75 * total - attended) / 0.25);
-        }
-
-        // Status Determination
-        let status: LedgerStatus = "safe";
-        if (percentage < 65)
-          status = "critical"; // Red (< 65%)
-        else if (percentage <= 80)
-          status = "condonation"; // Yellow (65-80%)
-        else status = "safe"; // Green (> 80%)
-
-        return {
-          courseID: item.course_id,
-          courseName: item.course_name,
-          credits: 3, // RPC doesn't return credits yet, defaulting to 3
-          totalClasses: total,
-          attendedClasses: attended,
-          percentage: percentage,
-          status,
-          safeSkip: safeSkip > 0 ? safeSkip : 0,
-          required: required > 0 ? required : 0,
-        };
-      });
+      // Direct mapping - no computation needed (all done in database)
+      return ((data as RpcLedgerRecord[]) || []).map((item) => ({
+        courseID: item.course_id,
+        courseName: item.course_name,
+        credits: item.credits,
+        totalClasses: item.total_classes,
+        attendedClasses: item.attended_classes,
+        percentage: item.percentage,
+        status: item.status,
+        safeSkip: item.safe_skip,
+        required: item.required,
+        // Enhanced fields (only present in enhanced mode)
+        ...(mode === "enhanced" && {
+          departmentId: item.department_id,
+          courseFaculty: item.course_faculty,
+          isElective: item.is_elective,
+          courseType: item.course_type,
+        }),
+      }));
     },
     enabled: !!user?.uid,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    refetchOnWindowFocus: false,
   });
 
-  return { ledger, isLoading, error };
+  // Computed aggregates (memoized via React Query)
+  const summary = {
+    totalCourses: ledger.length,
+    criticalCount: ledger.filter((l) => l.status === "critical").length,
+    condonationCount: ledger.filter((l) => l.status === "condonation").length,
+    safeCount: ledger.filter((l) => l.status === "safe").length,
+    overallPercentage:
+      ledger.length > 0
+        ? Math.round(
+            ledger.reduce((sum, l) => sum + l.percentage, 0) / ledger.length,
+          )
+        : 0,
+    totalAttended: ledger.reduce((sum, l) => sum + l.attendedClasses, 0),
+    totalClasses: ledger.reduce((sum, l) => sum + l.totalClasses, 0),
+    totalCredits: ledger.reduce((sum, l) => sum + l.credits, 0),
+  };
+
+  return {
+    ledger,
+    summary,
+    isLoading,
+    error,
+    refetch,
+  };
 };

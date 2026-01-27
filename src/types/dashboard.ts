@@ -1,3 +1,4 @@
+import { ClassWithAttendance } from "@/schemas/db";
 import { UserChallenge } from "@/types/challenges";
 
 export interface FirestoreUser {
@@ -59,3 +60,11 @@ export interface ScheduleSlot {
   venue: string;
   is_lab: boolean;
 }
+
+export type ParsedClass = ClassWithAttendance & {
+  startDate: Date;
+  endDate: Date;
+  startTime: string;
+  endTime: string;
+  type: string;
+};

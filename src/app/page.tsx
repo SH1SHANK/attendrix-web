@@ -12,8 +12,8 @@ const WhatIsAttendrix = dynamic(
   () => import("@/components/sections/WhatIsAttendrix"),
   { ssr: true },
 );
-const ChooseYourWeapon = dynamic(
-  () => import("@/components/sections/ChooseYourWeapon"),
+const PlatformSelector = dynamic(
+  () => import("@/components/sections/PlatformSelector"),
   { ssr: true },
 );
 const FeaturesGrid = dynamic(
@@ -91,7 +91,7 @@ export default function Home() {
 
         {/* Lazy load the rest */}
         <WhatIsAttendrix />
-        <ChooseYourWeapon />
+        <PlatformSelector />
         <FeaturesGrid />
         <WebAccessSpotlight />
         <HowItWorks />

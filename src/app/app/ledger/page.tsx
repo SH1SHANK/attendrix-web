@@ -275,16 +275,17 @@ function StatsBar({
 // ============================================================================
 
 export default function LedgerPage() {
-  const { ledger, isLoading, error } = useSubjectLedger();
+  const { ledger, summary, isLoading, error } = useSubjectLedger();
 
   const stats = useMemo(() => {
-    const safe = ledger?.filter((s) => s.status === "safe").length ?? 0;
-    const warning =
-      ledger?.filter((s) => s.status === "condonation").length ?? 0;
-    const critical = ledger?.filter((s) => s.status === "critical").length ?? 0;
-    const total = ledger?.length ?? 0;
-    return { safe, warning, critical, total };
-  }, [ledger]);
+    if (!summary) return { safe: 0, warning: 0, critical: 0, total: 0 };
+    return {
+      safe: summary.safeCount,
+      warning: summary.condonationCount,
+      critical: summary.criticalCount,
+      total: summary.totalCourses,
+    };
+  }, [summary]);
 
   return (
     <motion.div

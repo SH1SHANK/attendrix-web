@@ -1,84 +1,154 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
-import { TimetableRecordSchema, type ClassWithAttendance } from "@/schemas/db";
 import { useAuth } from "@/context/AuthContext";
-import { useProfile } from "@/hooks/queries/useProfile";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 const supabase = createClient();
 
-export type ParsedClass = ClassWithAttendance & {
+export interface NextClassData {
+  id: string;
+  courseID: string;
+  batchID: string;
+  courseCode: string;
+  courseName: string;
+  venue: string;
   startDate: Date;
   endDate: Date;
   startTime: string;
   endTime: string;
-  type: string;
+  type: "lecture" | "lab" | "tutorial";
+  status: "upcoming" | "scheduled" | "cancelled";
+  isPlusSlot: boolean;
+  attended: boolean;
+}
+
+interface RpcNextClassRecord {
+  class_id: string;
+  course_id: string;
+  batch_id: string;
+  course_name: string;
+  class_venue: string;
+  class_start_time: string;
+  class_end_time: string;
+  course_type: {
+    isLab: boolean;
+    courseType: string;
+    electiveCategory?: string;
+  };
+  class_status: {
+    status: string;
+  };
+  is_plus_slot: boolean;
+  attended: boolean;
+}
+
+// Extract course code from courseID
+const extractCourseCode = (courseID: string): string => {
+  const match = courseID.match(/^([A-Z]{2}\d{4})/);
+  return match?.[1] ?? courseID;
 };
 
-export const useNextClass = () => {
+// Determine class type
+const getClassType = (
+  courseType: RpcNextClassRecord["course_type"],
+): "lecture" | "lab" | "tutorial" => {
+  if (courseType?.isLab) return "lab";
+  return "lecture";
+};
+
+// Get class status
+const getClassStatus = (
+  classStatus: RpcNextClassRecord["class_status"],
+): "upcoming" | "scheduled" | "cancelled" => {
+  const status = classStatus?.status?.toLowerCase();
+  if (status === "cancelled") return "cancelled";
+  return "upcoming";
+};
+
+// Format time to HH:mm
+const formatTime = (date: Date): string => {
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
+
+export const useNextClass = (strategy: "batch" | "enrolled" = "enrolled") => {
   const { user } = useAuth();
-  const { profile, loading: profileLoading } = useProfile();
-  const batchID = profile?.batchID;
 
   const {
     data: nextClass,
     isLoading,
     error,
-  } = useQuery<ParsedClass | null>({
-    queryKey: ["nextClass", user?.uid],
+    refetch,
+  } = useQuery<NextClassData | null>({
+    queryKey: ["nextClass", user?.uid, strategy],
     queryFn: async () => {
-      if (!user?.uid || !batchID) return null;
+      if (!user?.uid) return null;
 
-      // DATABASE IS TIMESTAMP WITHOUT TIME ZONE (Local Time)
-      // We must compare against local time string, not UTC.
-      // E.g., if it is 10:00 AM Local, DB has "2026-01-25 10:00:00".
-      // toISOString() gives "2026-01-25T04:30:00.000Z" (UTC).
-      // If we send UTC, we might miss classes or get wrong ones if DB interprets it literally.
-      // Safe bet: Send ISO string but adjusted to local timezone OR just string format.
-      // Actually, standard practice for "without time zone" is it stores what you give it.
-      // Assuming data ingress sent local time strings.
+      let data: RpcNextClassRecord[] | null = null;
+      let rpcError: PostgrestError | null = null;
 
-      const now = new Date();
-      // Format to "YYYY-MM-DDTHH:mm:ss" local
-      const offsetMs = now.getTimezoneOffset() * 60 * 1000;
-      const localTime = new Date(now.getTime() - offsetMs);
-      const nowISO = localTime.toISOString().slice(0, 19).replace("T", " ");
+      if (strategy === "enrolled") {
+        // Get next class from enrolled courses (more accurate)
+        const result = await supabase.rpc("get_next_enrolled_class", {
+          p_user_id: user.uid,
+        });
+        data = result.data;
+        rpcError = result.error;
+      } else {
+        // Get next class by batch (fallback if batch info available)
+        // Note: This requires batchID from user profile
+        const { data: profileData } = await supabase
+          .from("userCourseRecords")
+          .select("batchID")
+          .eq("userID", user.uid)
+          .maybeSingle();
 
-      const { data, error } = await supabase
-        .from("timetableRecords")
-        .select("*")
-        .gt("classStartTime", nowISO)
-        .eq("batchID", batchID)
-        .order("classStartTime", { ascending: true })
-        .limit(1)
-        .maybeSingle();
+        if (!profileData?.batchID) return null;
 
-      if (error) throw error;
-      if (!data) return null;
+        const result = await supabase.rpc("get_next_class", {
+          p_user_id: user.uid,
+          p_batch_id: profileData.batchID,
+        });
+        data = result.data;
+        rpcError = result.error;
+      }
 
-      const record = TimetableRecordSchema.parse(data);
+      if (rpcError) throw rpcError;
+      const record = data?.[0];
+      if (!record) return null;
+      const startDate = new Date(record.class_start_time);
+      const endDate = new Date(record.class_end_time);
 
-      const startDate = new Date(record.classStartTime);
-      const endDate = new Date(record.classEndTime);
-
-      // We don't fetch attendance for this "future" class specifically as it's just for display
-      // But we need to match the Shape.
-      const parsed: ParsedClass = {
-        ...record,
-        attendance: null, // Future class
-        status: "upcoming",
+      return {
+        id: record.class_id,
+        courseID: record.course_id,
+        batchID: record.batch_id,
+        courseCode: extractCourseCode(record.course_id),
+        courseName: record.course_name,
+        venue: record.class_venue,
         startDate,
         endDate,
-        startTime: startDate.toTimeString().slice(0, 5),
-        endTime: endDate.toTimeString().slice(0, 5),
-        type:
-          typeof record.courseType === "string" ? record.courseType : "lecture",
+        startTime: formatTime(startDate),
+        endTime: formatTime(endDate),
+        type: getClassType(record.course_type),
+        status: getClassStatus(record.class_status),
+        isPlusSlot: record.is_plus_slot,
+        attended: record.attended,
       };
-
-      return parsed;
     },
-    enabled: !!user?.uid && !!batchID && !profileLoading,
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    enabled: !!user?.uid,
+    staleTime: 2 * 60 * 1000, // 2 minutes (shorter for next class)
+    refetchInterval: 5 * 60 * 1000, // Auto-refetch every 5 minutes
+    refetchOnWindowFocus: true,
   });
 
-  return { nextClass, isLoading, error };
+  return {
+    nextClass,
+    isLoading,
+    error,
+    refetch,
+  };
 };

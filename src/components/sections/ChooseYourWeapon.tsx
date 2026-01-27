@@ -187,8 +187,7 @@ export default function ChooseYourWeapon() {
                 The Power User
               </h3>
               <p className="text-stone-600 leading-relaxed">
-                Background sync, notifications, and offline access. The full
-                native experience.
+                Native mobile app with instant push notifications, offline access, and background sync. Designed for always-on tracking.
               </p>
 
               {/* Features */}
@@ -268,8 +267,7 @@ export default function ChooseYourWeapon() {
                 The Speedster
               </h3>
               <p className="text-stone-600 leading-relaxed">
-                No install required. Access your stats from any device,
-                anywhere, instantly.
+                Instant desktop access. High-density dashboard with subject-wise analytics, future calculator, and Lumen AI. No installation needed.
               </p>
 
               {/* Features */}

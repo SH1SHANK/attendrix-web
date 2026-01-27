@@ -98,10 +98,10 @@ const AttendrixPricing = () => {
             <div className="space-y-8">
               <div>
                 <h2 className="text-2xl font-black uppercase mb-3 tracking-tight">
-                  Novice
+                  Novice Mage
                 </h2>
                 <p className="text-neutral-600 font-medium">
-                  For individual students.
+                  Full platform access. Start your journey.
                 </p>
               </div>
 
@@ -117,10 +117,11 @@ const AttendrixPricing = () => {
               <div className="space-y-6">
                 <CheckList
                   items={[
-                    "Full Attendance Tracking",
-                    "Mobile App Access",
-                    "Basic Lumen AI",
+                    "Subject-Wise Attendance Tracking",
+                    "Mobile App + Web Access",
+                    "Lumen AI (Gemini 2.5 Flash Lite)",
                     "Google Calendar Sync",
+                    "Amplix Gamification (XP, Streaks, Ranks)",
                   ]}
                   checkColor="text-green-600"
                 />
@@ -165,7 +166,7 @@ const AttendrixPricing = () => {
                     Master Mage
                   </h2>
                   <p className="text-neutral-300 font-medium">
-                    Uncapped power for students.
+                    Advanced intelligence. Deep syllabus assistance.
                   </p>
                 </div>
 
@@ -184,9 +185,11 @@ const AttendrixPricing = () => {
                   <CheckList
                     items={[
                       "Everything in Novice",
-                      "Advanced Lumen AI (Pro)",
-                      "Priority Syllabus Uploads",
-                      "Advanced Analytics",
+                      "Lumen AI (OpenRouter Pro Models)",
+                      "Deep Syllabus Analysis & RAG",
+                      "Higher File Upload Limits",
+                      "Advanced Analytics Dashboard",
+                      "Priority Support",
                     ]}
                     checkColor="text-yellow-400"
                   />

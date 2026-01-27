@@ -279,40 +279,35 @@ export default function Gamification() {
             {/* Body */}
             <div className="text-lg text-neutral-600 font-medium mb-8 max-w-lg leading-relaxed space-y-4">
               <p>
-                Stop passive tracking. Amplix uses a{" "}
+                Amplix is a{" "}
                 <span className="font-bold text-black relative inline-block px-1">
                   <span className="absolute inset-0 bg-yellow-200 -rotate-1 skew-x-3 opacity-50"></span>
                   <span className="relative z-10">
-                    Quadratic Difficulty Curve
+                    behavioral reinforcement engine
                   </span>
-                </span>{" "}
-                <span className="font-mono text-sm bg-neutral-100 px-1.5 py-0.5 border border-neutral-300">
-                  100 × Level²
-                </span>{" "}
-                to challenge your consistency.
-              </p>
-              <p>
-                Earn <span className="font-bold text-black">XP</span> for every
-                check-in, climb from <span className="font-bold">Novice</span>{" "}
-                to <span className="font-bold">Master Mage</span>, and complete
-                dynamic quests like{" "}
-                <span className="font-bold text-purple-700 bg-purple-100 px-1 border border-purple-200">
-                  Busy Bee
-                </span>{" "}
-                and{" "}
-                <span className="font-bold text-orange-700 bg-orange-100 px-1 border border-orange-200">
-                  Streak God
                 </span>
-                .
+                . Earn <span className="font-bold text-black">XP</span> for
+                every attendance mark, climb from{" "}
+                <span className="font-bold">Novice Mage</span> to{" "}
+                <span className="font-bold">Master Mage</span>, and maintain
+                streaks that compound your rank.
               </p>
               <p>
-                <span className="font-bold text-black">System Status:</span>{" "}
-                <span className="text-red-600 font-bold relative inline-block">
-                  Anti-Cheat Protocol Active.
-                  <span className="absolute bottom-0 left-0 w-full h-[2px] bg-red-600"></span>
-                </span>{" "}
-                Our rollback engine automatically revokes farmed XP if you
-                delete attendance.
+                The system enforces{" "}
+                <span className="font-bold text-black">
+                  anti-cheat integrity
+                </span>
+                : if you delete an attendance record, you automatically lose all
+                XP and challenges earned from that class. The &quot;Game&quot;
+                cannot be rigged.
+              </p>
+              <p>
+                Streak calculations use{" "}
+                <span className="font-mono text-sm bg-neutral-100 px-1.5 py-0.5 border border-neutral-300">
+                  binary search
+                </span>
+                , allowing instant computation even for users with years of
+                data.
               </p>
             </div>
 

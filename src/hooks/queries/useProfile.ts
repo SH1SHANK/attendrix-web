@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
-import { getUserDashboardData } from "@/app/actions/profile";
+
 import { doc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
@@ -48,9 +48,22 @@ export const useProfile = () => {
     queryKey,
     queryFn: async () => {
       if (!user?.uid) return null;
-      const result = await getUserDashboardData(user.uid);
-      if (!result.success) throw new Error(result.error);
-      return result.data.user as unknown as UserProfile; // Cast assuming mapper matches
+
+      const res = await fetch("/api/dashboard");
+      if (!res.ok) {
+        // Parse error message if available
+        let errorMessage = "Failed to fetch dashboard data";
+        try {
+          const errorData = await res.json();
+          if (errorData.error) errorMessage = errorData.error;
+        } catch {
+          // ignore parsing error
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await res.json();
+      return data.user as unknown as UserProfile;
     },
     enabled: !!user?.uid,
     staleTime: 5 * 60 * 1000,

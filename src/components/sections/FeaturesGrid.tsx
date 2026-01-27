@@ -183,8 +183,9 @@ export default function FeaturesGrid() {
                 Meet Lumen
               </h3>
               <p className="text-sm text-white/90 leading-relaxed font-medium">
-                Your AI attendance companion. Chat with Lumen to check stats or
-                log classes instantly.
+                Your syllabus-aware companion. Powered by Gemini 2.5, Lumen
+                answers doubts directly from your uploaded course PDFs using RAG
+                technology.
               </p>
             </div>
           </div>
@@ -206,8 +207,8 @@ export default function FeaturesGrid() {
                 Amplix Gamification
               </h3>
               <p className="text-sm text-white/90 leading-relaxed font-medium">
-                Turn attendance into a game. Earn badges, streaks, and compete
-                with friends.
+                Don't just attend. Compete. Earn XP, maintain streaks, and climb
+                from Novice to Master Mage.
               </p>
             </div>
           </div>

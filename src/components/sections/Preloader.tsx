@@ -43,7 +43,7 @@ export default function Preloader({ onComplete }: PreloaderProps) {
   return (
     <div
       ref={preloaderRef}
-      className="fixed inset-0 z-50 bg-accent flex flex-col items-center justify-center border-b-8 border-black"
+      className="fixed inset-0 z-[100] h-screen w-screen bg-stone-50 flex flex-col items-center justify-center border-b-8 border-black"
       style={{ willChange: "transform" }}
     >
       {/* RetroUI-style Loader */}

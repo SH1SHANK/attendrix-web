@@ -106,30 +106,30 @@ export default function CookieConsent() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed bottom-4 right-4 z-50 w-full max-w-md pointer-events-auto"
+            className="fixed bottom-4 right-4 z-50 w-full max-w-sm pointer-events-auto"
           >
-            <div className="bg-white border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[90vh]">
+            <div className="bg-white border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[85vh]">
               {/* HEADER */}
-              <div className="bg-[#FFD02F] border-b-2 border-black p-4 flex items-center justify-between shrink-0">
+              <div className="bg-[#FFD02F] border-b-2 border-black p-3 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-black stroke-[2.5px]" />
-                  <h3 className="font-black uppercase text-sm tracking-wide text-black">
-                    Your Privacy Matters
+                  <ShieldCheck className="w-4 h-4 text-black stroke-[2.5px]" />
+                  <h3 className="font-black uppercase text-xs tracking-wide text-black">
+                    Privacy Matters
                   </h3>
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1 hover:bg-black hover:text-white transition-colors border-2 border-transparent hover:border-black rounded-none"
+                  className="p-0.5 hover:bg-black hover:text-white transition-colors border-2 border-transparent hover:border-black rounded-none"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3 h-3" />
                 </button>
               </div>
 
               {/* BODY (Scrollable) */}
-              <div className="p-6 overflow-y-auto custom-scrollbar">
+              <div className="p-4 overflow-y-auto custom-scrollbar">
                 {/* Intro */}
-                <div className="mb-6">
-                  <p className="text-sm font-medium text-neutral-600 mb-2 leading-relaxed">
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-neutral-600 mb-1.5 leading-relaxed">
                     We use cookies to secure your account and improve your
                     experience. You can choose which additional data we collect
                     below.
@@ -138,23 +138,23 @@ export default function CookieConsent() {
                     href="/legal/cookies"
                     className="text-xs font-bold uppercase underline hover:text-[#FFD02F] hover:bg-black transition-colors"
                   >
-                    Read Full Cookie Policy
+                    Read Full Policy
                   </Link>
                 </div>
 
                 {/* Granular Controls List */}
-                <div className="space-y-4 border-t-2 border-dashed border-neutral-200 pt-4">
+                <div className="space-y-3 border-t-2 border-dashed border-neutral-200 pt-3">
                   {/* 1. Essential */}
                   <div className="flex items-center justify-between group">
-                    <div className="pr-4">
-                      <p className="font-bold text-sm uppercase flex items-center gap-2">
+                    <div className="pr-3">
+                      <p className="font-bold text-xs uppercase flex items-center gap-1.5">
                         Strictly Necessary
-                        <span className="text-[10px] bg-black text-white px-1.5 py-0.5 rounded-sm">
+                        <span className="text-[9px] bg-black text-white px-1 py-0.5 rounded-sm">
                           REQ
                         </span>
                       </p>
                       <p className="text-xs text-neutral-500 mt-0.5">
-                        Login sessions, CSRF security tokens.
+                        Login, CSRF tokens.
                       </p>
                     </div>
                     <Switch
@@ -167,12 +167,10 @@ export default function CookieConsent() {
 
                   {/* 2. Performance & Analytics */}
                   <div className="flex items-center justify-between">
-                    <div className="pr-4">
-                      <p className="font-bold text-sm uppercase">
-                        Performance & Analytics
-                      </p>
+                    <div className="pr-3">
+                      <p className="font-bold text-xs uppercase">Performance</p>
                       <p className="text-xs text-neutral-500 mt-0.5">
-                        Helps us fix bugs and see popular pages.
+                        Helps us fix bugs and popular pages.
                       </p>
                     </div>
                     <Switch
@@ -184,10 +182,10 @@ export default function CookieConsent() {
 
                   {/* 3. Functional */}
                   <div className="flex items-center justify-between">
-                    <div className="pr-4">
-                      <p className="font-bold text-sm uppercase">Functional</p>
+                    <div className="pr-3">
+                      <p className="font-bold text-xs uppercase">Functional</p>
                       <p className="text-xs text-neutral-500 mt-0.5">
-                        Remembers your theme and language settings.
+                        Remembers your settings.
                       </p>
                     </div>
                     <Switch
@@ -199,10 +197,10 @@ export default function CookieConsent() {
 
                   {/* 4. Advertising */}
                   <div className="flex items-center justify-between">
-                    <div className="pr-4">
-                      <p className="font-bold text-sm uppercase">Advertising</p>
+                    <div className="pr-3">
+                      <p className="font-bold text-xs uppercase">Advertising</p>
                       <p className="text-xs text-neutral-500 mt-0.5">
-                        We generally don&apos;t run ads, but just in case.
+                        For ads (if used).
                       </p>
                     </div>
                     <Switch
@@ -215,18 +213,18 @@ export default function CookieConsent() {
               </div>
 
               {/* FOOTER - Actions */}
-              <div className="p-4 bg-neutral-50 border-t-2 border-black flex flex-col sm:flex-row gap-3 shrink-0">
+              <div className="p-3 bg-neutral-50 border-t-2 border-black flex flex-col sm:flex-row gap-2 shrink-0">
                 <button
                   onClick={handleSave}
-                  className="flex-1 py-2.5 bg-white text-black border-2 border-black font-black uppercase text-xs tracking-wide hover:bg-neutral-100 transition-colors"
+                  className="flex-1 py-2 bg-white text-black border-2 border-black font-black uppercase text-xs tracking-wide hover:bg-neutral-100 transition-colors"
                 >
-                  Save Preferences
+                  Save
                 </button>
                 <button
                   onClick={handleAcceptAll}
-                  className="flex-1 py-2.5 bg-black text-[#FFD02F] border-2 border-black font-black uppercase text-xs tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] hover:translate-x-px hover:translate-y-px hover:shadow-none active:translate-y-[2px] active:shadow-none transition-all"
+                  className="flex-1 py-2 bg-black text-[#FFD02F] border-2 border-black font-black uppercase text-xs tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] hover:translate-x-px hover:translate-y-px hover:shadow-none active:translate-y-[2px] active:shadow-none transition-all"
                 >
-                  Accept All
+                  Accept
                 </button>
               </div>
             </div>

@@ -7,13 +7,13 @@ import { Clock, Coffee } from "lucide-react";
 import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
 
 import { useAttendance } from "@/hooks/queries/useAttendance";
-import { useNextClass, type ParsedClass } from "@/hooks/queries/useNextClass";
+import { useNextClass } from "@/hooks/queries/useNextClass";
 import { CountdownCard } from "@/components/dashboard/CountdownCard";
 import { NextUpCard } from "@/components/dashboard/NextUpCard";
 import { ClassCard } from "@/components/dashboard/ClassCard";
 import { CurrentClassCard } from "@/components/dashboard/CurrentClassCard";
 import { AttendanceCalculatorSheet } from "@/components/profile/AttendanceCalculatorSheet";
-import type { AttendanceStat } from "@/types/dashboard";
+import type { AttendanceStat, ParsedClass } from "@/types/dashboard";
 
 const containerVariants = {
   hidden: { opacity: 0 },
