@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { Download, ExternalLink } from "lucide-react";
 import { useHeroIntro } from "@/animations/reveal";
 import { useMagneticHover, useWiggleOnHover } from "@/animations/hover";
+import DotPatternBackground from "../ui/DotPatternBackground";
 
 interface HeroProps {
   isVisible?: boolean;
@@ -38,28 +39,7 @@ export default function Hero({ isVisible = false }: HeroProps) {
       ref={sectionRef}
       className="relative isolate flex min-h-[92vh] flex-col items-center justify-center overflow-hidden px-6 pb-20 pt-28 sm:px-8 lg:px-12"
     >
-      {/* Animated Dot Grid Background */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.08]"
-        aria-hidden="true"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgba(15,23,42,0.3) 1.5px, transparent 0)",
-          backgroundSize: "32px 32px",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0 bg-linear-to-b from-white/40 via-stone-50 to-stone-50"
-        aria-hidden="true"
-      />
-      <div
-        className="pointer-events-none absolute inset-0 mix-blend-multiply opacity-[0.18]"
-        aria-hidden="true"
-        style={{
-          backgroundImage:
-            "url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22200%25%22 height=%22200%25%22 filter=%22url(%23n)%22 opacity=%220.25%22/%3E%3C/svg%3E')",
-        }}
-      />
+      <DotPatternBackground />
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-8 text-center">
         {/* Badge */}

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Globe, Check, Clock, MapPin } from "lucide-react";
+import DotPatternBackground from "../ui/DotPatternBackground";
 
 // ============================================================================
 // Animation Variants
@@ -222,29 +223,9 @@ export default function WebAccessSpotlight() {
   return (
     <section
       id="web-access"
-      className="relative bg-[#FFFDF5] py-20 md:py-32 px-4 border-y-[3px] border-black overflow-hidden"
+      className="relative py-20 md:py-32 px-4 overflow-hidden"
     >
-      {/* Dynamic Animated Grid Pattern */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)`,
-            backgroundSize: "40px 40px",
-          }}
-        />
-        {/* Floating Background Shapes */}
-        <motion.div
-          className="absolute top-20 left-10 w-4 h-4 border-2 border-black bg-[#FFD02F]"
-          animate={{ y: [0, 20, 0], rotate: [0, 45, 0] }}
-          transition={{ duration: 8, repeat: Infinity }}
-        />
-        <motion.div
-          className="absolute bottom-40 right-20 w-6 h-6 border-2 border-black rounded-full bg-transparent"
-          animate={{ y: [0, -30, 0], scale: [1, 1.1, 1] }}
-          transition={{ duration: 10, repeat: Infinity }}
-        />
-      </div>
+      <DotPatternBackground />
 
       <div className="max-w-7xl mx-auto relative z-10">
         <motion.div

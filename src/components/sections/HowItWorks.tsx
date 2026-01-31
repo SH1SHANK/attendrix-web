@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { UserPlus, Zap, Trophy, ArrowRight, ArrowDown } from "lucide-react";
+import DotPatternBackground from "../ui/DotPatternBackground";
 
 // Animation variants
 const containerVariants = {
@@ -125,7 +126,8 @@ function ArrowConnector({
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="bg-[#fffdf5] py-20 md:py-24 px-4">
+    <section id="how-it-works" className="relative py-20 md:py-24 px-4">
+      <DotPatternBackground />
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="text-center mb-12 md:mb-16">

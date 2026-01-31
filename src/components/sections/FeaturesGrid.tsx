@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Calendar,
 } from "lucide-react";
+import DotPatternBackground from "../ui/DotPatternBackground";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
@@ -124,8 +125,9 @@ export default function FeaturesGrid() {
   return (
     <section
       ref={sectionRef}
-      className="w-full bg-paper py-20 md:py-32 flex flex-col items-center"
+      className="w-full relative py-20 md:py-32 flex flex-col items-center"
     >
+      <DotPatternBackground />
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div ref={headerRef} className="text-center mb-16 md:mb-20">
@@ -241,8 +243,8 @@ export default function FeaturesGrid() {
                 Amplix Gamification
               </h3>
               <p className="text-sm text-white/90 leading-relaxed font-medium">
-                Don't just attend. Compete. Earn XP, maintain streaks, and climb
-                from Novice to Master Mage.
+                Don&apos;t just attend. Compete. Earn XP, maintain streaks, and
+                climb from Novice to Master Mage.
               </p>
             </div>
           </div>

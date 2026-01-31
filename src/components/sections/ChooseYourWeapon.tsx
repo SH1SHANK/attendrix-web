@@ -15,6 +15,7 @@ import {
   Bell,
   CloudOff,
 } from "lucide-react";
+import DotPatternBackground from "../ui/DotPatternBackground";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
@@ -115,18 +116,9 @@ export default function ChooseYourWeapon() {
     <section
       ref={sectionRef}
       id="choose"
-      className="relative py-24 px-6 sm:px-8 lg:px-12 overflow-hidden bg-stone-100"
+      className="relative py-24 px-6 sm:px-8 lg:px-12 overflow-hidden"
     >
-      {/* Dot grid background */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.05]"
-        aria-hidden="true"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgba(15,23,42,0.4) 1px, transparent 0)",
-          backgroundSize: "24px 24px",
-        }}
-      />
+      <DotPatternBackground />
 
       <div className="relative z-10 mx-auto max-w-6xl">
         {/* Section Header */}
@@ -187,7 +179,8 @@ export default function ChooseYourWeapon() {
                 The Power User
               </h3>
               <p className="text-stone-600 leading-relaxed">
-                Native mobile app with instant push notifications, offline access, and background sync. Designed for always-on tracking.
+                Native mobile app with instant push notifications, offline
+                access, and background sync. Designed for always-on tracking.
               </p>
 
               {/* Features */}
@@ -267,7 +260,9 @@ export default function ChooseYourWeapon() {
                 The Speedster
               </h3>
               <p className="text-stone-600 leading-relaxed">
-                Instant desktop access. High-density dashboard with subject-wise analytics, future calculator, and Lumen AI. No installation needed.
+                Instant desktop access. High-density dashboard with subject-wise
+                analytics, future calculator, and Lumen AI. No installation
+                needed.
               </p>
 
               {/* Features */}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Mail } from "lucide-react";
+import DotPatternBackground from "../ui/DotPatternBackground";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface FAQItem {
@@ -55,8 +56,9 @@ export default function FAQ() {
   return (
     <section
       id="faq"
-      className="w-full bg-paper pt-8 md:pt-12 pb-16 md:pb-20 px-4"
+      className="w-full relative pt-8 md:pt-12 pb-16 md:pb-20 px-4"
     >
+      <DotPatternBackground />
       <div className="max-w-3xl mx-auto">
         {/* Section Header */}
         <h2 className="text-4xl md:text-5xl font-black text-center mb-8 md:mb-10 tracking-tight text-black">

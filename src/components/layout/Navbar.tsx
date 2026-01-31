@@ -155,6 +155,7 @@ interface NavLinkProps {
   isHovered: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  onClick: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }
 
 function NavLink({
@@ -164,6 +165,7 @@ function NavLink({
   isHovered,
   onMouseEnter,
   onMouseLeave,
+  onClick,
 }: NavLinkProps) {
   return (
     <Link
@@ -175,6 +177,7 @@ function NavLink({
       "
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onClick={onClick}
       aria-current={isActive ? "page" : undefined}
     >
       {/* Hover/Active background pill */}
@@ -448,6 +451,15 @@ export default function Navbar() {
                     isHovered={hoveredLink === link.href}
                     onMouseEnter={() => setHoveredLink(link.href)}
                     onMouseLeave={() => setHoveredLink(null)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const element = document.getElementById(
+                        link.href.replace("#", ""),
+                      );
+                      if (element) {
+                        element.scrollIntoView({ behavior: "smooth" });
+                      }
+                    }}
                   />
                 ))}
               </nav>
@@ -551,7 +563,15 @@ export default function Navbar() {
                         href={link.href}
                         label={link.label}
                         isActive={activeSection === link.href}
-                        onClick={handleMobileNavClick}
+                        onClick={() => {
+                          handleMobileNavClick();
+                          const element = document.getElementById(
+                            link.href.replace("#", ""),
+                          );
+                          if (element) {
+                            element.scrollIntoView({ behavior: "smooth" });
+                          }
+                        }}
                       />
                     ))}
 

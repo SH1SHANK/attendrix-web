@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Flame, Check, Lock, Sparkles, Award } from "lucide-react";
+import DotPatternBackground from "../ui/DotPatternBackground";
 
 // ============================================================================
 // Animation Variants
@@ -239,16 +240,10 @@ export default function Gamification() {
   return (
     <section
       id="gamification"
-      className="relative bg-[#FDFBF7] py-20 md:py-28 px-4 overflow-hidden"
+      className="relative py-20 md:py-28 px-4 overflow-hidden"
     >
       {/* Dot Pattern Background */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-30"
-        style={{
-          backgroundImage: `radial-gradient(circle, #000 1px, transparent 1px)`,
-          backgroundSize: "20px 20px",
-        }}
-      />
+      <DotPatternBackground />
 
       <div className="max-w-7xl mx-auto relative z-10">
         <motion.div

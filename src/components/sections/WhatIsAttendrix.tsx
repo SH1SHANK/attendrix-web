@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { Sparkles, Target, TrendingUp } from "lucide-react";
+import DotPatternBackground from "../ui/DotPatternBackground";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
@@ -122,18 +123,9 @@ export default function WhatIsAttendrix() {
   return (
     <section
       ref={sectionRef}
-      className="relative py-24 px-6 sm:px-8 lg:px-12 overflow-hidden bg-stone-50"
+      className="relative py-24 px-6 sm:px-8 lg:px-12 overflow-hidden"
     >
-      {/* Dot grid background */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.04]"
-        aria-hidden="true"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgba(15,23,42,0.3) 1px, transparent 0)",
-          backgroundSize: "28px 28px",
-        }}
-      />
+      <DotPatternBackground />
 
       <div className="relative z-10 mx-auto max-w-6xl">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
@@ -174,9 +166,9 @@ export default function WhatIsAttendrix() {
               className="text-lg text-stone-600 leading-relaxed max-w-xl"
             >
               Standard apps fail at NITC. Attendrix understands strict
-              subject-wise 80% rules, 'W' grades, and slot-based timetables.
-              It's hard-coded for Calicut. Your academic standing is calculated
-              exactly as the administration does it.
+              subject-wise 80% rules, &apos;W&apos; grades, and slot-based
+              timetables. It&apos;s hard-coded for Calicut. Your academic
+              standing is calculated exactly as the administration does it.
             </p>
 
             {/* Feature pills */}

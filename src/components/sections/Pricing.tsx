@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Check } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import DotPatternBackground from "../ui/DotPatternBackground";
 
 // Helper for checklist items
 const CheckList = ({
@@ -33,7 +34,11 @@ const AttendrixPricing = () => {
   );
 
   return (
-    <section className="min-h-screen bg-paper py-24 px-4">
+    <section
+      id="pricing"
+      className="min-h-screen relative py-24 px-4 overflow-hidden"
+    >
+      <DotPatternBackground />
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-16">

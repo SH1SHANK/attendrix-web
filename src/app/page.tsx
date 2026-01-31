@@ -91,29 +91,9 @@ export default function Home() {
 
       <main
         ref={mainRef}
-        className="relative min-h-screen overflow-hidden bg-stone-50 text-stone-950"
+        className="relative min-h-screen overflow-hidden text-stone-950"
         style={{ opacity: isLoading ? 0 : undefined }}
       >
-        {/* Global dot grid background */}
-        <div
-          className="pointer-events-none fixed inset-0 -z-20 opacity-[0.05]"
-          aria-hidden="true"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgba(15,23,42,0.25) 1px, transparent 0)",
-            backgroundSize: "28px 28px",
-          }}
-        />
-        {/* Noise texture overlay */}
-        <div
-          className="pointer-events-none fixed inset-0 -z-10 mix-blend-multiply opacity-20"
-          aria-hidden="true"
-          style={{
-            backgroundImage:
-              "url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22200%25%22 height=%22200%25%22 filter=%22url(%23noise)%22 opacity=%220.22%22/%3E%3C/svg%3E')",
-          }}
-        />
-
         {/* Hero is critical - triggered after preloader */}
         <Hero isVisible={heroReady} />
 
