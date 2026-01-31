@@ -153,9 +153,9 @@ export default function WhatIsAttendrix() {
               data-reveal
               className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-[0.95] tracking-tight text-stone-900"
             >
-              More Than Just a{" "}
+              Built for the{" "}
               <span className="relative inline-block">
-                <span className="relative z-10">Tracker</span>
+                <span className="relative z-10">Slot System</span>
                 <span className="absolute bottom-1 left-0 right-0 h-3 bg-yellow-400 -z-10 -rotate-1" />
               </span>
             </h2>
@@ -173,10 +173,10 @@ export default function WhatIsAttendrix() {
               data-reveal
               className="text-lg text-stone-600 leading-relaxed max-w-xl"
             >
-              Attendrix isn&apos;t just a spreadsheet. It&apos;s a gamified
-              academic companion designed specifically for NITC students. Track
-              attendance, earn XP, and calculate your future without the math
-              headaches.
+              Standard apps fail at NITC. Attendrix understands strict
+              subject-wise 80% rules, 'W' grades, and slot-based timetables.
+              It's hard-coded for Calicut. Your academic standing is calculated
+              exactly as the administration does it.
             </p>
 
             {/* Feature pills */}

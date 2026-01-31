@@ -43,23 +43,23 @@ const arrowVariants = {
 const steps = [
   {
     number: "01",
-    title: "Instant Onboarding",
+    title: "Secure Identity Mapping",
     description:
-      "Log in via Firebase. Select your Batch & Semester. We auto-fetch your exact timetable and electives from Supabase. No manual entry.",
+      "Log in via Firebase. Attendrix maps your identity to the Supabase backend and auto-fetches your exact timetable, courses, and NITC slot data. No manual entry required.",
     icon: UserPlus,
   },
   {
     number: "02",
-    title: "Mark & Sync",
+    title: "Subject-Wise Ledger Sync",
     description:
-      "Tap 'Mark Attendance'. Our RPC functions verify your location and update the central ledger instantly. Zero latency, 100% accuracy.",
+      "Mark attendance and our database syncs instantly. Your subject-wise eligibility (80% per course) updates in real-time across all platforms. Single source of truth.",
     icon: Zap,
   },
   {
     number: "03",
-    title: "Level Up Your Stats",
+    title: "Amplix Gamification",
     description:
-      "Every class attended feeds the Amplix Engine. Earn streaks, unlock badges, and compete on the leaderboard. Attendance is now a game.",
+      "Every class attended earns XP and feeds the Amplix engine. Climb from Novice Mage to Master Mage, earn streaks, and compete on the leaderboard. Attendance becomes engaging.",
     icon: Trophy,
   },
 ];

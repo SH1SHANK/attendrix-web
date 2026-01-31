@@ -2,9 +2,16 @@
 
 import Link from "next/link";
 import { useState, useRef, useSyncExternalStore } from "react";
-import { motion, useScroll, useMotionValueEvent } from "framer-motion";
+import {
+  motion,
+  useScroll,
+  useMotionValueEvent,
+  AnimatePresence,
+} from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { Menu, X, LogOut } from "lucide-react";
+import { NeoAvatar } from "@/components/ui/NeoAvatar";
 
 // Animation variants for the floating header
 const headerVariants = {
@@ -30,9 +37,10 @@ function useHasMounted() {
 }
 
 export default function Navbar() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mounted = useHasMounted();
   const headerRef = useRef<HTMLElement>(null);
 
@@ -179,8 +187,86 @@ export default function Navbar() {
                   Get Started
                 </Link>
               )}
+
+              {/* Mobile Menu Toggle */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="lg:hidden p-2 border-2 border-transparent hover:border-black hover:shadow-[2px_2px_0px_0px_#000] rounded-none transition-all duration-200"
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <Menu className="w-5 h-5" />
+                )}
+              </button>
             </div>
           </div>
+
+          {/* Mobile Navigation Menu */}
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="lg:hidden border-t-2 border-black bg-stone-50"
+              >
+                <div className="px-4 py-4 space-y-2">
+                  {/* Mobile Nav Links */}
+                  {navLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 font-mono text-xs font-semibold tracking-wider text-black hover:bg-yellow-100 border border-transparent hover:border-black transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+
+                  {/* User Profile Row or Get Started Button */}
+                  <div className="border-t-2 border-dashed border-neutral-200 pt-4 mt-4">
+                    {user ? (
+                      <div className="flex items-center justify-between px-4 py-3 border-2 border-black bg-white shadow-[2px_2px_0_#0a0a0a]">
+                        <div className="flex items-center gap-3">
+                          {user.photoURL && (
+                            <NeoAvatar
+                              src={user.photoURL}
+                              alt={user.displayName || "User"}
+                              size="sm"
+                            />
+                          )}
+                          <span className="font-bold text-sm text-black">
+                            {user.displayName?.split(" ")[0] || "Pilot"}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            logout();
+                            setMobileMenuOpen(false);
+                          }}
+                          className="p-1 hover:bg-red-100 rounded-none transition-colors"
+                          title="Logout"
+                        >
+                          <LogOut className="w-4 h-4 text-black" />
+                        </button>
+                      </div>
+                    ) : (
+                      <Link
+                        href="/auth/signup"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block w-full py-3 bg-[#FFD02F] text-black border-2 border-black font-bold uppercase text-sm tracking-wider shadow-[4px_4px_0px_0px_#000] text-center hover:shadow-[6px_6px_0px_0px_#000] hover:-translate-y-[2px] hover:-translate-x-[2px] transition-all"
+                      >
+                        Get Started
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
     </motion.header>

@@ -275,22 +275,22 @@ export default function WebAccessSpotlight() {
 
             {/* Subhead */}
             <h3 className="text-xl font-bold font-mono uppercase tracking-tight mb-4 text-neutral-800">
-              Server-State Architecture
+              Neo-Brutalist Command Center
             </h3>
 
             {/* Body */}
             <div className="text-lg text-neutral-600 font-medium mb-8 max-w-lg leading-relaxed space-y-4">
               <p>
-                The server-state architecture you love, now in your browser.
-                Perfect for{" "}
+                The high-density, desktop-optimized tactical dashboard for deep
+                academic analysis. Built with{" "}
                 <span className="font-bold text-black bg-yellow-100 px-1">
-                  iOS users
+                  HTTP-Only Sessions
                 </span>
                 ,{" "}
                 <span className="font-bold text-black bg-yellow-100 px-1">
-                  Laptop warriors
+                  SSR rendering
                 </span>
-                , and anyone who prefers a bigger screen.
+                , and Supabase sync.
               </p>
 
               {/* Feature Bullets */}
@@ -299,19 +299,19 @@ export default function WebAccessSpotlight() {
                   <div className="w-4 h-4 bg-black flex items-center justify-center">
                     <Check className="w-3 h-3 text-white" />
                   </div>
-                  Universal bi-directional sync
+                  Bento grid subject-wise status visualization
                 </li>
                 <li className="flex items-center gap-2 font-mono text-sm font-bold text-neutral-700">
                   <div className="w-4 h-4 bg-black flex items-center justify-center">
                     <Check className="w-3 h-3 text-white" />
                   </div>
-                  Zero Install - Instant Access
+                  What-If attendance simulator with live projections
                 </li>
                 <li className="flex items-center gap-2 font-mono text-sm font-bold text-neutral-700">
                   <div className="w-4 h-4 bg-black flex items-center justify-center">
                     <Check className="w-3 h-3 text-white" />
                   </div>
-                  Lumen AI Counselor Included
+                  Lumen AI with syllabus RAG & PDFs
                 </li>
               </ul>
             </div>

@@ -31,7 +31,7 @@ export default function Hero({ isVisible = false }: HeroProps) {
   useWiggleOnHover(primaryRef, { rotation: 1.8 });
 
   const subheadingText =
-    "Stop calculating percentages. Start earning XP. The only attendance tracker that plays as hard as you work.";
+    "The bespoke academic ecosystem for NITC. Track subject-wise eligibility, sync your Google Calendar, and level up your 'Mage Rank'—all in one app.";
 
   return (
     <section

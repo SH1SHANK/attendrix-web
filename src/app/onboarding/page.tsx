@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useTransition } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -37,7 +37,7 @@ import { useAuth } from "@/context/AuthContext";
 import { EVENTS, trackEvent } from "@/lib/analytics";
 import { Switch } from "@/components/ui/Switch";
 import { toast } from "sonner";
-import { createClient } from "@/utils/supabase/client";
+
 import { verifyAdminCode } from "@/app/actions/admin";
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -72,7 +72,7 @@ function OnboardingContent() {
   const [initLoading, setInitLoading] = useState(true);
 
   const { user, logout } = useAuth(); // User is guaranteed here
-  const supabase = useMemo(() => createClient(), []);
+  /* unused supabase memo */
 
   // Data State
   const [batches, setBatches] = useState<Partial<BatchRecord>[]>([]);
@@ -163,19 +163,36 @@ function OnboardingContent() {
     setAdminMessage("Checking eligibility...");
 
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "generate_admin_code",
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error("Missing Supabase configuration");
+      }
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/generate_admin_code`,
         {
-          body: {
-            email: user.email,
-            userId: user.uid,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseAnonKey}`,
           },
+          body: JSON.stringify({
+            email: user.email,
+            userID: user.uid,
+          }),
         },
       );
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || errorData.message || "Request failed",
+        );
       }
+
+      const data = await response.json();
 
       if (data?.status === "approved") {
         setAdminStatus("approved");
