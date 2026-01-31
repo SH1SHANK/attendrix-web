@@ -124,7 +124,7 @@ export function useHorizontalPin({
             scrub: 1,
             start: "top top",
             end: endDistance,
-            snap: snap ? 1 / (panels.length - 1) : false,
+            snap: snap ? 1 / (panels.length - 1) : undefined,
           },
         });
       });

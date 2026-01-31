@@ -168,7 +168,7 @@ export default function HowItWorks() {
           <div className="relative z-10 flex items-stretch gap-4">
             {/* Card 1 */}
             <div className="flex-1">
-              <StepCard step={steps[0]} />
+              <StepCard step={steps[0]!} />
             </div>
 
             {/* Arrow 1 */}
@@ -178,7 +178,7 @@ export default function HowItWorks() {
 
             {/* Card 2 */}
             <div className="flex-1">
-              <StepCard step={steps[1]} />
+              <StepCard step={steps[1]!} />
             </div>
 
             {/* Arrow 2 */}
@@ -188,7 +188,7 @@ export default function HowItWorks() {
 
             {/* Card 3 */}
             <div className="flex-1">
-              <StepCard step={steps[2]} />
+              <StepCard step={steps[2]!} />
             </div>
           </div>
         </motion.div>
@@ -210,7 +210,7 @@ export default function HowItWorks() {
           <div className="relative z-10 flex flex-col items-center gap-4">
             {/* Card 1 */}
             <div className="w-full">
-              <StepCard step={steps[0]} />
+              <StepCard step={steps[0]!} />
             </div>
 
             {/* Arrow 1 */}
@@ -218,7 +218,7 @@ export default function HowItWorks() {
 
             {/* Card 2 */}
             <div className="w-full">
-              <StepCard step={steps[1]} />
+              <StepCard step={steps[1]!} />
             </div>
 
             {/* Arrow 2 */}
@@ -226,7 +226,7 @@ export default function HowItWorks() {
 
             {/* Card 3 */}
             <div className="w-full">
-              <StepCard step={steps[2]} />
+              <StepCard step={steps[2]!} />
             </div>
           </div>
         </motion.div>

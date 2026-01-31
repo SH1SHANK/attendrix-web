@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useMemo } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
 import {
   Bot,
   Calculator,
@@ -12,86 +13,119 @@ import {
   Calendar,
 } from "lucide-react";
 
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger, useGSAP);
 
 export default function FeaturesGrid() {
+  const sectionRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
-  useEffect(() => {
-    // Check for reduced motion preference
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPrefersReducedMotion(mediaQuery.matches);
-
-    const handleChange = () => setPrefersReducedMotion(mediaQuery.matches);
-    mediaQuery.addEventListener("change", handleChange);
-
-    return () => mediaQuery.removeEventListener("change", handleChange);
+  // Check for reduced motion preference at render time (SSR-safe)
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }, []);
 
-  useEffect(() => {
-    if (prefersReducedMotion) return;
+  // Single consolidated GSAP hook with proper cleanup
+  useGSAP(
+    () => {
+      if (prefersReducedMotion) return;
+      if (!headerRef.current || !gridRef.current) return;
 
-    const ctx = gsap.context(() => {
-      const isMobile = window.innerWidth < 768;
+      const mm = gsap.matchMedia();
 
-      // Animate header
-      gsap.from(headerRef.current, {
-        autoAlpha: 0,
-        y: isMobile ? 15 : 30,
-        duration: isMobile ? 0.5 : 0.8,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: headerRef.current,
-          start: "top 80%",
-          toggleActions: "play none none none",
-        },
-      });
-
-      // Animate cards with stagger (simplified for mobile)
-      const cards = gridRef.current?.querySelectorAll(".feature-card");
-      const icons = gridRef.current?.querySelectorAll(".feature-icon");
-
-      if (cards && cards.length > 0) {
-        gsap.from(cards, {
+      mm.add("(min-width: 768px)", () => {
+        // Desktop animations
+        gsap.from(headerRef.current, {
           autoAlpha: 0,
-          y: isMobile ? 15 : 30,
-          duration: isMobile ? 0.5 : 0.8,
-          stagger: isMobile ? 0.05 : 0.12,
+          y: 30,
+          duration: 0.8,
           ease: "power3.out",
           scrollTrigger: {
-            trigger: gridRef.current,
-            start: "top 75%",
+            trigger: headerRef.current,
+            start: "top 80%",
             toggleActions: "play none none none",
           },
         });
-      }
 
-      // Animate icons with pop effect (disabled on mobile for performance)
-      if (icons && icons.length > 0 && !isMobile) {
-        gsap.from(icons, {
-          scale: 0,
-          rotation: -45,
-          duration: 0.9,
-          stagger: 0.08,
-          ease: "elastic.out(1, 0.5)",
-          delay: 0.3,
+        const cards = gridRef.current?.querySelectorAll(".feature-card");
+        const icons = gridRef.current?.querySelectorAll(".feature-icon");
+
+        if (cards && cards.length > 0) {
+          gsap.from(cards, {
+            autoAlpha: 0,
+            y: 30,
+            duration: 0.8,
+            stagger: 0.12,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: gridRef.current,
+              start: "top 75%",
+              toggleActions: "play none none none",
+            },
+          });
+        }
+
+        if (icons && icons.length > 0) {
+          gsap.from(icons, {
+            scale: 0,
+            rotation: -45,
+            duration: 0.9,
+            stagger: 0.08,
+            ease: "elastic.out(1, 0.5)",
+            delay: 0.3,
+            scrollTrigger: {
+              trigger: gridRef.current,
+              start: "top 75%",
+              toggleActions: "play none none none",
+            },
+          });
+        }
+      });
+
+      mm.add("(max-width: 767px)", () => {
+        // Mobile animations - simplified for performance
+        gsap.from(headerRef.current, {
+          autoAlpha: 0,
+          y: 15,
+          duration: 0.5,
+          ease: "power3.out",
           scrollTrigger: {
-            trigger: gridRef.current,
-            start: "top 75%",
+            trigger: headerRef.current,
+            start: "top 85%",
             toggleActions: "play none none none",
           },
         });
-      }
-    }, gridRef);
 
-    return () => ctx.revert();
-  }, [prefersReducedMotion]);
+        const cards = gridRef.current?.querySelectorAll(".feature-card");
+
+        if (cards && cards.length > 0) {
+          gsap.from(cards, {
+            autoAlpha: 0,
+            y: 15,
+            duration: 0.5,
+            stagger: 0.05,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: gridRef.current,
+              start: "top 85%",
+              toggleActions: "play none none none",
+            },
+          });
+        }
+      });
+
+      // Cleanup handled automatically by useGSAP
+      return () => mm.revert();
+    },
+    { scope: sectionRef, dependencies: [prefersReducedMotion] },
+  );
 
   return (
-    <section className="w-full bg-paper py-20 md:py-32 flex flex-col items-center">
+    <section
+      ref={sectionRef}
+      className="w-full bg-paper py-20 md:py-32 flex flex-col items-center"
+    >
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div ref={headerRef} className="text-center mb-16 md:mb-20">

@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
-import { Globe, ExternalLink, Check, Clock, MapPin } from "lucide-react";
+import { Globe, Check, Clock, MapPin } from "lucide-react";
 
 // ============================================================================
 // Animation Variants
@@ -321,7 +320,7 @@ export default function WebAccessSpotlight() {
             <div className="flex flex-wrap items-center gap-4">
               {/* Primary Button */}
               <motion.a
-                href="/app/dashboard"
+                href="/placeholder"
                 className="inline-flex items-center gap-3 px-8 py-4 bg-black text-[#FFD02F] border-[3px] border-black font-bold uppercase tracking-wider shadow-[6px_6px_0px_0px_#FFD02F] transition-all"
                 whileHover={{
                   x: -2,
@@ -337,15 +336,6 @@ export default function WebAccessSpotlight() {
                 <Globe className="w-5 h-5" />
                 Launch App
               </motion.a>
-
-              {/* Secondary Link */}
-              <Link
-                href="/docs/web"
-                className="inline-flex items-center gap-2 px-6 py-4 bg-white border-[3px] border-black font-bold font-mono uppercase tracking-tight hover:bg-neutral-50 transition-colors"
-              >
-                Requirements
-                <ExternalLink className="w-4 h-4" />
-              </Link>
             </div>
           </motion.div>
 

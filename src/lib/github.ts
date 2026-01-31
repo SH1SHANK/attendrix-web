@@ -86,7 +86,7 @@ export async function getReleases(): Promise<Release[]> {
       // Extract SHA-256 from body if present
       // Regex looks for "SHA256: <hash>" or "sha256: <hash>" or just the hash in a code block context if labelled
       const shaMatch = release.body.match(/sha256:\s*([a-f0-9]{64})/i);
-      const sha256 = shaMatch ? shaMatch[1] : null;
+      const sha256 = shaMatch ? shaMatch[1] || null : null;
 
       return {
         releaseId: release.id,

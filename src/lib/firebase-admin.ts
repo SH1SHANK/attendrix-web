@@ -38,7 +38,7 @@ export function initAdmin(): App {
   // 1. Thread-safe Singleton: check existing apps first
   const apps = getApps();
   if (apps.length > 0) {
-    return apps[0];
+    return apps[0]!;
   }
 
   // 2. Prioritized & Sanitized Lookup

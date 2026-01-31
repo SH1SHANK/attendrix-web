@@ -35,10 +35,10 @@ export default function NotFound() {
         {/* Actions */}
         <div className="mt-10 space-y-3">
           <Link
-            href="/app/dashboard"
+            href="/placeholder"
             className="block w-full bg-black text-[#FFD02F] font-black uppercase py-4 border-2 border-black hover:bg-neutral-800 transition-colors"
           >
-            Return to Dashboard
+            Return to App
           </Link>
           <Link
             href="/"

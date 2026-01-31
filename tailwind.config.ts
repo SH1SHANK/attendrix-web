@@ -67,9 +67,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ["var(--font-display)"],
-        sans: ["var(--font-body)"],
-        mono: ["var(--font-mono)"],
+        display: ["var(--font-space-grotesk)"],
+        sans: ["var(--font-inter)"],
+        mono: ["var(--font-jetbrains)"],
       },
       // Neo-Brutalist Border System
       borderWidth: {

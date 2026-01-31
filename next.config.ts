@@ -18,6 +18,9 @@ const withBundleAnalyzer = withBundleAnalyzerInit({
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // Turbopack config (Next.js 16 default bundler)
+  turbopack: {},
+
   experimental: {
     optimizePackageImports: [
       "lucide-react",
@@ -78,7 +81,8 @@ const nextConfig: NextConfig = {
 };
 
 // 3. Compose Plugins
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export default withBundleAnalyzer(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   withPWA(nextConfig as any) as unknown as NextConfig,
 );

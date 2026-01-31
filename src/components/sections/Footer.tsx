@@ -88,14 +88,6 @@ const productLinks = [
   { label: "FAQ", href: "#faq" },
 ];
 
-const resourceLinks = [
-  { label: "Documentation", href: "/docs" },
-  { label: "Settings", href: "/settings" },
-  { label: "Changelog", href: "/changelog" },
-  { label: "System Status", href: "/status" },
-  { label: "API Reference", href: "/api" },
-];
-
 const legalLinks = [
   { label: "Privacy Policy", href: "/privacy" },
   { label: "Terms of Service", href: "/terms" },
@@ -307,7 +299,7 @@ export default function Footer() {
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
       >
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 md:gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-10 md:gap-8">
           {/* Column 1: Brand & Status */}
           <motion.div
             className="col-span-2 md:col-span-1"
@@ -358,20 +350,6 @@ export default function Footer() {
             </h4>
             <ul className="space-y-0.5">
               {productLinks.map((link) => (
-                <li key={link.label}>
-                  <FooterLink href={link.href}>{link.label}</FooterLink>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-
-          {/* Column 3: Resources */}
-          <motion.div variants={columnVariants}>
-            <h4 className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-4">
-              Resources
-            </h4>
-            <ul className="space-y-0.5">
-              {resourceLinks.map((link) => (
                 <li key={link.label}>
                   <FooterLink href={link.href}>{link.label}</FooterLink>
                 </li>

@@ -28,11 +28,14 @@ export function useMagneticHover(
   useGSAP(
     () => {
       const el = ref.current;
-      if (!el) return;
+      if (!el) return; // Safety: exit early if ref is null
 
       const mm = gsap.matchMedia();
 
       mm.add(`(min-width: ${disableBelow}px)`, () => {
+        // Verify element still exists before creating quickTo functions
+        if (!el || !el.isConnected) return;
+
         const xTo = gsap.quickTo(el, "x", {
           duration: 0.4,
           ease: "power3.out",
@@ -47,6 +50,7 @@ export function useMagneticHover(
         });
 
         const handleMove = (event: PointerEvent) => {
+          if (!el.isConnected) return; // Safety: element removed from DOM
           const bounds = el.getBoundingClientRect();
           const relX = event.clientX - (bounds.left + bounds.width / 2);
           const relY = event.clientY - (bounds.top + bounds.height / 2);
@@ -68,7 +72,9 @@ export function useMagneticHover(
         return () => {
           el.removeEventListener("pointermove", handleMove);
           el.removeEventListener("pointerleave", reset);
-          gsap.to(el, { x: 0, y: 0, rotate: 0, duration: restDuration });
+          if (el.isConnected) {
+            gsap.to(el, { x: 0, y: 0, rotate: 0, duration: restDuration });
+          }
         };
       });
 
@@ -88,9 +94,10 @@ export function useWiggleOnHover(
   useGSAP(
     () => {
       const el = ref.current;
-      if (!el) return;
+      if (!el) return; // Safety: exit early if ref is null
 
       const shake = () => {
+        if (!el.isConnected) return; // Safety: element removed from DOM
         gsap.fromTo(
           el,
           { rotate: 0 },
@@ -110,7 +117,9 @@ export function useWiggleOnHover(
 
       return () => {
         el.removeEventListener("pointerenter", shake);
-        gsap.to(el, { rotate: 0, x: 0, duration: 0.2 });
+        if (el.isConnected) {
+          gsap.to(el, { rotate: 0, x: 0, duration: 0.2 });
+        }
       };
     },
     { dependencies: [rotation] },

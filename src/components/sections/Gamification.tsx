@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { Flame, Check, Lock, Sparkles, Award } from "lucide-react";
 
@@ -321,15 +320,6 @@ export default function Gamification() {
               <button className="px-6 py-3 bg-[#FF6B6B] text-black border-2 border-black shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000] active:translate-y-0 active:shadow-none font-mono font-bold transition-all uppercase tracking-tight">
                 Explore the Engine
               </button>
-              <Link
-                href="/docs/amplix"
-                className="group px-6 py-3 bg-white border-2 border-black hover:bg-[#FFD02F] font-mono font-bold transition-all flex items-center gap-2 uppercase tracking-tight"
-              >
-                View Challenges
-                <span className="group-hover:translate-x-1 transition-transform">
-                  →
-                </span>
-              </Link>
             </div>
 
             {/* Stats Grid */}

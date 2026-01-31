@@ -16,7 +16,6 @@ import {
   ArrowLeft,
   LogOut,
   HelpCircle,
-  Book,
   ShieldCheck,
 } from "lucide-react";
 import {
@@ -341,13 +340,7 @@ function OnboardingContent() {
           <span className="hidden md:inline font-bold text-sm text-neutral-500">
             Having Trouble?
           </span>
-          <Link
-            href="/docs"
-            className="font-bold text-sm underline decoration-2 underline-offset-4 hover:text-neutral-600 flex items-center gap-2"
-          >
-            <Book className="w-4 h-4" />
-            <span className="hidden sm:inline">Read Docs</span>
-          </Link>
+
           <a
             href="mailto:support@attendrix.app"
             className="font-bold text-sm hover:text-neutral-600 flex items-center gap-2"

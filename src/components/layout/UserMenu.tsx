@@ -4,19 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { NeoAvatar } from "@/components/ui/NeoAvatar";
-import {
-  ChevronDown,
-  User,
-  Settings,
-  HelpCircle,
-  LogOut,
-  FileText,
-  Activity,
-  Shield,
-  Scale,
-  Rocket,
-  ShieldCheck,
-} from "lucide-react";
+import { ChevronDown, Rocket, Shield, Scale, LogOut } from "lucide-react";
 
 // ============================================================================
 // UserMenu Component
@@ -107,7 +95,7 @@ export function UserMenu() {
         >
           {/* Primary Action */}
           <Link
-            href="/app"
+            href="/placeholder"
             onClick={() => setIsOpen(false)}
             className="
               w-full text-left px-4 py-3
@@ -123,66 +111,8 @@ export function UserMenu() {
           </Link>
 
           <div className="py-2">
-            {/* Account Section */}
-            <div className="px-4 py-1.5 text-[10px] font-bold uppercase text-neutral-400 tracking-wider">
-              Account
-            </div>
-            <Link
-              href="/profile"
-              onClick={() => setIsOpen(false)}
-              className="px-4 py-2 hover:bg-neutral-100 flex items-center gap-3 text-sm font-bold uppercase"
-            >
-              <User className="w-4 h-4 text-neutral-500" />
-              Profile
-            </Link>
-            <Link
-              href="/settings"
-              onClick={() => setIsOpen(false)}
-              className="px-4 py-2 hover:bg-neutral-100 flex items-center gap-3 text-sm font-bold uppercase"
-            >
-              <Settings className="w-4 h-4 text-neutral-500" />
-              Settings
-            </Link>
-            <Link
-              href="/settings/request-admin"
-              onClick={() => setIsOpen(false)}
-              className="px-4 py-2 hover:bg-neutral-100 flex items-center gap-3 text-sm font-bold uppercase"
-            >
-              <ShieldCheck className="w-4 h-4 text-neutral-500" />
-              Request Admin Access
-            </Link>
-
-            {/* Resources Section */}
-            <div className="px-4 py-1.5 mt-2 text-[10px] font-bold uppercase text-neutral-400 tracking-wider border-t border-dashed border-neutral-200">
-              Resources
-            </div>
-            <Link
-              href="/docs"
-              onClick={() => setIsOpen(false)}
-              className="px-4 py-2 hover:bg-neutral-100 flex items-center gap-3 text-sm font-bold uppercase"
-            >
-              <HelpCircle className="w-4 h-4 text-neutral-500" />
-              Help & Docs
-            </Link>
-            <Link
-              href="/download"
-              onClick={() => setIsOpen(false)}
-              className="px-4 py-2 hover:bg-neutral-100 flex items-center gap-3 text-sm font-bold uppercase"
-            >
-              <FileText className="w-4 h-4 text-neutral-500" />
-              Release Hub
-            </Link>
-            <Link
-              href="/status"
-              onClick={() => setIsOpen(false)}
-              className="px-4 py-2 hover:bg-neutral-100 flex items-center gap-3 text-sm font-bold uppercase"
-            >
-              <Activity className="w-4 h-4 text-neutral-500" />
-              System Status
-            </Link>
-
             {/* Legal Section */}
-            <div className="px-4 py-1.5 mt-2 text-[10px] font-bold uppercase text-neutral-400 tracking-wider border-t border-dashed border-neutral-200">
+            <div className="px-4 py-1.5 mt-2 text-[10px] font-bold uppercase text-neutral-400 tracking-wider">
               Legal
             </div>
             <Link

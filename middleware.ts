@@ -47,11 +47,7 @@ export const config = {
      * PROTECTED ROUTES ONLY:
      * Add any new private routes here.
      */
-    "/dashboard/:path*",
-    "/profile/:path*",
-    "/settings/:path*",
     "/onboarding/:path*",
-    "/challenges/:path*",
-    "/app/:path*", // Legacy support if needed
+    "/placeholder/:path*",
   ],
 };

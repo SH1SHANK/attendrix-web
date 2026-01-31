@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import { Plus, BookOpen, Mail } from "lucide-react";
+import { Plus, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface FAQItem {
@@ -128,18 +127,8 @@ export default function FAQ() {
             <h3 className="text-2xl font-bold uppercase text-yellow-400 mb-2">
               STILL CONFUSED?
             </h3>
-            <p className="text-neutral-400 mb-6">
-              Check the detailed documentation or ping us directly.
-            </p>
+            <p className="text-neutral-400 mb-6">Ping us directly.</p>
             <div className="flex flex-wrap gap-4">
-              {/* Docs Button */}
-              <Link
-                href="/docs"
-                className="inline-flex items-center gap-2 bg-white text-black px-6 py-3 border-2 border-black font-bold uppercase text-sm transition-all duration-200 hover:bg-yellow-400"
-              >
-                <BookOpen className="w-5 h-5" strokeWidth={2.5} />
-                Read Docs
-              </Link>
               {/* Support Button */}
               <a
                 href="mailto:support@attendrix.app"

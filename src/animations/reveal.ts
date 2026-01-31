@@ -40,7 +40,7 @@ export function useHeroIntro({
           tl.fromTo(
             attendanceRef.current,
             { yPercent: -120, opacity: 0 },
-            { yPercent: 0, opacity: 1, duration: 1.1 },
+            { yPercent: 0, opacity: 1, duration: 1.2 },
           );
         }
 
@@ -48,7 +48,7 @@ export function useHeroIntro({
           tl.fromTo(
             reimaginedRef.current,
             { yPercent: 120, opacity: 0 },
-            { yPercent: 0, opacity: 1, duration: 1.1 },
+            { yPercent: 0, opacity: 1, duration: 1.2 },
             "<0.05",
           );
         }
@@ -59,8 +59,8 @@ export function useHeroIntro({
             { scaleX: 0 },
             {
               scaleX: 1,
-              duration: 0.7,
-              ease: "power2.out",
+              duration: 0.9,
+              ease: "power3.out",
               transformOrigin: "0% 50%",
             },
             "<0.1",
@@ -74,33 +74,33 @@ export function useHeroIntro({
           tl.from(
             staggerTargets,
             {
-              y: 28,
+              y: 32,
               opacity: 0,
               stagger: 0.08,
-              duration: 0.7,
+              duration: 0.8,
               ease: "power3.out",
             },
-            "-=0.2",
+            "-=0.4",
           );
         }
       });
 
       mm.add("(max-width: 767px)", () => {
-        const tl = gsap.timeline({ defaults: { ease: "power2.out" } });
+        const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
         if (attendanceRef.current) {
           tl.fromTo(
             attendanceRef.current,
-            { y: -30, opacity: 0 },
-            { y: 0, opacity: 1, duration: 0.6 },
+            { y: -20, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.8 },
           );
         }
 
         if (reimaginedRef.current) {
           tl.fromTo(
             reimaginedRef.current,
-            { y: 30, opacity: 0 },
-            { y: 0, opacity: 1, duration: 0.6 },
+            { y: 20, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.8 },
             "<0.05",
           );
         }
@@ -111,8 +111,8 @@ export function useHeroIntro({
             { scaleX: 0 },
             {
               scaleX: 1,
-              duration: 0.5,
-              ease: "power1.out",
+              duration: 0.7,
+              ease: "power2.out",
               transformOrigin: "0% 50%",
             },
             "<0.1",
@@ -126,13 +126,13 @@ export function useHeroIntro({
           tl.from(
             staggerTargets,
             {
-              y: 18,
+              y: 16,
               opacity: 0,
               stagger: 0.08,
-              duration: 0.55,
+              duration: 0.6,
               ease: "power2.out",
             },
-            "-=0.15",
+            "-=0.2",
           );
         }
       });
@@ -168,7 +168,7 @@ export function useStaggerReveal({
         y: offset,
         opacity: 0,
         stagger: 0.06,
-        duration: 0.7,
+        duration: 0.8,
         ease,
       });
     },
