@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminFirestore } from "@/lib/firebase-admin";
 import { verifySession } from "@/lib/auth-guard";
-import { CourseRecord } from "@/types/supabase-academic";
+import { CourseRecord } from "../../types/supabase-academic";
 
 // ============================================================================
 // Types

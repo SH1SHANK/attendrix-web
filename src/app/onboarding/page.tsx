@@ -30,7 +30,7 @@ import {
   BatchRecord,
   CourseRecord,
   CurriculumState,
-} from "@/types/supabase-academic";
+} from "../../types/supabase-academic";
 import { cn } from "@/lib/utils";
 import { Drawer } from "@/components/ui/Drawer";
 import { useAuth } from "@/context/AuthContext";

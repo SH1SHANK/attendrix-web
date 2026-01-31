@@ -1,15 +1,15 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { verifySession } from "@/lib/auth-guard";
+import { getAdminFirestore } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import {
   BatchRecord,
   CourseRecord,
   CurriculumState,
   ElectiveSlot,
-} from "@/types/supabase-academic";
-import { verifySession } from "@/lib/auth-guard";
-import { getAdminFirestore } from "@/lib/firebase-admin";
-import { FieldValue } from "firebase-admin/firestore";
+} from "../../types/supabase-academic";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // For Admin RPC & Bypass RLS

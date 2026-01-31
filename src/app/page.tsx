@@ -1,19 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/sections/Hero";
-import Preloader from "@/components/sections/Preloader";
+const Preloader = dynamic(() => import("@/components/sections/Preloader"), {
+  ssr: false,
+});
 import Footer from "@/components/sections/Footer";
+
+gsap.registerPlugin(useGSAP);
 
 // Dynamic Imports for Below-the-Fold Content
 const WhatIsAttendrix = dynamic(
   () => import("@/components/sections/WhatIsAttendrix"),
   { ssr: true },
 );
-const PlatformSelector = dynamic(
-  () => import("@/components/sections/PlatformSelector"),
+const ChooseYourWeapon = dynamic(
+  () => import("@/components/sections/ChooseYourWeapon"),
   { ssr: true },
 );
 const FeaturesGrid = dynamic(
@@ -38,34 +44,56 @@ const FAQ = dynamic(() => import("@/components/sections/FAQ"), { ssr: true });
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
-  // No side effects needed for immediate render
+  const [heroReady, setHeroReady] = useState(false);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+
+  // Coordinated reveal after preloader completes
+  const handlePreloaderComplete = useCallback(() => {
+    setIsLoading(false);
+
+    // Small delay to ensure DOM is ready, then trigger reveal
+    requestAnimationFrame(() => {
+      // Animate navbar entry
+      if (navRef.current) {
+        gsap.fromTo(
+          navRef.current,
+          { y: -20, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" },
+        );
+      }
+
+      // Trigger hero animations
+      setHeroReady(true);
+
+      // Animate main content container
+      if (mainRef.current) {
+        gsap.fromTo(
+          mainRef.current,
+          { opacity: 0 },
+          { opacity: 1, duration: 0.4, ease: "power2.out" },
+        );
+      }
+    });
+  }, []);
 
   return (
     <>
-      {isLoading && <Preloader onComplete={() => setIsLoading(false)} />}
+      {isLoading && <Preloader onComplete={handlePreloaderComplete} />}
 
-      {/* Render Main Content immediately but hidden/behind loader until ready? 
-          Actually, we want it to render so attributes/images load. 
-          The Preloader likely has a z-index covering everything. 
-      */}
+      {/* Navbar with ref for coordinated animation */}
       <div
-        className={
-          isLoading
-            ? "fixed inset-0 -z-30 opacity-0"
-            : "animate-in fade-in duration-700"
-        }
+        ref={navRef as React.RefObject<HTMLDivElement>}
+        style={{ opacity: isLoading ? 0 : undefined }}
       >
-        {/* 
-            Note: If we hide it with opacity-0, we preserve LCP capability (browser loads bg images). 
-            But if we want perfect LCP score, we should show it immediately. 
-            However, the user has a specific "Preloader" design. 
-            The compromise: Render logic is simpler. 
-            We'll render it normally. The Preloader is fixed overlay.
-          */}
+        <Navbar />
       </div>
 
-      <Navbar />
-      <main className="relative min-h-screen overflow-hidden bg-stone-50 text-stone-950">
+      <main
+        ref={mainRef}
+        className="relative min-h-screen overflow-hidden bg-stone-50 text-stone-950"
+        style={{ opacity: isLoading ? 0 : undefined }}
+      >
         {/* Global dot grid background */}
         <div
           className="pointer-events-none fixed inset-0 -z-20 opacity-[0.05]"
@@ -86,12 +114,13 @@ export default function Home() {
           }}
         />
 
-        {/* Hero is critical - keep it sync or high priority */}
-        <Hero isVisible={!isLoading} />
+        {/* Hero is critical - triggered after preloader */}
+        <Hero isVisible={heroReady} />
 
         {/* Lazy load the rest */}
+        <Navbar />
         <WhatIsAttendrix />
-        <PlatformSelector />
+        <ChooseYourWeapon />
         <FeaturesGrid />
         <WebAccessSpotlight />
         <HowItWorks />

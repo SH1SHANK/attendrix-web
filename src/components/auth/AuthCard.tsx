@@ -19,13 +19,13 @@ const AuthCard = ({ title, subtitle, children, footerLink }: AuthCardProps) => {
       {/* ================= BACKGROUND ELEMENTS ================= */}
 
       {/* 1. High-Contrast Dot Pattern (Black 15% opacity) */}
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(#00000026_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(#00000026_1px,transparent_1px)] bg-size-[20px_20px] pointer-events-none" />
 
       {/* 2. Vignette (Focus Mask) - Stronger edge fade */}
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(255,255,255,0.9)_100%)] pointer-events-none" />
 
       {/* 3. Refined Yellow Glow (Smaller & tighter) */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-yellow-400/25 blur-[80px] rounded-full -z-0 pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-yellow-400/25 blur-[80px] rounded-full z-0 pointer-events-none" />
 
       {/* ================= CONTENT WRAPPER ================= */}
       <div className="w-full max-w-[400px] relative z-10 px-0 sm:px-0">

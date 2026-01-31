@@ -8,30 +8,6 @@ import { Github, Twitter, Send, Signal, ChevronRight } from "lucide-react";
 // ANIMATION VARIANTS
 // ============================================
 
-const ctaVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.6,
-      ease: "easeOut" as const,
-    },
-  },
-};
-
-const dividerVariants = {
-  hidden: { scaleX: 0 },
-  visible: {
-    scaleX: 1,
-    transition: {
-      duration: 0.8,
-      ease: "easeOut" as const,
-      delay: 0.3,
-    },
-  },
-};
-
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -232,66 +208,7 @@ export default function Footer() {
 
   return (
     <footer className="bg-neutral-950 text-white overflow-hidden">
-      {/* Section A: Pre-Footer CTA */}
-      <motion.div
-        className="border-b border-white/10"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-      >
-        <div className="bg-[#fffdf5] py-20 px-4">
-          <motion.div
-            className="max-w-5xl mx-auto px-6 py-16 md:py-20 text-center border-[3px] border-dashed border-black bg-[#fffdf5] relative overflow-hidden"
-            variants={ctaVariants}
-          >
-            {/* Decorative corners */}
-            <div className="absolute top-0 left-0 w-4 h-4 border-t-[3px] border-l-[3px] border-black" />
-            <div className="absolute top-0 right-0 w-4 h-4 border-t-[3px] border-r-[3px] border-black" />
-            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-[3px] border-l-[3px] border-black" />
-            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-[3px] border-r-[3px] border-black" />
-
-            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight mb-6 text-black leading-tight">
-              Ready to take control of
-              <br />
-              <span className="bg-[#FFD02F] px-2 box-decoration-clone">
-                your academics?
-              </span>
-            </h2>
-
-            {/* CTA Button with Neo-Bounce */}
-            <motion.a
-              href="/app"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-black text-[#FFD02F] border-2 border-black font-bold uppercase text-sm tracking-wider will-change-transform mt-8"
-              initial={{ boxShadow: "6px 6px 0px 0px #FFD02F" }}
-              whileHover={{
-                y: -4,
-                x: -4,
-                boxShadow: "10px 10px 0px 0px #FFD02F",
-              }}
-              whileTap={{
-                y: 2,
-                x: 2,
-                boxShadow: "0px 0px 0px 0px #FFD02F",
-              }}
-              transition={{ type: "spring", stiffness: 400, damping: 15 }}
-            >
-              <span className="text-lg">Launch Web Access</span>
-              <ChevronRight className="w-5 h-5" strokeWidth={3} />
-            </motion.a>
-          </motion.div>
-        </div>
-
-        {/* Animated Divider Line */}
-        <motion.div
-          className="h-px bg-white/20 origin-left"
-          variants={dividerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-        />
-      </motion.div>
-
-      {/* Section B: Link Grid */}
+      {/* Section A: Link Grid */}
       <motion.div
         className="max-w-7xl mx-auto px-4 py-12 md:py-16"
         variants={activeContainerVariants}

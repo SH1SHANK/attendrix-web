@@ -4,7 +4,6 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
-  Download,
   GitCommit,
   Copy,
   Check,
@@ -16,6 +15,8 @@ import { type Release } from "@/lib/github";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { DownloadButton } from "@/components/releases/DownloadButton";
+import { QRCodeDownload } from "@/components/release/QRCodeDownload";
 
 interface ReleaseCardProps {
   release: Release;
@@ -25,6 +26,15 @@ interface ReleaseCardProps {
 export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
   const [copied, setCopied] = useState(false);
   const [isExpanded, setIsExpanded] = useState(isHero); // Hero expanded by default
+
+  // Check if release is new (within 7 days)
+  const isNew = () => {
+    const releaseDate = new Date(release.date);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - releaseDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 7;
+  };
 
   const handleCopy = () => {
     if (release.sha256) {
@@ -61,6 +71,15 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
           <span className="px-2 py-1 text-xs font-bold uppercase border border-black bg-neutral-100 text-neutral-600">
             Beta
           </span>
+        )}
+        {isNew() && (
+          <motion.span
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="px-2 py-1 text-xs font-bold uppercase border border-black bg-red-500 text-white animate-pulse"
+          >
+            New
+          </motion.span>
         )}
         <span className="text-xs font-mono text-neutral-500">
           Released {release.date}
@@ -147,18 +166,18 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
 
       {/* Actions Footer */}
       <div className="mt-2 space-y-4">
-        <a
-          href={release.downloadUrl}
-          className={cn(
-            "flex items-center justify-center gap-2 w-full py-4 font-bold uppercase tracking-wider border-2 border-black shadow-[4px_4px_0_#000] transition-all active:shadow-none active:translate-x-[2px] active:translate-y-[2px] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[6px_6px_0_#000]",
-            isHero
-              ? "bg-[#FF4F4F] text-white"
-              : "bg-white text-black hover:bg-neutral-50",
-          )}
-        >
-          <Download className="w-5 h-5" />
-          Download APK ({release.size})
-        </a>
+        {/* Download Section with QR Code */}
+        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-start">
+          <div className="flex-1">
+            <DownloadButton
+              url={release.downloadUrl}
+              filename={`attendrix-${release.version}.apk`}
+              size={release.size}
+              isHero={isHero}
+            />
+          </div>
+          <QRCodeDownload url={release.downloadUrl} version={release.version} />
+        </div>
 
         {/* Integrity Check */}
         {release.sha256 && (

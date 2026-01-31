@@ -39,7 +39,7 @@ export function NeoAvatar({ name, className }: NeoAvatarProps) {
       )}
       {shape === "square" && <div className="w-4 h-4 bg-black/20" />}
       {shape === "triangle" && (
-        <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[14px] border-b-black/20" />
+        <div className="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-14 border-b-black/20" />
       )}
       {shape === "diamond" && <div className="w-4 h-4 bg-black/20 rotate-45" />}
 

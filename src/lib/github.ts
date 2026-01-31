@@ -18,10 +18,16 @@ const GITHUB_OWNER = process.env.NEXT_PUBLIC_GITHUB_OWNER || "SH1SHANK";
 const GITHUB_REPO = process.env.NEXT_PUBLIC_GITHUB_REPO || "attendrix";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
+// Cache configuration - stale-while-revalidate pattern
+const CACHE_MAX_AGE = 3600; // 1 hour fresh
+
 // Helper to format bytes to MB
 const bytesToMB = (bytes: number) => {
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 };
+
+// Compile regex once for reuse
+const SHA256_REGEX = /sha256:\s*([a-f0-9]{64})/i;
 
 interface GitHubAsset {
   name: string;
@@ -55,55 +61,83 @@ export async function getReleases(): Promise<Release[]> {
       `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`,
       {
         headers,
-        next: { revalidate: 3600 }, // Cache for 1 hour
+        next: {
+          revalidate: CACHE_MAX_AGE,
+          tags: ["releases"],
+        },
       },
     );
 
     if (!res.ok) {
+      // Log error details but don't throw - return empty array for graceful degradation
+      console.error("GitHub API Error:", {
+        status: res.status,
+        statusText: res.statusText,
+      });
+
       if (res.status === 404) return [];
-      console.error("GitHub API Error:", res.status, res.statusText);
+      if (res.status === 403) {
+        console.warn("GitHub API rate limit exceeded. Consider using a token.");
+      }
       return [];
     }
 
     const data = await res.json();
 
-    if (!Array.isArray(data)) return [];
+    if (!Array.isArray(data)) {
+      console.error("Invalid response format from GitHub API");
+      return [];
+    }
 
-    return data.map((release: GitHubRelease) => {
-      // Find APK asset
-      const apkAsset = release.assets?.find((asset: GitHubAsset) =>
+    // Pre-allocate array for better performance
+    const releases: Release[] = new Array(data.length);
+
+    for (let i = 0; i < data.length; i++) {
+      const release: GitHubRelease = data[i];
+
+      // Find APK asset - prioritize .apk files
+      const apkAsset = release.assets?.find((asset) =>
         asset.name.endsWith(".apk"),
       );
 
-      // Determine size
-      const size = apkAsset ? bytesToMB(apkAsset.size) : "Unknown";
+      // Extract SHA-256 using pre-compiled regex
+      const shaMatch = release.body?.match(SHA256_REGEX);
+      const sha256 = shaMatch?.[1] ?? null;
 
-      // Determine download URL
-      const downloadUrl = apkAsset
-        ? apkAsset.browser_download_url
-        : release.html_url;
-
-      // Extract SHA-256 from body if present
-      // Regex looks for "SHA256: <hash>" or "sha256: <hash>" or just the hash in a code block context if labelled
-      const shaMatch = release.body.match(/sha256:\s*([a-f0-9]{64})/i);
-      const sha256 = shaMatch ? shaMatch[1] || null : null;
-
-      return {
+      releases[i] = {
         releaseId: release.id,
         version: release.tag_name,
         date: format(new Date(release.published_at), "MMM dd, yyyy"),
-        size,
+        size: apkAsset ? bytesToMB(apkAsset.size) : "Unknown",
         status: release.prerelease ? "beta" : "stable",
-        downloadUrl,
+        downloadUrl: apkAsset?.browser_download_url || release.html_url,
         htmlUrl: release.html_url,
-        commitHash: release.target_commitish.substring(0, 7), // Short hash
+        commitHash: release.target_commitish.substring(0, 7),
         sha256,
-        body: release.body,
+        body: release.body || "",
         isPreRelease: release.prerelease,
       };
-    });
+    }
+
+    return releases;
   } catch (error) {
     console.error("Failed to fetch releases:", error);
     return [];
+  }
+}
+
+// Revalidation helper for on-demand cache updates
+export async function revalidateReleases() {
+  try {
+    // Use Next.js fetch with no cache to force refresh
+    await fetch(
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`,
+      {
+        cache: "no-store",
+        headers: GITHUB_TOKEN ? { Authorization: `token ${GITHUB_TOKEN}` } : {},
+      },
+    );
+  } catch (error) {
+    console.error("Failed to revalidate releases:", error);
   }
 }
