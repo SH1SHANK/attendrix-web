@@ -1,110 +1,77 @@
 "use client";
 
-import { useState, memo, useCallback } from "react";
+import { memo } from "react";
 import { cn } from "@/lib/utils";
-import { Clock, MapPin, Check, X } from "lucide-react";
-
-type AttendanceStatus = "present" | "absent" | null;
-
-interface ClassData {
-  id: string;
-  time: string;
-  subject: string;
-  code: string;
-  type: "Regular" | "Lab";
-}
+import { Clock, MapPin, Check } from "lucide-react";
+import { TodayScheduleClass } from "@/types/supabase-academic";
 
 interface TodayClassesProps {
-  classes: ClassData[];
+  classes: TodayScheduleClass[];
   className?: string;
 }
 
-const AttendanceButton = memo(function AttendanceButton({
-  status,
-  onChange,
-  disabled = false,
+/**
+ * READ-ONLY Attendance Display
+ * Shows attendance status from userAttended field
+ * Button is DISABLED - no marking allowed in Phase 2
+ */
+const AttendanceDisplay = memo(function AttendanceDisplay({
+  attended,
 }: {
-  status: AttendanceStatus;
-  onChange: (status: AttendanceStatus) => void;
-  disabled?: boolean;
+  attended: boolean;
 }) {
-  // Cycle: null -> present -> absent -> null
-  const handleClick = () => {
-    if (disabled) return;
-    if (status === null) onChange("present");
-    else if (status === "present") onChange("absent");
-    else onChange(null);
-  };
-
   return (
-    <button
-      onClick={handleClick}
-      disabled={disabled}
+    <div
       className={cn(
         "h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 border-2 border-black flex flex-col items-center justify-center",
-        "transition-all duration-200 ease-out",
         "shadow-[2px_2px_0px_0px_#000] sm:shadow-[3px_3px_0px_0px_#000] md:shadow-[4px_4px_0px_0px_#000]",
-        "hover:shadow-[3px_3px_0px_0px_#000] sm:hover:shadow-[5px_5px_0px_0px_#000] md:hover:shadow-[6px_6px_0px_0px_#000] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:scale-105",
-        "active:shadow-none active:translate-x-0.5 active:translate-y-0.5 sm:active:translate-x-0.75 sm:active:translate-y-0.75 md:active:translate-x-1 md:active:translate-y-1 active:scale-95",
-        "touch-manipulation select-none",
-        disabled && "opacity-50 cursor-not-allowed pointer-events-none",
+        "opacity-60 cursor-not-allowed select-none",
       )}
       style={{
-        backgroundColor:
-          status === "present"
-            ? "#51CF66"
-            : status === "absent"
-              ? "#FF6B6B"
-              : "#ffffff",
+        backgroundColor: attended ? "#51CF66" : "#ffffff",
       }}
     >
-      {status === "present" && (
+      {attended ? (
         <>
           <Check className="w-4 h-4 sm:w-5 sm:h-5 md:w-8 md:h-8 stroke-[3px] mb-0.5 text-black" />
           <span className="text-[6px] sm:text-[7px] md:text-[10px] font-black uppercase tracking-wide text-black">
             PRESENT
           </span>
         </>
-      )}
-      {status === "absent" && (
-        <>
-          <X className="w-4 h-4 sm:w-5 sm:h-5 md:w-8 md:h-8 stroke-[3px] mb-0.5 text-black" />
-          <span className="text-[6px] sm:text-[7px] md:text-[10px] font-black uppercase tracking-wide text-black">
-            ABSENT
-          </span>
-        </>
-      )}
-      {status === null && (
+      ) : (
         <span className="text-[8px] sm:text-[9px] md:text-xs font-bold uppercase text-neutral-400">
-          MARK
+          —
         </span>
       )}
-    </button>
+    </div>
   );
 });
 
 const ClassRow = memo(function ClassRow({
   classData,
-  status,
-  onStatusChange,
   index,
 }: {
-  classData: ClassData;
-  status: AttendanceStatus;
-  onStatusChange: (s: AttendanceStatus) => void;
+  classData: TodayScheduleClass;
   index: number;
 }) {
-  // Ensure we have end time simulated for display if not provided
-  const startTime = classData.time;
-  // Creating a fake end time for visual consistency with the design sample (e.g. +50 mins)
-  const [hours, mins] = startTime.split(":").map(Number);
-  const endDate = new Date();
-  endDate.setHours(hours ?? 0, (mins ?? 0) + 50);
-  const endTime = `${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`;
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  };
+
+  const startTime = formatTime(classData.classStartTime);
+  const endTime = formatTime(classData.classEndTime);
 
   return (
     <div
-      className="group relative flex flex-row items-stretch border-2 border-black bg-white transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000] hover:-translate-y-1 hover:-translate-x-1 hover:shadow-[6px_6px_0px_0px_#000] sm:hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-[2px_2px_0px_0px_#000] touch-manipulation cursor-pointer"
+      className={cn(
+        "group relative flex flex-row items-stretch border-2 border-black bg-white transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
+        "shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000]",
+        "hover:-translate-y-1 hover:-translate-x-1 hover:shadow-[6px_6px_0px_0px_#000] sm:hover:shadow-[10px_10px_0px_0px_#000]",
+        "active:translate-x-1 active:translate-y-1 active:shadow-[2px_2px_0px_0px_#000]",
+        "touch-manipulation cursor-pointer",
+        classData.isCancelled && "opacity-60",
+      )}
       style={{
         animationDelay: `${index * 50}ms`,
         animationFillMode: "backwards",
@@ -122,45 +89,36 @@ const ClassRow = memo(function ClassRow({
 
       {/* 2. Info Column */}
       <div className="flex-1 flex flex-col justify-center px-2 py-2 sm:px-3 sm:py-3 md:px-4 md:py-4 lg:px-6 lg:py-6 min-w-0">
-        <div className="mb-0.5 sm:mb-1 md:mb-1.5">
+        <div className="mb-0.5 sm:mb-1 md:mb-1.5 flex items-center gap-2">
           <span className="font-mono text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs font-bold text-neutral-500 uppercase tracking-wide">
-            {classData.code}
+            {classData.courseID}
           </span>
+          {classData.isCancelled && (
+            <span className="bg-red-200 border border-black px-1 text-[8px] sm:text-[9px] font-black uppercase">
+              CANCELLED
+            </span>
+          )}
         </div>
         <h3 className="font-display text-xs sm:text-sm md:text-lg lg:text-xl xl:text-2xl font-black uppercase leading-tight tracking-tight mb-0.5 sm:mb-1 md:mb-1.5 line-clamp-2">
-          {classData.subject}
+          {classData.courseName}
         </h3>
         <div className="flex items-center gap-1 sm:gap-1.5 text-neutral-600">
           <MapPin className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 lg:w-4 lg:h-4" />
           <span className="font-mono text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs font-medium">
-            TBA
+            {classData.classVenue || "TBA"}
           </span>
         </div>
       </div>
 
-      {/* 3. Action Column */}
+      {/* 3. Read-only Attendance Display */}
       <div className="flex items-center justify-center px-1.5 sm:px-3 md:px-4 lg:px-6 border-l-2 border-black bg-neutral-50 group-hover:bg-[#FFFDF5] transition-colors duration-300">
-        <AttendanceButton status={status} onChange={onStatusChange} />
+        <AttendanceDisplay attended={classData.userAttended} />
       </div>
     </div>
   );
 });
 
 export function TodayClasses({ classes, className }: TodayClassesProps) {
-  const [attendance, setAttendance] = useState<
-    Record<string, AttendanceStatus>
-  >({
-    "2": "present", // Mock initial state based on image
-    "3": "absent",
-  });
-
-  const handleStatusChange = useCallback(
-    (id: string, status: AttendanceStatus) => {
-      setAttendance((prev) => ({ ...prev, [id]: status }));
-    },
-    [],
-  );
-
   return (
     <div className={cn("space-y-6", className)}>
       {/* Header */}
@@ -178,15 +136,10 @@ export function TodayClasses({ classes, className }: TodayClassesProps) {
 
       <div className="grid gap-3 sm:gap-4 md:gap-6">
         {classes.length > 0 ? (
-          classes.map((c, idx) => (
-            <ClassRow
-              key={c.id}
-              classData={c}
-              status={attendance[c.id] || null}
-              onStatusChange={(s) => handleStatusChange(c.id, s)}
-              index={idx}
-            />
-          ))
+          classes.map((c, idx) => {
+            const uniqueKey = `class-${idx}-${c.classID || "no-id"}-${c.classStartTime || "no-time"}`;
+            return <ClassRow key={uniqueKey} classData={c} index={idx} />;
+          })
         ) : (
           <div className="border-2 border-dashed border-black/20 p-12 text-center bg-neutral-50 transition-all duration-300 hover:border-black/40 hover:bg-neutral-100">
             <div

@@ -257,7 +257,7 @@ This plan outlines a comprehensive approach to building a web-based attendance m
 
 **Sections to Build:**
 
-**User Greeting Card**
+### User Greeting Card
 
 - Displays greeting to User (e.g. Good Morning! Shashank)
 - Displays Sub-Greeting to User (e.g. How's Your Day Going Today?)
@@ -269,7 +269,9 @@ This plan outlines a comprehensive approach to building a web-based attendance m
 - Display time remaining
 - Real-time updates (1-minute polling)
 
-**Today's Schedule List(Tab Bar Below The current Class Card Shared With Upcoming Classes Section)**
+### Today's Schedule List
+
+(Tab Bar Below The current Class Card Shared With Upcoming Classes Section)
 
 - Show all classes for current day
 - Attendance toggle for each class
@@ -284,7 +286,9 @@ This plan outlines a comprehensive approach to building a web-based attendance m
 - Critical courses needing attention
 - Quick insights and recommendations
 
-**Upcoming Preview(In a Tab Shared With Today's Classes)**
+### Upcoming Preview
+
+(In a Tab Shared With Today's Classes)
 
 - Next working day's classes
 - Will Have a Horizontal Calender And Default Selcted For Netx Working Day and User Can Scroll Through All Days and Check That Day's Classes

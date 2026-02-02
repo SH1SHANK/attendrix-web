@@ -10,7 +10,7 @@ export const prefetchComponents = () => {
 };
 
 // Debounce utility for performance
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number,
 ): (...args: Parameters<T>) => void {
@@ -28,7 +28,7 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 // Throttle utility for scroll/resize events
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number,
 ): (...args: Parameters<T>) => void {
@@ -60,7 +60,7 @@ export const createIntersectionObserver = (
 
 // LocalStorage cache with expiry
 export const cacheManager = {
-  set: (key: string, value: any, expiryMinutes = 60) => {
+  set: (key: string, value: unknown, expiryMinutes = 60) => {
     const item = {
       value,
       expiry: Date.now() + expiryMinutes * 60 * 1000,
@@ -104,6 +104,8 @@ export const measurePerformance = (name: string) => {
     performance.measure(name, `${name}-start`, `${name}-end`);
 
     const measure = performance.getEntriesByName(name)[0];
-    console.log(`${name}: ${measure.duration.toFixed(2)}ms`);
+    if (measure && "duration" in measure) {
+      console.log(`${name}: ${measure.duration.toFixed(2)}ms`);
+    }
   };
 };

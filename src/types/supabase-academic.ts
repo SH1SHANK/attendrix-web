@@ -42,3 +42,63 @@ export interface CurriculumState {
   electiveSlots: ElectiveSlot[];
   // Replaces flat 'electives' and 'count'
 }
+
+// ============================================
+// RPC Response Types (Phase 2: READ-ONLY Integration)
+// ============================================
+
+/**
+ * Response from get_today_schedule RPC
+ * Used for: Today's Classes, Current/Next Class in CountdownCard
+ */
+export interface TodayScheduleClass {
+  classID: string;
+  courseID: string;
+  courseName: string;
+  classStartTime: string; // TIMESTAMP as ISO string
+  classEndTime: string; // TIMESTAMP as ISO string
+  classVenue: string | null;
+  isCancelled: boolean;
+  userAttended: boolean;
+  userCheckinTime: string | null; // TIMESTAMP as ISO string
+  totalClasses: number;
+  attendedClasses: number;
+  currentAttendancePercentage: number; // FLOAT
+  classesRequiredToReachGoal: number;
+  classesCanSkipAndStayAboveGoal: number;
+}
+
+/**
+ * Response from get_upcoming_classes RPC
+ * Used for: Upcoming Classes (default next working day)
+ */
+export interface UpcomingClass {
+  classID: string;
+  courseID: string;
+  courseName: string;
+  classStartTime: string; // TIMESTAMP as ISO string
+  classEndTime: string; // TIMESTAMP as ISO string
+  classVenue: string | null;
+  classDate: string; // Display format: "D/M/YYYY"
+}
+
+/**
+ * Response from get_classes_by_date RPC
+ * Used for: Upcoming Classes when user selects specific date
+ */
+export interface ClassByDate {
+  classID: string;
+  courseID: string;
+  courseName: string;
+  classStartTime: string; // TIMESTAMP as ISO string
+  classEndTime: string; // TIMESTAMP as ISO string
+  classVenue: string | null;
+  classDate: string; // Display format: "D/M/YYYY"
+  classStatus: Record<string, unknown> | null; // JSONB
+  courseType: {
+    isLab: boolean;
+    courseType: string; // "core" | "elective"
+    electiveCategory: string;
+  } | null; // JSONB
+  isPlusSlot: boolean;
+}

@@ -5,14 +5,14 @@ import dynamic from "next/dynamic";
 import { CountdownCard } from "@/components/dashboard/CountdownCard";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { usePerformanceMonitor } from "@/hooks/useOptimizations";
+import { useAuth } from "@/context/AuthContext";
 import {
-  getMockCurrentClass,
-  getMockTodayClasses,
-  getMockDateRange,
-  getMockClassesByDate,
-  getMockGreeting,
-  getMockDate,
-} from "@/lib/mock-dashboard";
+  useTodaySchedule,
+  useUpcomingClasses,
+  getCurrentOrNextClass,
+} from "@/hooks/useDashboardData";
+import { useEffect, useState } from "react";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 
 // Lazy load heavy components for code splitting
 const TodayClasses = dynamic(
@@ -41,13 +41,100 @@ export default function DashboardPage() {
   // Monitor component performance
   usePerformanceMonitor("DashboardPage");
 
-  // Memoize data to prevent recalculation on re-renders
-  const currentClass = useMemo(() => getMockCurrentClass(), []);
-  const todayClasses = useMemo(() => getMockTodayClasses(), []);
-  const dateRange = useMemo(() => getMockDateRange(), []);
-  const classesByDate = useMemo(() => getMockClassesByDate(), []);
-  const greeting = useMemo(() => getMockGreeting(), []);
-  const dateString = useMemo(() => getMockDate(), []);
+  // Get Firebase user
+  const { user, loading: authLoading } = useAuth();
+
+  // Fetch user data from Firestore
+  const [batchId, setBatchId] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>("Student");
+  const [firestoreLoading, setFirestoreLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchUserData() {
+      if (!user?.uid) {
+        setFirestoreLoading(false);
+        return;
+      }
+
+      try {
+        const db = getFirestore();
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setBatchId(data.batchID || null);
+          setDisplayName(data.display_name || user.displayName || "Student");
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setFirestoreLoading(false);
+      }
+    }
+
+    fetchUserData();
+  }, [user]);
+
+  // Fetch today's schedule
+  const {
+    data: todaySchedule,
+    loading: scheduleLoading,
+    error: scheduleError,
+  } = useTodaySchedule(user?.uid || null, batchId, 75);
+
+  // Fetch upcoming classes
+  const {
+    data: upcomingClasses,
+    loading: upcomingLoading,
+    error: upcomingError,
+  } = useUpcomingClasses(user?.uid || null);
+
+  // Determine current or next class
+  const { class: currentOrNextClass, type: classType } = useMemo(
+    () => getCurrentOrNextClass(todaySchedule),
+    [todaySchedule],
+  );
+
+  // Generate greeting based on time of day
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  }, []);
+
+  // Format current date
+  const dateString = useMemo(() => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    return new Date().toLocaleDateString("en-US", options);
+  }, []);
+
+  // Show loading state
+  if (authLoading || firestoreLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  // Show error state
+  if (scheduleError || upcomingError) {
+    return (
+      <div className="min-h-screen bg-[#fffdf5] flex items-center justify-center p-4">
+        <div className="border-2 border-black bg-white p-8 shadow-[8px_8px_0px_0px_#000] max-w-md">
+          <h2 className="font-display text-2xl font-black uppercase mb-4">
+            Error Loading Dashboard
+          </h2>
+          <p className="font-mono text-sm text-neutral-600">
+            {scheduleError?.message || upcomingError?.message}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fffdf5] relative overflow-x-hidden will-change-transform">
@@ -76,7 +163,7 @@ export default function DashboardPage() {
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase text-black tracking-tighter leading-[0.9]">
               {greeting},{" "}
               <span className="text-transparent bg-clip-text bg-linear-to-r from-black to-neutral-600">
-                Shashank
+                {displayName}
               </span>
             </h1>
             <p className="mt-2 font-mono text-base sm:text-lg font-bold text-neutral-500 uppercase tracking-wide sm:tracking-widest">
@@ -93,10 +180,8 @@ export default function DashboardPage() {
             style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
           >
             <CountdownCard
-              type={currentClass.type}
-              subject={currentClass.subject}
-              timeRange={currentClass.timeRange}
-              targetTime={currentClass.targetTime}
+              classData={currentOrNextClass}
+              type={classType}
               className="h-full"
             />
           </div>
@@ -124,7 +209,11 @@ export default function DashboardPage() {
             className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700"
             style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
           >
-            <TodayClasses classes={todayClasses} />
+            {scheduleLoading ? (
+              <DashboardSkeleton />
+            ) : (
+              <TodayClasses classes={todaySchedule} />
+            )}
           </div>
 
           {/* Divider */}
@@ -150,10 +239,14 @@ export default function DashboardPage() {
             className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700"
             style={{ animationDelay: "500ms", animationFillMode: "backwards" }}
           >
-            <UpcomingClasses
-              dateRange={dateRange}
-              classesByDate={classesByDate}
-            />
+            {upcomingLoading ? (
+              <DashboardSkeleton />
+            ) : (
+              <UpcomingClasses
+                userId={user?.uid || null}
+                defaultClasses={upcomingClasses}
+              />
+            )}
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,49 @@ export const DashboardNav = memo(function DashboardNav() {
       setScrolled(false);
     }
   });
+
+  // Fix hydration mismatch by only rendering motion variants after mount
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!mounted) {
+    // Render a static version first to match server
+    return (
+      <>
+        <nav
+          className="fixed left-1/2 bottom-6 z-50 pointer-events-none"
+          style={{ transform: "translateX(-50%)" }}
+        >
+          <div className="flex items-center gap-2 px-3 py-3 border-2 border-black pointer-events-auto bg-[#fffdf5] shadow-[8px_8px_0_0_#000]">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "relative flex items-center gap-2 px-4 py-2.5 border-2 border-black font-bold uppercase text-xs sm:text-sm",
+                  "bg-white shadow-[4px_4px_0_0_#000]",
+                  pathname === item.href ||
+                    (item.href !== "/dashboard" &&
+                      pathname.startsWith(item.href))
+                    ? "bg-[#FFD02F] shadow-[4px_4px_0_0_#000]"
+                    : "bg-white shadow-[4px_4px_0_0_#000]",
+                )}
+              >
+                <item.icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+        <div className="h-20" />
+      </>
+    );
+  }
 
   return (
     <>

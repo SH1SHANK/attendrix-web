@@ -2,20 +2,17 @@
 
 import { useEffect, useState, useMemo, memo } from "react";
 import { cn } from "@/lib/utils";
+import { TodayScheduleClass } from "@/types/supabase-academic";
 
 interface CountdownCardProps {
-  type: "current" | "next";
-  subject: string;
-  timeRange: string;
-  targetTime: Date;
+  classData: TodayScheduleClass | null;
+  type: "current" | "next" | "none";
   className?: string;
 }
 
 export const CountdownCard = memo(function CountdownCard({
+  classData,
   type,
-  subject,
-  timeRange,
-  targetTime,
   className,
 }: CountdownCardProps) {
   const [timeLeft, setTimeLeft] = useState({
@@ -25,24 +22,41 @@ export const CountdownCard = memo(function CountdownCard({
   });
   const [progress, setProgress] = useState(0);
 
+  // Calculate target time and time range from classData
+  const { targetTime, timeRange } = useMemo(() => {
+    if (!classData) {
+      return { targetTime: new Date(), timeRange: "" };
+    }
+
+    const start = new Date(classData.classStartTime);
+    const end = new Date(classData.classEndTime);
+
+    const formatTime = (date: Date) => {
+      return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    };
+
+    return {
+      targetTime: type === "current" ? end : start,
+      timeRange: `${formatTime(start)} - ${formatTime(end)}`,
+    };
+  }, [classData, type]);
+
   useEffect(() => {
+    if (type === "none" || !classData) return;
+
     let animationFrameId: number;
     let lastUpdate = Date.now();
 
     const calculateProgress = () => {
       try {
         const now = new Date();
-        const [startStr] = timeRange.split(" - ");
-        if (!startStr) return 0;
+        const startTime = new Date(classData.classStartTime);
+        const endTime = new Date(classData.classEndTime);
 
-        const [startHours, startMinutes] = startStr.split(":").map(Number);
-        const startTime = new Date();
-        startTime.setHours(startHours ?? 0, startMinutes ?? 0, 0, 0);
-
-        if (now > targetTime) return 100;
+        if (now > endTime) return 100;
         if (startTime > now && type === "next") return 0;
 
-        const totalDuration = targetTime.getTime() - startTime.getTime();
+        const totalDuration = endTime.getTime() - startTime.getTime();
         const elapsed = now.getTime() - startTime.getTime();
 
         return Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
@@ -84,9 +98,49 @@ export const CountdownCard = memo(function CountdownCard({
     animationFrameId = requestAnimationFrame(updateCountdown);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [targetTime, timeRange, type]);
+  }, [targetTime, type, classData]);
 
   const isCurrent = useMemo(() => type === "current", [type]);
+
+  // Handle empty state
+  if (type === "none" || !classData) {
+    return (
+      <div
+        className={cn(
+          "relative overflow-hidden w-full border-2 border-black transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
+          "bg-neutral-100",
+          "shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000] md:shadow-[8px_8px_0px_0px_#000]",
+          className,
+        )}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.07]"
+          style={{
+            backgroundImage: `repeating-linear-gradient(
+              -45deg,
+              #000,
+              #000 2px,
+              transparent 2px,
+              transparent 12px
+            )`,
+          }}
+        />
+        <div
+          className="relative p-4 sm:p-6 md:p-8 lg:p-10 flex items-center justify-center"
+          style={{ minHeight: "200px" }}
+        >
+          <div className="text-center space-y-4">
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black uppercase text-neutral-500 tracking-tighter">
+              No More Classes Today
+            </h2>
+            <p className="font-mono text-sm sm:text-base font-bold text-neutral-400 uppercase tracking-wide">
+              You&apos;re all done for today!
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Design tokens based on state
   const cardBg = isCurrent ? "bg-[#FF6B6B]" : "bg-[#FFD02F]"; // Coral Red vs Brand Yellow
@@ -151,7 +205,7 @@ export const CountdownCard = memo(function CountdownCard({
 
           <div className="space-y-2">
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase leading-[0.85] text-black tracking-tighter drop-shadow-sm stroke-black">
-              {subject}
+              {classData.courseName}
             </h1>
             <div className="inline-block bg-black text-white px-3 py-1 font-mono text-lg font-bold transform -rotate-1 border-2 border-transparent">
               {timeRange}

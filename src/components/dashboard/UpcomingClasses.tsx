@@ -3,14 +3,8 @@
 import { useState, memo, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon } from "lucide-react";
-
-interface ClassData {
-  id: string;
-  time: string;
-  subject: string;
-  code: string;
-  type: "Regular" | "Lab";
-}
+import { ClassByDate, UpcomingClass } from "@/types/supabase-academic";
+import { useClassesByDate } from "@/hooks/useDashboardData";
 
 interface DateData {
   date: Date;
@@ -21,8 +15,8 @@ interface DateData {
 }
 
 interface UpcomingClassesProps {
-  dateRange: DateData[];
-  classesByDate: Record<string, ClassData[]>;
+  userId: string | null;
+  defaultClasses: UpcomingClass[]; // From get_upcoming_classes
   className?: string;
 }
 
@@ -87,8 +81,17 @@ const HorizontalCalendar = memo(function HorizontalCalendar({
 const UpcomingClassRow = memo(function UpcomingClassRow({
   classData,
 }: {
-  classData: ClassData;
+  classData: ClassByDate | UpcomingClass;
 }) {
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  };
+
+  const time = formatTime(classData.classStartTime);
+  const isLab = "courseType" in classData && classData.courseType?.isLab;
+  const isPlusSlot = "isPlusSlot" in classData && classData.isPlusSlot;
+
   return (
     <div
       className={cn(
@@ -101,21 +104,31 @@ const UpcomingClassRow = memo(function UpcomingClassRow({
     >
       <div className="shrink-0 w-12 sm:w-14 md:w-16 text-center border-r-2 border-black/10 pr-2 sm:pr-3 md:pr-4 transition-colors duration-200 group-hover:border-black/30">
         <span className="block font-mono text-sm sm:text-base md:text-lg font-black transition-transform duration-200 group-hover:scale-110">
-          {classData.time}
+          {time}
         </span>
       </div>
 
       <div className="min-w-0 flex-1">
         <h4 className="font-display text-xs sm:text-sm md:text-lg font-bold uppercase truncate">
-          {classData.subject}
+          {classData.courseName}
         </h4>
-        <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 mt-0.5 sm:mt-1">
+        <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 mt-0.5 sm:mt-1 flex-wrap">
           <span className="text-[9px] sm:text-[10px] md:text-xs font-mono font-bold text-neutral-500">
-            {classData.code}
+            {classData.courseID}
           </span>
-          {classData.type === "Lab" && (
+          {isLab && (
             <span className="bg-purple-200 border border-black px-0.5 sm:px-1 text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase">
               LAB
+            </span>
+          )}
+          {isPlusSlot && (
+            <span className="bg-yellow-200 border border-black px-0.5 sm:px-1 text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase">
+              PLUS
+            </span>
+          )}
+          {classData.classVenue && (
+            <span className="text-[9px] sm:text-[10px] md:text-xs font-mono text-neutral-400">
+              • {classData.classVenue}
             </span>
           )}
         </div>
@@ -125,26 +138,142 @@ const UpcomingClassRow = memo(function UpcomingClassRow({
 });
 
 export function UpcomingClasses({
-  dateRange,
-  classesByDate,
+  userId,
+  defaultClasses = [],
   className,
 }: UpcomingClassesProps) {
-  // Default to today or first available
-  const [selectedDate, setSelectedDate] = useState<Date>(
-    dateRange.find((d) => d.isToday)?.date || dateRange[0]?.date || new Date(),
+  const normalizedDefaultClasses = useMemo(
+    () =>
+      defaultClasses && Array.isArray(defaultClasses) ? defaultClasses : [],
+    [defaultClasses],
   );
+  // Generate date range for the horizontal calendar (next 14 days)
+  const dateRange = useMemo(() => {
+    const dates: DateData[] = [];
+    const today = new Date();
 
-  // Memoize date selection handler
-  const handleDateSelect = useCallback((date: Date) => {
-    setSelectedDate(date);
+    for (let i = 0; i < 14; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+
+      const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+      const dayNumber = date.getDate();
+      const isToday = i === 0;
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+      dates.push({ date, dayName, dayNumber, isToday, isWeekend });
+    }
+
+    return dates;
   }, []);
 
-  // Helper to normalize date keys for lookup - memoized
-  const classesForDay = useMemo(() => {
-    const dateKey = selectedDate.toISOString().split("T")[0];
-    if (!dateKey) return [];
-    return (classesByDate as Record<string, ClassData[]>)[dateKey] || [];
-  }, [selectedDate, classesByDate]);
+  // Track selected date (default to first day with classes or first date in range)
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    // Initialize from defaultClasses if available
+    if (normalizedDefaultClasses.length > 0 && normalizedDefaultClasses[0]) {
+      const classDate = new Date(normalizedDefaultClasses[0].classStartTime);
+      if (!isNaN(classDate.getTime())) {
+        return classDate;
+      }
+    }
+    // Fallback to today (first date in range)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
+
+  // Format date for RPC call (D/M/YYYY)
+  const formatDateForRPC = useCallback((date: Date) => {
+    // Validate date before formatting
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      console.error("[formatDateForRPC] Invalid date:", date, typeof date);
+      return null;
+    }
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+
+    // Additional validation after extraction
+    if (isNaN(day) || isNaN(month) || isNaN(year)) {
+      console.error("[formatDateForRPC] Date parts are NaN:", {
+        day,
+        month,
+        year,
+        originalDate: date,
+      });
+      return null;
+    }
+
+    const formatted = `${day}/${month}/${year}`;
+
+    // Final sanity check
+    if (formatted.includes("NaN")) {
+      console.error(
+        "[formatDateForRPC] Generated invalid date string:",
+        formatted,
+      );
+      return null;
+    }
+
+    console.log("[formatDateForRPC] Formatted date:", formatted);
+    return formatted;
+  }, []);
+
+  // Get target date string for RPC
+  const targetDateString = useMemo(() => {
+    return formatDateForRPC(selectedDate);
+  }, [selectedDate, formatDateForRPC]);
+
+  // Fetch classes by date when user selects a date
+  const { data: dateClasses, loading: dateLoading } = useClassesByDate(
+    userId,
+    targetDateString,
+  );
+
+  // Determine which classes to show
+  const displayClasses = useMemo(() => {
+    // If no date selected or invalid, show default classes
+    if (!selectedDate || isNaN(selectedDate.getTime())) {
+      return normalizedDefaultClasses;
+    }
+
+    // Check if selected date matches default classes date
+    if (normalizedDefaultClasses.length > 0 && normalizedDefaultClasses[0]) {
+      const defaultDate = new Date(normalizedDefaultClasses[0].classStartTime);
+      if (
+        !isNaN(defaultDate.getTime()) &&
+        defaultDate.getDate() === selectedDate.getDate() &&
+        defaultDate.getMonth() === selectedDate.getMonth() &&
+        defaultDate.getFullYear() === selectedDate.getFullYear()
+      ) {
+        return normalizedDefaultClasses;
+      }
+    }
+
+    // Otherwise, use classes fetched by date
+    return Array.isArray(dateClasses) ? dateClasses : [];
+  }, [selectedDate, normalizedDefaultClasses, dateClasses]);
+
+  // Memoize date selection handler with validation
+  const handleDateSelect = useCallback((date: Date) => {
+    // Validate the date before setting it
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      console.warn("Invalid date received in handleDateSelect:", date);
+      // Fallback to today if invalid
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      setSelectedDate(today);
+      return;
+    }
+
+    console.log(
+      "Setting selected date:",
+      date.toISOString(),
+      "Formatted:",
+      `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`,
+    );
+    setSelectedDate(date);
+  }, []);
 
   return (
     <div
@@ -173,10 +302,21 @@ export function UpcomingClasses({
 
       {/* Classes List */}
       <div className="space-y-2 sm:space-y-2.5 md:space-y-3">
-        {classesForDay.length > 0 ? (
-          classesForDay.map((c: ClassData) => (
-            <UpcomingClassRow key={c.id} classData={c} />
-          ))
+        {dateLoading && targetDateString ? (
+          <div className="flex h-24 items-center justify-center">
+            <p className="font-mono text-sm text-neutral-400 uppercase">
+              Loading...
+            </p>
+          </div>
+        ) : displayClasses.length > 0 ? (
+          displayClasses
+            .filter(Boolean)
+            .map((c, idx) => (
+              <UpcomingClassRow
+                key={c.classID || `upcoming-${idx}`}
+                classData={c}
+              />
+            ))
         ) : (
           <div className="flex h-24 sm:h-28 md:h-32 flex-col items-center justify-center border-2 border-dashed border-black/20 bg-neutral-50/50 transition-all duration-300 hover:border-black/40 hover:bg-neutral-100/50">
             <div

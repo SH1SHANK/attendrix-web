@@ -15,7 +15,11 @@ export function useOptimisticNavigation() {
 
       // Use transition for smoother UX
       if ("startViewTransition" in document) {
-        (document as any).startViewTransition(() => {
+        (
+          document as Document & {
+            startViewTransition?: (callback: () => void) => void;
+          }
+        ).startViewTransition(() => {
           router.push(href);
         });
       } else {
@@ -63,7 +67,7 @@ export function useIntersectionObserver(
 // Hook for prefetching on hover
 export function usePrefetchOnHover(href: string) {
   const router = useRouter();
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleMouseEnter = useCallback(() => {
     timeoutRef.current = setTimeout(() => {
