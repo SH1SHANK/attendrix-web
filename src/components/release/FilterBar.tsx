@@ -44,15 +44,15 @@ export function FilterBar({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -20 }}
+      initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="sticky top-20 z-30 bg-[#fffdf5] pb-6 mb-8 border-b-4 border-black backdrop-blur-sm"
+      className="sticky top-20 z-30 bg-[#fffdf5]/95 backdrop-blur-sm pb-6 mb-10"
     >
-      <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-        {/* Filter Tabs */}
+      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        {/* Filter Tabs - Simplified */}
         <div
-          className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide"
+          className="flex gap-2 overflow-x-auto scrollbar-hide"
           role="tablist"
           aria-label="Release filters"
         >
@@ -61,7 +61,7 @@ export function FilterBar({
               key={filter.type}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
+              transition={{ delay: index * 0.08 }}
               onClick={() => onFilterChange(filter.type)}
               onKeyDown={(e) => handleKeyDown(e, filter.type)}
               role="tab"
@@ -69,54 +69,49 @@ export function FilterBar({
               aria-controls={`${filter.type}-panel`}
               tabIndex={currentFilter === filter.type ? 0 : -1}
               className={cn(
-                "px-4 py-2 font-bold uppercase text-sm border-2 border-black transition-all duration-200 whitespace-nowrap",
-                "shadow-[2px_2px_0_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5",
+                "px-4 py-2.5 font-bold uppercase text-xs tracking-wide border-2 border-black transition-all duration-150 whitespace-nowrap",
                 "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black",
                 currentFilter === filter.type
-                  ? "bg-black text-white scale-105"
-                  : "bg-white text-black hover:bg-neutral-100 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#000]",
+                  ? "bg-black text-white shadow-[3px_3px_0_#000]"
+                  : "bg-white text-black hover:bg-neutral-50 shadow-[2px_2px_0_#000] hover:shadow-[3px_3px_0_#000] hover:-translate-y-0.5 active:shadow-[1px_1px_0_#000] active:translate-y-0",
               )}
             >
               {filter.label}
-              <motion.span
-                layout
+              <span
                 className={cn(
-                  "ml-2 px-1.5 py-0.5 text-xs font-mono border border-current",
+                  "ml-2 px-1.5 py-0.5 text-[10px] font-mono border border-current rounded-sm",
                   currentFilter === filter.type
                     ? "bg-white text-black"
-                    : "bg-black text-white",
+                    : "bg-neutral-100",
                 )}
               >
                 {filter.count}
-              </motion.span>
+              </span>
             </motion.button>
           ))}
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar - Simplified */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.15 }}
           className="relative flex-1 md:max-w-xs"
         >
           <div
             className={cn(
-              "flex items-center gap-2 border-2 border-black bg-white transition-all duration-200",
+              "flex items-center gap-2 border-2 border-black bg-white transition-all duration-150",
               isSearchFocused
-                ? "shadow-[4px_4px_0_#000] scale-[1.02]"
+                ? "shadow-[3px_3px_0_#000]"
                 : "shadow-[2px_2px_0_#000]",
             )}
           >
-            <motion.div
-              animate={{
-                scale: isSearchFocused ? 1.1 : 1,
-                color: isSearchFocused ? "#000" : "#999",
-              }}
-              transition={{ duration: 0.2 }}
-            >
-              <Search className="w-4 h-4 ml-3" />
-            </motion.div>
+            <Search
+              className={cn(
+                "w-4 h-4 ml-3 transition-colors",
+                isSearchFocused ? "text-black" : "text-neutral-400",
+              )}
+            />
             <input
               type="text"
               placeholder="Search versions..."
@@ -135,9 +130,9 @@ export function FilterBar({
                   exit={{ scale: 0, opacity: 0 }}
                   onClick={() => onSearchChange("")}
                   aria-label="Clear search"
-                  className="mr-2 px-2 py-1 text-xs font-bold border border-black bg-neutral-100 hover:bg-neutral-200 transition-colors"
+                  className="mr-2 px-2 py-1 text-xs font-bold text-neutral-600 hover:text-black transition-colors"
                 >
-                  Clear
+                  ✕
                 </motion.button>
               )}
             </AnimatePresence>

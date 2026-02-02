@@ -1,0 +1,10 @@
+// Dashboard Components - Centralized exports
+export { DashboardHeader } from "./DashboardHeader";
+export { CurrentClassHero } from "./CurrentClassHero";
+export { ClassCard } from "./ClassCard";
+export { ClassesTabs } from "./ClassesTabs";
+export { TodayClassesList } from "./TodayClassesList";
+export { UpcomingClasses } from "./UpcomingClasses";
+export { HorizontalCalendar } from "./HorizontalCalendar";
+export { AttendanceSummary } from "./AttendanceSummary";
+export { AttendanceCalculatorModal } from "./AttendanceCalculatorModal";

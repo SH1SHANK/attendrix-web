@@ -127,6 +127,8 @@ export function ProgressModal() {
         return "Download Paused";
       case "cancelled":
         return "Download Cancelled";
+      case "browser-download":
+        return "Download Started";
       default:
         return "Downloading File...";
     }
@@ -240,10 +242,75 @@ export function ProgressModal() {
                   </div>
                 </div>
 
+                {/* Browser Download Message (GitHub Releases) */}
+                {state.status === "browser-download" && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: "spring", damping: 20 }}
+                    className="bg-blue-100 border-2 border-black p-6 mb-8 shadow-[4px_4px_0_#000]"
+                  >
+                    <div className="flex items-start gap-4">
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{
+                          type: "spring",
+                          damping: 10,
+                          delay: 0.1,
+                        }}
+                        className="w-12 h-12 bg-blue-500 border-2 border-black flex items-center justify-center shrink-0"
+                      >
+                        <Download className="w-6 h-6 text-white" />
+                      </motion.div>
+                      <div className="flex-1">
+                        <h4 className="font-black text-lg mb-2 uppercase tracking-tight">
+                          Download Started in Browser
+                        </h4>
+                        <p className="text-sm text-neutral-700 mb-4 leading-relaxed">
+                          Your download is now being handled by your
+                          browser&apos;s download manager. Check the downloads
+                          bar (usually at the bottom of your browser) or your
+                          Downloads folder.
+                        </p>
+                        <div className="bg-white border-2 border-black p-4 mt-4">
+                          <p className="font-bold text-xs uppercase mb-2 text-neutral-600">
+                            💡 Quick Tip
+                          </p>
+                          <ul className="text-sm space-y-1 text-neutral-700">
+                            <li>
+                              • Look for the download progress in your
+                              browser&apos;s toolbar
+                            </li>
+                            <li>
+                              • The file will be saved to your default Downloads
+                              folder
+                            </li>
+                            <li>
+                              • You can close this dialog - the download will
+                              continue
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    <motion.button
+                      onClick={handleClose}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full mt-6 px-6 py-3 bg-black text-white border-2 border-black font-bold uppercase text-sm shadow-[4px_4px_0_#000] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
+                    >
+                      Got it!
+                    </motion.button>
+                  </motion.div>
+                )}
+
                 {/* Progress Section */}
                 {state.status !== "completed" &&
                   state.status !== "error" &&
-                  state.status !== "cancelled" && (
+                  state.status !== "cancelled" &&
+                  state.status !== "browser-download" && (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}

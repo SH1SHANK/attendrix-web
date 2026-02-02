@@ -152,7 +152,7 @@ export default function FeaturesGrid() {
           {/* Card A: Calculations on Autopilot (Wide Header) */}
           <div className="feature-card col-span-1 md:col-span-2">
             <div
-              className="h-full p-8 cursor-pointer group shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              className="h-full p-8 cursor-pointer shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
               style={{
                 backgroundColor: "#ffffff",
                 color: "#000000",
@@ -178,7 +178,7 @@ export default function FeaturesGrid() {
           {/* Card B: NITC Slot System (Tall Vertical Tower) - YELLOW */}
           <div className="feature-card col-span-1 md:col-span-1 md:row-span-2">
             <div
-              className="h-full p-8 cursor-pointer shadow-[8px_8px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[12px_12px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              className="h-full p-8 cursor-pointer shadow-[8px_8px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[12px_12px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
               style={{
                 backgroundColor: "#FFD02F",
                 color: "#000000",
@@ -205,7 +205,7 @@ export default function FeaturesGrid() {
           {/* Card C: Meet Lumen (Blue Square) */}
           <div className="feature-card col-span-1">
             <div
-              className="w-full h-full p-8 cursor-pointer shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              className="w-full h-full p-8 cursor-pointer shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
               style={{
                 backgroundColor: "#3b82f6",
                 color: "#ffffff",
@@ -229,7 +229,7 @@ export default function FeaturesGrid() {
           {/* Card D: Amplix (Pink Square) */}
           <div className="feature-card col-span-1">
             <div
-              className="w-full h-full p-8 cursor-pointer shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              className="w-full h-full p-8 cursor-pointer shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
               style={{
                 backgroundColor: "#ff4d79",
                 color: "#ffffff",
@@ -252,7 +252,7 @@ export default function FeaturesGrid() {
           {/* Card E: Future Calculator (White Square) */}
           <div className="feature-card col-span-1">
             <div
-              className="h-full p-8 cursor-pointer shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              className="h-full p-8 cursor-pointer shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
               style={{
                 backgroundColor: "#ffffff",
                 color: "#000000",
@@ -275,7 +275,7 @@ export default function FeaturesGrid() {
           {/* Card F: Everything in One View (Wide Footer/Middle) */}
           <div className="feature-card col-span-1 md:col-span-2">
             <div
-              className="h-full p-8 cursor-pointer shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              className="h-full p-8 cursor-pointer shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
               style={{
                 backgroundColor: "#ffffff",
                 color: "#000000",
@@ -298,7 +298,7 @@ export default function FeaturesGrid() {
           {/* Card G: Iron-Clad Privacy (Full Width Bottom) - DARK */}
           <div className="feature-card col-span-1 md:col-span-3">
             <div
-              className="h-full p-8 cursor-pointer shadow-[8px_8px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[12px_12px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              className="h-full p-8 cursor-pointer shadow-[8px_8px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[12px_12px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
               style={{
                 backgroundColor: "#09090b",
                 color: "#ffffff",

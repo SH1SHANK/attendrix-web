@@ -72,7 +72,7 @@ const AuthLoadingScreen: React.FC<AuthLoadingScreenProps> = ({
           </div>
 
           {/* Loading Content */}
-          <div className="p-8 md:p-12 flex flex-col items-center justify-center min-h-[280px]">
+          <div className="p-8 md:p-12 flex flex-col items-center justify-center min-h-70">
             {/* Icon Container */}
             <motion.div
               className="mb-6 p-4 bg-neutral-50 border-2 border-black"

@@ -36,14 +36,14 @@ export function DownloadButton({
       className={cn(
         "flex items-center justify-center gap-2 w-full py-4 font-bold uppercase tracking-wider border-2 border-black transition-all",
         // Neo-brutalist Shadow & Interaction
-        "shadow-[4px_4px_0_#000] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] hover:translate-y-[-2px] hover:translate-x-[-2px] hover:shadow-[6px_6px_0_#000]",
+        "shadow-[4px_4px_0_#000] active:shadow-none active:translate-x-1 active:translate-y-1 hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[6px_6px_0_#000]",
         // Colors
         isHero
           ? "bg-[#FF4F4F] text-white hover:bg-[#ff3333]"
           : "bg-white text-black hover:bg-neutral-50",
         // Disabled state
         (state.status === "downloading" || state.status === "preparing") &&
-          "opacity-50 cursor-not-allowed shadow-none translate-x-[2px] translate-y-[2px]",
+          "opacity-50 cursor-not-allowed shadow-none translate-x-0.5 translate-y-0.5",
         className,
       )}
     >

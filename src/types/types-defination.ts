@@ -237,6 +237,34 @@ export interface CourseAttendanceSummary {
   numbersOfClassesCanBeSkippedStillStayAboveGoal: number;
 }
 
+/**
+ * get_missed_classes RPC function return type
+ * Returns classes that were missed (not attended) for specified courses
+ */
+export interface MissedClass {
+  classID: string;
+  courseID: string;
+  courseName: string;
+  classStartTime: string; // ISO timestamp
+  classEndTime: string; // ISO timestamp
+  classVenue: string | null;
+  classDate: string; // Date string
+}
+
+/**
+ * class_check_in RPC function return type
+ * Response from checking in to a class with challenge progress
+ */
+export interface CheckInResponse {
+  success: boolean;
+  message: string;
+  attendanceMarked: boolean;
+  amplixEarned?: number;
+  challengesCompleted?: string[];
+  newStreak?: number;
+  error?: string;
+}
+
 // ============================================================================
 // RPC FUNCTION PARAMETER TYPES
 // ============================================================================
@@ -291,6 +319,24 @@ export interface MarkAttendanceParams {
   courseID: string;
   classTime: string; // ISO timestamp
   checkinTime: string; // ISO timestamp
+}
+
+/**
+ * Parameters for get_missed_classes
+ */
+export interface GetMissedClassesParams {
+  user_id: string;
+  course_ids: string[];
+}
+
+/**
+ * Parameters for class_check_in
+ */
+export interface ClassCheckInParams {
+  p_user_id: string;
+  p_class_id: string;
+  p_enrolled_courses: string[];
+  p_class_start: string; // ISO timestamp
 }
 
 // ============================================================================

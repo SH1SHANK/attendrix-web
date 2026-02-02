@@ -58,60 +58,40 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: isHero ? 0 : -4 }}
+      whileHover={{ y: isHero ? 0 : -2 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
       className={cn(
-        "bg-white border-2 border-black p-6 relative group transition-all duration-200",
+        "bg-white border-2 border-black relative group transition-all duration-200 overflow-hidden",
         isHero
-          ? `shadow-[8px_8px_0_#000]`
-          : "shadow-[4px_4px_0_#000] hover:shadow-[6px_6px_0_#000]",
+          ? `shadow-[8px_8px_0_#000] p-8`
+          : "shadow-[4px_4px_0_#000] hover:shadow-[6px_6px_0_#000] p-6",
       )}
     >
-      {/* Top Badge Row */}
+      {/* Status Badge - Absolute positioned in corner */}
       <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex flex-wrap items-center gap-2 mb-4"
+        initial={{ x: 100 }}
+        animate={{ x: 0 }}
+        transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+        className="absolute top-0 right-0"
       >
-        <motion.span
-          whileHover={{ scale: 1.05 }}
+        <span
           className={cn(
-            "px-2 py-1 text-xs font-bold uppercase border border-black transition-colors",
+            "px-4 py-2 text-xs font-black uppercase border-2 border-black border-t-0 border-r-0 inline-flex items-center gap-2",
             release.status === "stable"
               ? "bg-green-400 text-black"
               : "bg-yellow-400 text-black",
           )}
         >
-          {release.status === "stable" ? "Stable" : "Pre-release"}
-        </motion.span>
-        {release.isPreRelease && (
-          <motion.span
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            whileHover={{ scale: 1.05 }}
-            className="px-2 py-1 text-xs font-bold uppercase border border-black bg-neutral-100 text-neutral-600"
-          >
-            Beta
-          </motion.span>
-        )}
-        {isNew() && (
-          <motion.span
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            whileHover={{ scale: 1.1 }}
-            className="px-2 py-1 text-xs font-bold uppercase border border-black bg-red-500 text-white"
-          >
+          {release.status === "stable" ? "✓ Stable" : "⚡ Pre-release"}
+          {isNew() && (
             <motion.span
               animate={{ opacity: [1, 0.5, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
+              className="ml-1 px-2 py-0.5 bg-red-500 text-white text-[10px] border border-black"
             >
-              New
+              NEW
             </motion.span>
-          </motion.span>
-        )}
-        <span className="text-xs font-mono text-neutral-500">
-          Released {release.date}
+          )}
         </span>
       </motion.div>
 
@@ -120,13 +100,23 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="mb-6"
+        className={cn("mb-6", isHero ? "mt-2" : "mt-10")}
       >
-        <h2 className="font-display font-black text-3xl md:text-4xl uppercase tracking-tight">
-          {release.version}
-        </h2>
+        <div className="flex items-baseline gap-3 mb-3">
+          <h2
+            className={cn(
+              "font-display font-black uppercase tracking-tighter",
+              isHero ? "text-5xl md:text-6xl" : "text-3xl md:text-4xl",
+            )}
+          >
+            {release.version}
+          </h2>
+          <span className="text-sm font-mono text-neutral-400">
+            {release.date}
+          </span>
+        </div>
 
-        {/* Technical Metadata Grid */}
+        {/* Simplified Metadata Row */}
         <motion.div
           initial="hidden"
           animate="visible"
@@ -140,21 +130,12 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
               },
             },
           }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-neutral-100"
+          className={cn(
+            "flex flex-wrap gap-x-6 gap-y-3",
+            isHero && "pb-4",
+          )}
         >
           {[
-            {
-              label: "Commit",
-              icon: GitCommit,
-              content: release.commitHash,
-              href: `${release.htmlUrl.split("/releases")[0]}/commit/${release.commitHash}`,
-            },
-            {
-              label: "Build ID",
-              icon: Box,
-              content: `#${release.releaseId}`,
-              href: null,
-            },
             {
               label: "Size",
               icon: null,
@@ -167,6 +148,18 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
               content: "Android 14+",
               href: null,
             },
+            {
+              label: "Commit",
+              icon: GitCommit,
+              content: release.commitHash,
+              href: `${release.htmlUrl.split("/releases")[0]}/commit/${release.commitHash}`,
+            },
+            {
+              label: "Build ID",
+              icon: Box,
+              content: `#${release.releaseId}`,
+              href: null,
+            },
           ].map((item, idx) => (
             <motion.div
               key={idx}
@@ -174,25 +167,27 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
                 hidden: { opacity: 0, y: 10 },
                 visible: { opacity: 1, y: 0 },
               }}
+              className="flex items-center gap-2"
             >
-              <span className="block text-[10px] font-bold uppercase text-neutral-400 mb-1">
-                {item.label}
-              </span>
-              {item.href ? (
-                <Link
-                  href={item.href}
-                  target="_blank"
-                  className="font-mono text-xs font-bold flex items-center gap-1 hover:underline transition-all hover:text-blue-600"
-                >
-                  {item.icon && <item.icon className="w-3 h-3" />}
-                  {item.content}
-                </Link>
-              ) : (
-                <span className="font-mono text-xs font-bold flex items-center gap-1">
-                  {item.icon && <item.icon className="w-3 h-3" />}
-                  {item.content}
+              {item.icon && <item.icon className="w-4 h-4 text-neutral-400" />}
+              <div>
+                <span className="text-[10px] font-bold uppercase text-neutral-400 block leading-none">
+                  {item.label}
                 </span>
-              )}
+                {item.href ? (
+                  <Link
+                    href={item.href}
+                    target="_blank"
+                    className="font-mono text-sm font-bold hover:underline transition-all hover:text-blue-600 inline-block mt-0.5"
+                  >
+                    {item.content}
+                  </Link>
+                ) : (
+                  <span className="font-mono text-sm font-bold inline-block mt-0.5">
+                    {item.content}
+                  </span>
+                )}
+              </div>
             </motion.div>
           ))}
         </motion.div>
@@ -244,18 +239,20 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
       </div>
 
       {/* Actions Footer */}
-      <div className="mt-2 space-y-4">
-        {/* Download Section with QR Code */}
-        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-start">
+      <div className={cn("space-y-4", isHero ? "mt-8" : "mt-6")}>
+        {/* Download Button - Full width, more prominent */}
+        <DownloadButton
+          url={release.downloadUrl}
+          filename={`attendrix-${release.version}.apk`}
+          size={release.size}
+          isHero={isHero}
+        />
+
+        {/* Secondary actions row */}
+        <div className="flex items-center justify-between gap-4">
           <div className="flex-1">
-            <DownloadButton
-              url={release.downloadUrl}
-              filename={`attendrix-${release.version}.apk`}
-              size={release.size}
-              isHero={isHero}
-            />
+            <QRCodeDownload url={release.downloadUrl} version={release.version} />
           </div>
-          <QRCodeDownload url={release.downloadUrl} version={release.version} />
         </div>
 
         {/* Integrity Check */}

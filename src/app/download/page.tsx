@@ -72,28 +72,22 @@ export default function DownloadsPage() {
             </ol>
           </nav>
 
-          {/* Page Header - Enhanced with animation */}
-          <div className="mb-8">
-            <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
-              <div>
-                <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-3 bg-gradient-to-r from-black to-neutral-600 bg-clip-text text-transparent">
+          {/* Page Header - Simplified and cleaner */}
+          <div className="mb-12">
+            <div className="flex items-end justify-between flex-wrap gap-6 mb-4">
+              <div className="flex-1">
+                <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-2">
                   Release Hub
                 </h1>
-                <p className="text-lg md:text-xl font-medium text-neutral-600 max-w-2xl">
-                  Official artifact repository. Verified builds directly from
-                  our CI pipeline.
+                <p className="text-base md:text-lg text-neutral-600 max-w-2xl">
+                  Official downloads. Verified builds from our CI pipeline.
                 </p>
               </div>
 
-              {/* Quick Stats Badge */}
-              <div className="bg-white border-2 border-black shadow-[4px_4px_0_#000] p-4">
-                <div className="text-xs font-bold uppercase text-neutral-500 mb-1">
-                  Build Status
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="font-mono font-bold">Active</span>
-                </div>
+              {/* Compact Build Status */}
+              <div className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-black shadow-[4px_4px_0_#000]">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="font-mono font-bold text-sm">Active</span>
               </div>
             </div>
           </div>

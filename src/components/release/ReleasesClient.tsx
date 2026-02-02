@@ -34,9 +34,9 @@ export function ReleasesClient({ releases }: ReleasesClientProps) {
 
     // Apply status filter
     if (filter === "stable") {
-      filtered = filtered.filter((r) => r.status === "stable");
+      filtered = filtered.filter((r) => !r.isPreRelease);
     } else if (filter === "prerelease") {
-      filtered = filtered.filter((r) => r.status !== "stable");
+      filtered = filtered.filter((r) => r.isPreRelease);
     }
 
     // Apply search filter
@@ -55,15 +55,15 @@ export function ReleasesClient({ releases }: ReleasesClientProps) {
   // Calculate counts for filter badges - memoized for performance
   const { stableCount, prereleaseCount } = useMemo(
     () => ({
-      stableCount: releases.filter((r) => r.status === "stable").length,
-      prereleaseCount: releases.filter((r) => r.status !== "stable").length,
+      stableCount: releases.filter((r) => !r.isPreRelease).length,
+      prereleaseCount: releases.filter((r) => r.isPreRelease).length,
     }),
     [releases],
   );
 
   // Get latest stable for hero section - memoized
   const latestStable = useMemo(
-    () => releases.find((r) => r.status === "stable") || releases[0],
+    () => releases.find((r) => !r.isPreRelease) || releases[0],
     [releases],
   );
 

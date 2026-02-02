@@ -28,11 +28,15 @@ const headerVariants = {
     y: 0,
     scale: 1,
     borderRadius: 0,
+    backdropFilter: "blur(0px)",
+    backgroundColor: "rgba(255, 255, 255, 0)",
   },
   scrolled: {
     y: 16,
     scale: 0.95,
     borderRadius: 0,
+    backdropFilter: "blur(12px)",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
   },
 };
 
@@ -496,7 +500,7 @@ export default function Navbar() {
                 <motion.button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                   className="
-                    lg:hidden p-2.5 min-w-[44px] min-h-[44px]
+                    lg:hidden p-2.5 min-w-11 min-h-11
                     flex items-center justify-center
                     border-2 transition-all duration-200
                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2
@@ -589,7 +593,7 @@ export default function Navbar() {
                                 {user.displayName?.split(" ")[0] || "Pilot"}
                               </span>
                               {user.email && (
-                                <span className="text-[10px] text-neutral-500 block truncate max-w-[150px]">
+                                <span className="text-[10px] text-neutral-500 block truncate max-w-37.5">
                                   {user.email}
                                 </span>
                               )}
@@ -601,7 +605,7 @@ export default function Navbar() {
                               setMobileMenuOpen(false);
                             }}
                             className="
-                              p-2.5 min-w-[44px] min-h-[44px]
+                              p-2.5 min-w-11 min-h-11
                               flex items-center justify-center
                               hover:bg-red-100 border-2 border-transparent
                               hover:border-red-200 transition-all duration-200

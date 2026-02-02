@@ -68,7 +68,7 @@ export default function DownloadsLoading() {
           <div className="relative border-l-2 border-black/20 ml-4 md:ml-8 space-y-12 py-8">
             {/* Timeline Item 1 */}
             <div className="relative pl-8 md:pl-12">
-              <div className="absolute left-[-9px] top-8 w-4 h-4 rounded-full bg-white border-4 border-black box-content" />
+              <div className="absolute -left-2.25 top-8 w-4 h-4 rounded-full bg-white border-4 border-black box-content" />
               <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0_#000]">
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   <RetroSkeleton className="h-6 w-20" />
@@ -81,7 +81,7 @@ export default function DownloadsLoading() {
 
             {/* Timeline Item 2 */}
             <div className="relative pl-8 md:pl-12">
-              <div className="absolute left-[-9px] top-8 w-4 h-4 rounded-full bg-white border-4 border-black box-content" />
+              <div className="absolute -left-2.25 top-8 w-4 h-4 rounded-full bg-white border-4 border-black box-content" />
               <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0_#000]">
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   <RetroSkeleton className="h-6 w-20" />

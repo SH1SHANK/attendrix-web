@@ -95,7 +95,7 @@ const AttendrixPricing = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
           {/* Card 1: NOVICE */}
           <div
-            className="p-10 min-h-[420px] shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+            className="p-10 min-h-105 shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
             style={{
               backgroundColor: "#ffffff",
               color: "#000000",
@@ -134,7 +134,7 @@ const AttendrixPricing = () => {
                 />
               </div>
 
-              <button className="w-full font-bold uppercase tracking-wide h-12 px-6 text-sm bg-white text-black border-2 border-black shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
+              <button className="w-full font-bold uppercase tracking-wide h-12 px-6 text-sm bg-white text-black border-2 border-black shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none">
                 Get Started
               </button>
             </div>
@@ -157,7 +157,7 @@ const AttendrixPricing = () => {
             </div>
 
             <div
-              className="scale-105 z-10 py-16 p-10 min-h-[500px] shadow-[8px_8px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[12px_12px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              className="scale-105 z-10 py-16 p-10 min-h-125 shadow-[8px_8px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[12px_12px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
               style={{
                 backgroundColor: "#09090b",
                 color: "#ffffff",
@@ -203,7 +203,7 @@ const AttendrixPricing = () => {
                 </div>
 
                 {/* Go Premium Button - YELLOW */}
-                <button className="w-full font-bold uppercase tracking-wide h-12 px-6 text-sm bg-[#FFD02F] text-black border-2 border-black shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
+                <button className="w-full font-bold uppercase tracking-wide h-12 px-6 text-sm bg-[#FFD02F] text-black border-2 border-black shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none">
                   Go Premium
                 </button>
               </div>
@@ -212,7 +212,7 @@ const AttendrixPricing = () => {
 
           {/* Card 3: CLASS REP */}
           <div
-            className="p-10 min-h-[420px] shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+            className="p-10 min-h-105 shadow-[6px_6px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[10px_10px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
             style={{
               backgroundColor: "#ffffff",
               color: "#000000",
@@ -247,7 +247,7 @@ const AttendrixPricing = () => {
                 />
               </div>
 
-              <button className="w-full font-bold uppercase tracking-wide h-12 px-6 text-sm bg-white text-black border-2 border-black shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
+              <button className="w-full font-bold uppercase tracking-wide h-12 px-6 text-sm bg-white text-black border-2 border-black shadow-[4px_4px_0px_0px_#000] transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[8px_8px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none">
                 Contact Us
               </button>
             </div>

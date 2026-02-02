@@ -47,6 +47,7 @@ export const config = {
      * PROTECTED ROUTES ONLY:
      * Add any new private routes here.
      */
+    "/dashboard/:path*",
     "/onboarding/:path*",
     "/placeholder/:path*",
   ],

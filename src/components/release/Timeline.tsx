@@ -45,7 +45,7 @@ export function Timeline({ releases }: TimelineProps) {
         ) => (
           <div key={release.releaseId} className="relative pl-8 md:pl-12">
             {/* Timeline Dot */}
-            <div className="absolute left-[-9px] top-8 w-4 h-4 rounded-full bg-white border-4 border-black box-content z-10" />
+            <div className="absolute -left-2.25 top-8 w-4 h-4 rounded-full bg-white border-4 border-black box-content z-10" />
 
             <ReleaseCard release={release} />
           </div>
@@ -54,7 +54,7 @@ export function Timeline({ releases }: TimelineProps) {
 
       {hasHidden && (
         <div className="relative pl-8 md:pl-12 pt-4">
-          <div className="absolute left-[-5px] top-10 w-2 h-2 rounded-full bg-neutral-300" />
+          <div className="absolute -left-1.25 top-10 w-2 h-2 rounded-full bg-neutral-300" />
           <button
             onClick={() => setShowAll(true)}
             className="flex items-center gap-2 px-6 py-3 bg-neutral-100 border-2 border-black font-bold uppercase text-xs tracking-wider hover:bg-white transition-colors"

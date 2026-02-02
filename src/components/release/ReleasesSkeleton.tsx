@@ -11,7 +11,7 @@ export function ReleasesSkeleton({ count = 3 }: ReleasesSkeletonProps) {
     <div className="relative border-l-2 border-black/20 ml-4 md:ml-8 space-y-12 py-8">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="relative pl-8 md:pl-12">
-          <div className="absolute left-[-9px] top-8 w-4 h-4 rounded-full bg-white border-4 border-black box-content z-10" />
+          <div className="absolute -left-2.25 top-8 w-4 h-4 rounded-full bg-white border-4 border-black box-content z-10" />
           <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0_#000]">
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <RetroSkeleton className="h-6 w-20" />
@@ -22,7 +22,7 @@ export function ReleasesSkeleton({ count = 3 }: ReleasesSkeletonProps) {
               {Array.from({ length: 4 }).map((_, j) => (
                 <div key={j} className="space-y-2">
                   <RetroSkeleton className="h-3 w-12" />
-                  <RetroSkeleton className="h-4 w-full max-w-[100px]" />
+                  <RetroSkeleton className="h-4 w-full max-w-25" />
                 </div>
               ))}
             </div>
@@ -48,7 +48,7 @@ export function HeroSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="space-y-2">
             <RetroSkeleton className="h-3 w-12" />
-            <RetroSkeleton className="h-4 w-full max-w-[100px]" />
+            <RetroSkeleton className="h-4 w-full max-w-25" />
           </div>
         ))}
       </div>

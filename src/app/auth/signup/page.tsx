@@ -242,7 +242,7 @@ export default function SignUpPage() {
                 <button
                   type="button"
                   disabled
-                  className="h-12 w-full flex items-center justify-center gap-2 border-2 border-black bg-white text-black font-bold uppercase text-sm tracking-wide shadow-[4px_4px_0px_0px_#000] hover:bg-neutral-50 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_#000] transition-all opacity-50 cursor-not-allowed"
+                  className="h-12 w-full flex items-center justify-center gap-2 border-2 border-black bg-white text-black font-bold uppercase text-sm tracking-wide shadow-[4px_4px_0px_0px_#000] hover:bg-neutral-50 active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_#000] transition-all opacity-50 cursor-not-allowed"
                   title="Coming Soon"
                 >
                   <Github className="w-5 h-5" />
@@ -252,7 +252,7 @@ export default function SignUpPage() {
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={isLoading}
-                  className="h-12 w-full flex items-center justify-center gap-2 border-2 border-black bg-white text-black font-bold uppercase text-sm tracking-wide shadow-[4px_4px_0px_0px_#000] hover:bg-neutral-50 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_#000] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="h-12 w-full flex items-center justify-center gap-2 border-2 border-black bg-white text-black font-bold uppercase text-sm tracking-wide shadow-[4px_4px_0px_0px_#000] hover:bg-neutral-50 active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_#000] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   <svg
                     className="w-5 h-5"

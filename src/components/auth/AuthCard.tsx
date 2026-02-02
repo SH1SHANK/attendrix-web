@@ -25,10 +25,10 @@ const AuthCard = ({ title, subtitle, children, footerLink }: AuthCardProps) => {
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(255,255,255,0.9)_100%)] pointer-events-none" />
 
       {/* 3. Refined Yellow Glow (Smaller & tighter) */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-yellow-400/25 blur-[80px] rounded-full z-0 pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-87.5 h-87.5 bg-yellow-400/25 blur-[80px] rounded-full z-0 pointer-events-none" />
 
       {/* ================= CONTENT WRAPPER ================= */}
-      <div className="w-full max-w-[400px] relative z-10 px-0 sm:px-0">
+      <div className="w-full max-w-100 relative z-10 px-0 sm:px-0">
         {/* Back Link */}
         <div className="mb-6">
           <Link

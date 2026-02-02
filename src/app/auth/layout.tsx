@@ -17,7 +17,7 @@ export default function AuthLayout({
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(255,255,255,0.9)_100%)] pointer-events-none" />
 
       {/* 3. Refined Yellow Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-yellow-400/25 blur-[80px] rounded-full -z-0 pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-87.5 h-87.5 bg-yellow-400/25 blur-[80px] rounded-full z-0 pointer-events-none" />
 
       {/* ================= BRANDING HEADER ================= */}
       <div className="relative z-10 mb-8 w-full flex justify-center">

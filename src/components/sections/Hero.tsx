@@ -6,6 +6,7 @@ import { Download, ExternalLink } from "lucide-react";
 import { useHeroIntro } from "@/animations/reveal";
 import { useMagneticHover, useWiggleOnHover } from "@/animations/hover";
 import DotPatternBackground from "../ui/DotPatternBackground";
+import { ScrollIndicator } from "../ui/ScrollIndicator";
 
 interface HeroProps {
   isVisible?: boolean;
@@ -104,9 +105,9 @@ export default function Hero({ isVisible = false }: HeroProps) {
           <Link
             ref={primaryRef}
             href="/download"
-            className="group relative inline-flex items-center gap-3 border-2 border-black bg-yellow-400 px-6 py-3 text-lg font-bold uppercase tracking-tight text-black shadow-[6px_6px_0_#0a0a0a] transition-all duration-200 hover:shadow-[4px_4px_0_#0a0a0a] hover:-translate-x-[2px] hover:-translate-y-[2px]"
+            className="ripple-effect group relative inline-flex items-center gap-3 border-2 border-black bg-yellow-400 px-6 py-3 text-lg font-bold uppercase tracking-tight text-black shadow-[6px_6px_0_#0a0a0a] transition-all duration-300 ease-smooth hover:shadow-[8px_8px_0_#0a0a0a] hover:-translate-x-0.75 hover:-translate-y-0.75 active:shadow-[2px_2px_0_#0a0a0a] active:translate-x-0.5 active:translate-y-0.5"
           >
-            <span className="inline-flex h-10 w-10 items-center justify-center bg-black text-yellow-400">
+            <span className="inline-flex h-10 w-10 items-center justify-center bg-black text-yellow-400 transition-transform duration-300 group-hover:scale-110">
               <Download className="h-5 w-5" />
             </span>
             Download APK
@@ -116,15 +117,18 @@ export default function Hero({ isVisible = false }: HeroProps) {
           <Link
             ref={secondaryRef}
             href="/app"
-            className="group inline-flex items-center gap-3 border-2 border-black bg-white px-6 py-3 text-lg font-bold uppercase tracking-tight text-stone-900 shadow-[6px_6px_0_#0a0a0a] transition-all duration-200 hover:shadow-[4px_4px_0_#0a0a0a] hover:-translate-x-[2px] hover:-translate-y-[2px]"
+            className="ripple-effect group inline-flex items-center gap-3 border-2 border-black bg-white px-6 py-3 text-lg font-bold uppercase tracking-tight text-stone-900 shadow-[6px_6px_0_#0a0a0a] transition-all duration-300 ease-smooth hover:shadow-[8px_8px_0_#0a0a0a] hover:-translate-x-0.75 hover:-translate-y-0.75 active:shadow-[2px_2px_0_#0a0a0a] active:translate-x-0.5 active:translate-y-0.5"
           >
-            <span className="inline-flex h-10 w-10 items-center justify-center border-2 border-black bg-stone-900 text-white">
+            <span className="inline-flex h-10 w-10 items-center justify-center border-2 border-black bg-stone-900 text-white transition-transform duration-300 group-hover:scale-110">
               <ExternalLink className="h-4 w-4" />
             </span>
             Launch Web App
           </Link>
         </div>
       </div>
+
+      {/* Scroll Indicator */}
+      <ScrollIndicator />
     </section>
   );
 }

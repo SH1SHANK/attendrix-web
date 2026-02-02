@@ -14,7 +14,8 @@ export type DownloadStatus =
   | "paused"
   | "completed"
   | "error"
-  | "cancelled";
+  | "cancelled"
+  | "browser-download"; // For GitHub releases - download happens in browser
 
 export interface DownloadState {
   status: DownloadStatus;
@@ -67,28 +68,24 @@ export function useDownload() {
         managerRef.current.cancel();
       }
 
-      // Check if this is a GitHub release URL - these don't support CORS
+      // Check if this is a GitHub release URL FIRST - these don't support CORS
       // Use direct download instead of fetch-based chunked download
-      if (ResilientDownloadManager.isGitHubReleaseUrl(url)) {
+      const isGitHubUrl = ResilientDownloadManager.isGitHubReleaseUrl(url);
+      console.log("Download initiated:", { url, filename, isGitHubUrl });
+
+      if (isGitHubUrl) {
         setState({
           ...initialState,
-          status: "preparing",
+          status: "browser-download",
           filename,
           url,
         });
 
-        // Use direct download (bypasses CORS)
+        // Use direct download (bypasses CORS completely)
+        console.log("Using direct download for GitHub release");
         ResilientDownloadManager.directDownload(url, filename);
 
-        // Mark as completed after a short delay
-        setTimeout(() => {
-          setState((prev) => ({
-            ...prev,
-            status: "completed",
-            progress: 100,
-          }));
-        }, 500);
-
+        // Don't auto-close - let user manually close after checking their downloads
         return;
       }
 

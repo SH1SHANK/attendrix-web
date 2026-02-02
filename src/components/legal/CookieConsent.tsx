@@ -222,7 +222,7 @@ export default function CookieConsent() {
                 </button>
                 <button
                   onClick={handleAcceptAll}
-                  className="flex-1 py-2 bg-black text-[#FFD02F] border-2 border-black font-black uppercase text-xs tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] hover:translate-x-px hover:translate-y-px hover:shadow-none active:translate-y-[2px] active:shadow-none transition-all"
+                  className="flex-1 py-2 bg-black text-[#FFD02F] border-2 border-black font-black uppercase text-xs tracking-wide shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] hover:translate-x-px hover:translate-y-px hover:shadow-none active:translate-y-0.5 active:shadow-none transition-all"
                 >
                   Accept
                 </button>
