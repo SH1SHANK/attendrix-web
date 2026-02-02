@@ -130,10 +130,7 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
               },
             },
           }}
-          className={cn(
-            "flex flex-wrap gap-x-6 gap-y-3",
-            isHero && "pb-4",
-          )}
+          className={cn("flex flex-wrap gap-x-6 gap-y-3", isHero && "pb-4")}
         >
           {[
             {
@@ -251,7 +248,10 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
         {/* Secondary actions row */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1">
-            <QRCodeDownload url={release.downloadUrl} version={release.version} />
+            <QRCodeDownload
+              url={release.downloadUrl}
+              version={release.version}
+            />
           </div>
         </div>
 
