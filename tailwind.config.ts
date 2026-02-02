@@ -82,6 +82,15 @@ const config: Config = {
         "neo-lg": "8px 8px 0px 0px rgba(0,0,0,1)",
         "neo-xl": "12px 12px 0px 0px rgba(0,0,0,1)",
       },
+      keyframes: {
+        "progress-stripes": {
+          "0%": { backgroundPosition: "0 0" },
+          "100%": { backgroundPosition: "40px 40px" },
+        },
+      },
+      animation: {
+        "progress-stripes": "progress-stripes 2s linear infinite",
+      },
       borderRadius: {
         DEFAULT: "0px",
         none: "0px",

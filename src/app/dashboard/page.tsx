@@ -1,51 +1,165 @@
 "use client";
 
-import { getMockCurrentOrNextClass } from "@/lib/mock-data";
-import { useState } from "react";
-import { AttendanceCalculatorModal } from "@/components/dashboard/AttendanceCalculatorModal";
-import { AttendanceSummary } from "@/components/dashboard/AttendanceSummary";
-import { ClassesTabs } from "@/components/dashboard/ClassesTabs";
-import { CurrentClassHero } from "@/components/dashboard/CurrentClassHero";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { useMemo } from "react";
+import dynamic from "next/dynamic";
+import { CountdownCard } from "@/components/dashboard/CountdownCard";
+import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
+import { usePerformanceMonitor } from "@/hooks/useOptimizations";
+import {
+  getMockCurrentClass,
+  getMockTodayClasses,
+  getMockDateRange,
+  getMockClassesByDate,
+  getMockGreeting,
+  getMockDate,
+} from "@/lib/mock-dashboard";
+
+// Lazy load heavy components for code splitting
+const TodayClasses = dynamic(
+  () =>
+    import("@/components/dashboard/TodayClasses").then((mod) => ({
+      default: mod.TodayClasses,
+    })),
+  {
+    loading: () => <DashboardSkeleton />,
+    ssr: true,
+  },
+);
+
+const UpcomingClasses = dynamic(
+  () =>
+    import("@/components/dashboard/UpcomingClasses").then((mod) => ({
+      default: mod.UpcomingClasses,
+    })),
+  {
+    loading: () => <DashboardSkeleton />,
+    ssr: true,
+  },
+);
 
 export default function DashboardPage() {
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  // Monitor component performance
+  usePerformanceMonitor("DashboardPage");
 
-  // Get current/next class (static mock)
-  const currentOrNextClass = getMockCurrentOrNextClass();
-
-  const handleClassClick = (classId: string) => {
-    setSelectedClassId(classId);
-  };
-
-  const handleCloseModal = () => {
-    setSelectedClassId(null);
-  };
+  // Memoize data to prevent recalculation on re-renders
+  const currentClass = useMemo(() => getMockCurrentClass(), []);
+  const todayClasses = useMemo(() => getMockTodayClasses(), []);
+  const dateRange = useMemo(() => getMockDateRange(), []);
+  const classesByDate = useMemo(() => getMockClassesByDate(), []);
+  const greeting = useMemo(() => getMockGreeting(), []);
+  const dateString = useMemo(() => getMockDate(), []);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Main Container */}
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="space-y-8">
-          {/* 1. Greeting Header */}
-          <DashboardHeader />
-
-          {/* 2. Current/Next Class Hero */}
-          <CurrentClassHero classData={currentOrNextClass} />
-
-          {/* 3. Classes Section (Tabbed: Today / Upcoming) */}
-          <ClassesTabs onClassClick={handleClassClick} />
-
-          {/* 4. Attendance Summary */}
-          <AttendanceSummary />
-        </div>
-      </div>
-
-      {/* 5. Attendance Calculator Modal */}
-      <AttendanceCalculatorModal
-        classId={selectedClassId}
-        onClose={handleCloseModal}
+    <div className="min-h-screen bg-[#fffdf5] relative overflow-x-hidden will-change-transform">
+      {/* Global Dotted Grid Background - Memoized */}
+      <div
+        className="fixed inset-0 pointer-events-none opacity-20"
+        style={{
+          backgroundImage: "radial-gradient(#000 1.5px, transparent 1.5px)",
+          backgroundSize: "24px 24px",
+          willChange: "transform",
+        }}
       />
+
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-12 relative z-10">
+        {/* Header Section */}
+        <header
+          className="mb-8 sm:mb-10 lg:mb-12 flex flex-col items-start gap-3 sm:gap-4 animate-in fade-in slide-in-from-top-4 duration-500"
+          style={{ willChange: "transform, opacity" }}
+        >
+          <div className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-white px-3 py-1.5 sm:py-1 text-xs font-bold uppercase tracking-widest shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[4px_4px_0_#0a0a0a] hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-y-0.5 active:translate-x-0.5 active:shadow-none">
+            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+            Online
+          </div>
+
+          <div>
+            <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase text-black tracking-tighter leading-[0.9]">
+              {greeting},{" "}
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-black to-neutral-600">
+                Shashank
+              </span>
+            </h1>
+            <p className="mt-2 font-mono text-base sm:text-lg font-bold text-neutral-500 uppercase tracking-wide sm:tracking-widest">
+              {dateString}
+            </p>
+          </div>
+        </header>
+
+        {/* Vertical Stack Layout */}
+        <div className="flex flex-col gap-6 sm:gap-8 md:gap-10 lg:gap-12">
+          {/* Main Hero: Countdown Card */}
+          <div
+            className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700"
+            style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
+          >
+            <CountdownCard
+              type={currentClass.type}
+              subject={currentClass.subject}
+              timeRange={currentClass.timeRange}
+              targetTime={currentClass.targetTime}
+              className="h-full"
+            />
+          </div>
+
+          {/* Divider */}
+          <div
+            className="relative w-full h-8 sm:h-10 md:h-12 flex items-center justify-center animate-in fade-in zoom-in duration-500"
+            style={{ animationDelay: "200ms", animationFillMode: "backwards" }}
+          >
+            <div
+              className="absolute inset-0 flex items-center"
+              aria-hidden="true"
+            >
+              <div className="w-full border-t-2 sm:border-t-3 md:border-t-4 border-black border-dashed" />
+            </div>
+            <div className="relative flex items-center gap-2 sm:gap-3 bg-[#fffdf5] px-4 sm:px-6">
+              <div className="h-3 w-3 sm:h-4 sm:w-4 rotate-45 bg-black border-2 border-black" />
+              <div className="h-3 w-3 sm:h-4 sm:w-4 rotate-45 bg-[#FFD02F] border-2 border-black" />
+              <div className="h-3 w-3 sm:h-4 sm:w-4 rotate-45 bg-black border-2 border-black" />
+            </div>
+          </div>
+
+          {/* Today's Classes List */}
+          <div
+            className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700"
+            style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
+          >
+            <TodayClasses classes={todayClasses} />
+          </div>
+
+          {/* Divider */}
+          <div
+            className="relative w-full h-8 sm:h-10 md:h-12 flex items-center justify-center animate-in fade-in zoom-in duration-500"
+            style={{ animationDelay: "400ms", animationFillMode: "backwards" }}
+          >
+            <div
+              className="absolute inset-0 flex items-center"
+              aria-hidden="true"
+            >
+              <div className="w-full border-t-2 sm:border-t-3 md:border-t-4 border-black border-dashed" />
+            </div>
+            <div className="relative flex items-center gap-2 sm:gap-3 bg-[#fffdf5] px-4 sm:px-6">
+              <div className="h-3 w-3 sm:h-4 sm:w-4 rotate-45 bg-black border-2 border-black" />
+              <div className="h-3 w-3 sm:h-4 sm:w-4 rotate-45 bg-[#FFD02F] border-2 border-black" />
+              <div className="h-3 w-3 sm:h-4 sm:w-4 rotate-45 bg-black border-2 border-black" />
+            </div>
+          </div>
+
+          {/* Upcoming Classes Widget */}
+          <div
+            className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700"
+            style={{ animationDelay: "500ms", animationFillMode: "backwards" }}
+          >
+            <UpcomingClasses
+              dateRange={dateRange}
+              classesByDate={classesByDate}
+            />
+          </div>
+        </div>
+
+        {/* Footer Spacer */}
+        <div className="h-16 sm:h-20 md:h-24" />
+      </div>
     </div>
   );
 }
