@@ -44,114 +44,193 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
     }
   };
 
+  // Keyboard support for expand/collapse
+  const handleToggleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setIsExpanded(!isExpanded);
+    }
+  };
+
   // Unused variables borderColor and bgAccent removed
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: isHero ? 0 : -4 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
       className={cn(
-        "bg-white border-2 border-black p-6 relative group transition-all",
+        "bg-white border-2 border-black p-6 relative group transition-all duration-200",
         isHero
           ? `shadow-[8px_8px_0_#000]`
-          : "shadow-[4px_4px_0_#000] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#000]",
+          : "shadow-[4px_4px_0_#000] hover:shadow-[6px_6px_0_#000]",
       )}
     >
       {/* Top Badge Row */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <span
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.1 }}
+        className="flex flex-wrap items-center gap-2 mb-4"
+      >
+        <motion.span
+          whileHover={{ scale: 1.05 }}
           className={cn(
-            "px-2 py-1 text-xs font-bold uppercase border border-black",
+            "px-2 py-1 text-xs font-bold uppercase border border-black transition-colors",
             release.status === "stable"
               ? "bg-green-400 text-black"
               : "bg-yellow-400 text-black",
           )}
         >
           {release.status === "stable" ? "Stable" : "Pre-release"}
-        </span>
+        </motion.span>
         {release.isPreRelease && (
-          <span className="px-2 py-1 text-xs font-bold uppercase border border-black bg-neutral-100 text-neutral-600">
+          <motion.span
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            whileHover={{ scale: 1.05 }}
+            className="px-2 py-1 text-xs font-bold uppercase border border-black bg-neutral-100 text-neutral-600"
+          >
             Beta
-          </span>
+          </motion.span>
         )}
         {isNew() && (
           <motion.span
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="px-2 py-1 text-xs font-bold uppercase border border-black bg-red-500 text-white animate-pulse"
+            whileHover={{ scale: 1.1 }}
+            className="px-2 py-1 text-xs font-bold uppercase border border-black bg-red-500 text-white"
           >
-            New
+            <motion.span
+              animate={{ opacity: [1, 0.5, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              New
+            </motion.span>
           </motion.span>
         )}
         <span className="text-xs font-mono text-neutral-500">
           Released {release.date}
         </span>
-      </div>
+      </motion.div>
 
       {/* Header */}
-      <div className="mb-6">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="mb-6"
+      >
         <h2 className="font-display font-black text-3xl md:text-4xl uppercase tracking-tight">
           {release.version}
         </h2>
 
         {/* Technical Metadata Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-neutral-100">
-          <div>
-            <span className="block text-[10px] font-bold uppercase text-neutral-400 mb-1">
-              Commit
-            </span>
-            <Link
-              href={`${release.htmlUrl.split("/releases")[0]}/commit/${release.commitHash}`}
-              target="_blank"
-              className="font-mono text-xs font-bold flex items-center gap-1 hover:underline"
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.05,
+                delayChildren: 0.3,
+              },
+            },
+          }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-neutral-100"
+        >
+          {[
+            {
+              label: "Commit",
+              icon: GitCommit,
+              content: release.commitHash,
+              href: `${release.htmlUrl.split("/releases")[0]}/commit/${release.commitHash}`,
+            },
+            {
+              label: "Build ID",
+              icon: Box,
+              content: `#${release.releaseId}`,
+              href: null,
+            },
+            {
+              label: "Size",
+              icon: null,
+              content: release.size,
+              href: null,
+            },
+            {
+              label: "Platform",
+              icon: null,
+              content: "Android 14+",
+              href: null,
+            },
+          ].map((item, idx) => (
+            <motion.div
+              key={idx}
+              variants={{
+                hidden: { opacity: 0, y: 10 },
+                visible: { opacity: 1, y: 0 },
+              }}
             >
-              <GitCommit className="w-3 h-3" />
-              {release.commitHash}
-            </Link>
-          </div>
-          <div>
-            <span className="block text-[10px] font-bold uppercase text-neutral-400 mb-1">
-              Build ID
-            </span>
-            <span className="font-mono text-xs font-bold flex items-center gap-1">
-              <Box className="w-3 h-3" />#{release.releaseId}
-            </span>
-          </div>
-          <div>
-            <span className="block text-[10px] font-bold uppercase text-neutral-400 mb-1">
-              Size
-            </span>
-            <span className="font-mono text-xs font-bold">{release.size}</span>
-          </div>
-          <div>
-            <span className="block text-[10px] font-bold uppercase text-neutral-400 mb-1">
-              Platform
-            </span>
-            <span className="font-mono text-xs font-bold">Android 14+</span>
-          </div>
-        </div>
-      </div>
+              <span className="block text-[10px] font-bold uppercase text-neutral-400 mb-1">
+                {item.label}
+              </span>
+              {item.href ? (
+                <Link
+                  href={item.href}
+                  target="_blank"
+                  className="font-mono text-xs font-bold flex items-center gap-1 hover:underline transition-all hover:text-blue-600"
+                >
+                  {item.icon && <item.icon className="w-3 h-3" />}
+                  {item.content}
+                </Link>
+              ) : (
+                <span className="font-mono text-xs font-bold flex items-center gap-1">
+                  {item.icon && <item.icon className="w-3 h-3" />}
+                  {item.content}
+                </span>
+              )}
+            </motion.div>
+          ))}
+        </motion.div>
+      </motion.div>
 
       {/* CHANGELOG TOGGLE */}
       <div className="border-t-2 border-black/5 pt-4">
-        <button
+        <motion.button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-black hover:opacity-70 transition-opacity mb-2"
+          onKeyDown={handleToggleKeyDown}
+          whileHover={{ x: 4 }}
+          whileTap={{ scale: 0.98 }}
+          aria-expanded={isExpanded}
+          aria-controls={`changelog-${release.releaseId}`}
+          className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-black hover:opacity-70 transition-opacity mb-2 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2"
         >
+          <motion.div
+            animate={{ rotate: isExpanded ? 180 : 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </motion.div>
           {isExpanded ? "Hide Changelog" : "View Changelog"}
-          {isExpanded ? (
-            <ChevronUp className="w-4 h-4" />
-          ) : (
-            <ChevronDown className="w-4 h-4" />
-          )}
-        </button>
+        </motion.button>
 
         {/* Expandable Content */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {isExpanded && (
             <motion.div
+              id={`changelog-${release.releaseId}`}
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
               className="overflow-hidden"
             >
               <div className="prose prose-sm max-w-none prose-neutral prose-headings:font-display prose-headings:uppercase prose-p:font-medium prose-p:text-neutral-600 prose-ul:list-square py-2 pb-6">
@@ -181,32 +260,64 @@ export function ReleaseCard({ release, isHero = false }: ReleaseCardProps) {
 
         {/* Integrity Check */}
         {release.sha256 && (
-          <div className="p-3 bg-neutral-900 border-2 border-black">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="p-3 bg-neutral-900 border-2 border-black"
+          >
             <div className="flex justify-between items-center text-neutral-400 text-[10px] font-mono mb-2 uppercase tracking-wider">
               <span className="flex items-center gap-1">
-                <Check className="w-3 h-3 text-green-500" />
+                <motion.div
+                  animate={{
+                    scale: copied ? [1, 1.2, 1] : 1,
+                    color: copied ? "#22c55e" : "#10b981",
+                  }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Check className="w-3 h-3" />
+                </motion.div>
                 SHA-256 Checksum Verified
               </span>
-              <button
+              <motion.button
                 onClick={handleCopy}
-                className="flex items-center gap-1 hover:text-white transition-colors"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-1 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
+                aria-label="Copy checksum"
               >
-                {copied ? (
-                  <span className="text-green-400">Copied!</span>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3" />
-                    <span>Copy</span>
-                  </>
-                )}
-              </button>
+                <AnimatePresence mode="wait">
+                  {copied ? (
+                    <motion.span
+                      key="copied"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="text-green-400"
+                    >
+                      Copied!
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="copy"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="flex items-center gap-1"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>Copy</span>
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
             </div>
             <div className="font-mono text-[10px] text-green-400 break-all bg-black/50 p-2 border border-neutral-700 select-all selection:bg-green-900">
               {release.sha256}
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

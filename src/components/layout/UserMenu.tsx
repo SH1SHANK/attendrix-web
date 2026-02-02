@@ -218,7 +218,10 @@ export function UserMenu() {
   // Handle click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      // Guard against null ref to prevent "contains on null" error
+      if (!menuRef.current) return;
+
+      if (!menuRef.current.contains(event.target as Node)) {
         closeMenu();
       }
     }

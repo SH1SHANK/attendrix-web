@@ -50,6 +50,25 @@
     background-color: var(--background);
     color: var(--foreground);
   }
+
+  /* Scrollbar utilities */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Smooth focus transitions */
+  *:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    transition: outline-offset 0.2s ease;
+  }
+}
+    color: var(--foreground);
+  }
 }
 
 /* Responsive Font Scaling for larger screens */

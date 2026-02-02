@@ -9,6 +9,8 @@
  * - Progress callbacks
  */
 
+import type { DownloadProgress, DownloadCompleteInfo } from "./types";
+
 export type DownloadEventType =
   | "progress"
   | "complete"
@@ -18,19 +20,7 @@ export type DownloadEventType =
   | "retry"
   | "cancel";
 
-export interface DownloadProgressEvent {
-  downloaded: number;
-  total: number;
-  percentage: number;
-  speed: number; // bytes per second
-  timeRemaining: number; // seconds
-  chunksCompleted: number;
-  totalChunks: number;
-}
-
-export interface DownloadCompleteEvent {
-  filename: string;
-  size: number;
+export interface DownloadCompleteEvent extends DownloadCompleteInfo {
   duration: number; // seconds
 }
 
@@ -47,7 +37,7 @@ export interface DownloadManagerOptions {
   retryDelay?: number; // Default 2000ms
 }
 
-type ProgressCallback = (event: DownloadProgressEvent) => void;
+type ProgressCallback = (event: DownloadProgress) => void;
 type CompleteCallback = (event: DownloadCompleteEvent) => void;
 type ErrorCallback = (event: DownloadErrorEvent) => void;
 type SimpleCallback = () => void;
@@ -81,6 +71,9 @@ export class ResilientDownloadManager {
   private lastProgressTime = 0;
   private lastProgressBytes = 0;
   private currentSpeed = 0;
+
+  // Store callbacks for pause/resume
+  private callbacks: DownloadCallbacks = {};
 
   constructor(
     url: string,
@@ -154,6 +147,8 @@ export class ResilientDownloadManager {
    */
   async download(callbacks: DownloadCallbacks = {}): Promise<void> {
     const { onProgress, onComplete, onError } = callbacks;
+    // Store callbacks for later use (pause/resume)
+    this.callbacks = callbacks;
 
     this.controller = new AbortController();
     this.isPaused = false;
@@ -282,6 +277,7 @@ export class ResilientDownloadManager {
    */
   pause(): void {
     this.isPaused = true;
+    this.callbacks.onPause?.();
   }
 
   /**
@@ -289,6 +285,7 @@ export class ResilientDownloadManager {
    */
   resume(): void {
     this.isPaused = false;
+    this.callbacks.onResume?.();
   }
 
   /**
@@ -314,5 +311,32 @@ export class ResilientDownloadManager {
       downloadedChunks: this.downloadedChunks.size,
       totalChunks: Math.ceil(this.totalSize / this.chunkSize),
     };
+  }
+
+  /**
+   * Direct download using window.open - bypasses CORS completely
+   * Use for GitHub releases and other cross-origin download URLs
+   *
+   * Note: The `download` attribute on anchor elements only works for same-origin URLs.
+   * For cross-origin URLs like GitHub releases, we must use window.open() or
+   * window.location.href to trigger the browser's native download behavior.
+   *
+   * @param url - The download URL
+   * @param _filename - Suggested filename (unused for cross-origin, browser uses Content-Disposition)
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static directDownload(url: string, _filename: string): void {
+    // For cross-origin URLs, window.open or location.href triggers the download
+    // The browser will use the Content-Disposition header from the server for the filename
+    // Using window.location.href for a cleaner UX (no popup blocker issues)
+    window.location.href = url;
+  }
+
+  /**
+   * Check if a URL is a GitHub release download
+   * These URLs don't support CORS and need direct download
+   */
+  static isGitHubReleaseUrl(url: string): boolean {
+    return url.includes("github.com") && url.includes("/releases/download/");
   }
 }

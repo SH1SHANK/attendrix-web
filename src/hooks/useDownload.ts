@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback } from "react";
 import {
   ResilientDownloadManager,
-  DownloadProgressEvent,
   DownloadCompleteEvent,
   DownloadErrorEvent,
 } from "@/lib/download/DownloadManager";
+
+import type { DownloadProgress } from "@/lib/download/types";
 
 export type DownloadStatus =
   | "idle"
@@ -66,6 +67,31 @@ export function useDownload() {
         managerRef.current.cancel();
       }
 
+      // Check if this is a GitHub release URL - these don't support CORS
+      // Use direct download instead of fetch-based chunked download
+      if (ResilientDownloadManager.isGitHubReleaseUrl(url)) {
+        setState({
+          ...initialState,
+          status: "preparing",
+          filename,
+          url,
+        });
+
+        // Use direct download (bypasses CORS)
+        ResilientDownloadManager.directDownload(url, filename);
+
+        // Mark as completed after a short delay
+        setTimeout(() => {
+          setState((prev) => ({
+            ...prev,
+            status: "completed",
+            progress: 100,
+          }));
+        }, 500);
+
+        return;
+      }
+
       setState({
         ...initialState,
         status: "preparing",
@@ -98,7 +124,7 @@ export function useDownload() {
 
         // Start download
         await managerRef.current.download({
-          onProgress: (event: DownloadProgressEvent) => {
+          onProgress: (event: DownloadProgress) => {
             setState((prev) => ({
               ...prev,
               status: "downloading",

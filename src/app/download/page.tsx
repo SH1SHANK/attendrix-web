@@ -56,15 +56,46 @@ export default function DownloadsPage() {
         <DynamicProgressModal />
 
         <main className="pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto">
-          {/* Page Header - Static content, no suspense needed */}
-          <div className="mb-12">
-            <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-4">
-              Release Hub
-            </h1>
-            <p className="text-lg md:text-xl font-medium text-neutral-600 max-w-2xl">
-              Official artifact repository. Verified builds directly from our CI
-              pipeline.
-            </p>
+          {/* Breadcrumbs */}
+          <nav className="mb-6" aria-label="Breadcrumb">
+            <ol className="flex items-center gap-2 text-sm font-medium">
+              <li>
+                <Link
+                  href="/"
+                  className="text-neutral-500 hover:text-black transition-colors"
+                >
+                  Home
+                </Link>
+              </li>
+              <li className="text-neutral-300">/</li>
+              <li className="text-black font-bold">Downloads</li>
+            </ol>
+          </nav>
+
+          {/* Page Header - Enhanced with animation */}
+          <div className="mb-8">
+            <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
+              <div>
+                <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-3 bg-gradient-to-r from-black to-neutral-600 bg-clip-text text-transparent">
+                  Release Hub
+                </h1>
+                <p className="text-lg md:text-xl font-medium text-neutral-600 max-w-2xl">
+                  Official artifact repository. Verified builds directly from
+                  our CI pipeline.
+                </p>
+              </div>
+
+              {/* Quick Stats Badge */}
+              <div className="bg-white border-2 border-black shadow-[4px_4px_0_#000] p-4">
+                <div className="text-xs font-bold uppercase text-neutral-500 mb-1">
+                  Build Status
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  <span className="font-mono font-bold">Active</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Releases Section - Show skeleton while loading */}
