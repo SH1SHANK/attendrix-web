@@ -14,11 +14,13 @@ import {
 import { useAttendanceActions } from "@/hooks/useAttendanceActions";
 import { useCourseTotalsSync } from "@/hooks/useCourseTotalsSync";
 import { DEFAULT_BATCH_ID } from "@/lib/constants";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { TodayScheduleClass, UpcomingClass } from "@/types/supabase-academic";
-import { getISTParts } from "@/lib/time/ist";
+import { getISTParts, parseTimestampAsIST } from "@/lib/time/ist";
 import DotPatternBackground from "@/components/ui/DotPatternBackground";
+import { RetroSkeleton } from "@/components/ui/skeleton";
+import { SmoothSection } from "@/components/ui/SmoothSection";
 
 // Lazy load heavy components for code splitting
 const TodayClasses = dynamic(
@@ -27,9 +29,7 @@ const TodayClasses = dynamic(
       default: mod.TodayClasses,
     })),
   {
-    loading: () => (
-      <div className="h-64 animate-pulse bg-gray-100 rounded-lg" />
-    ),
+    loading: () => <RetroSkeleton className="h-64 w-full" />,
     ssr: true,
   },
 );
@@ -40,9 +40,7 @@ const UpcomingClasses = dynamic(
       default: mod.UpcomingClasses,
     })),
   {
-    loading: () => (
-      <div className="h-64 animate-pulse bg-gray-100 rounded-lg" />
-    ),
+    loading: () => <RetroSkeleton className="h-64 w-full" />,
     ssr: true,
   },
 );
@@ -199,6 +197,58 @@ export default function DashboardPage() {
     timeZone: "Asia/Kolkata",
   });
 
+  const summaryStats = useMemo(() => {
+    const now = new Date();
+    const todaysClasses = todaySchedule.filter((item) => !item.isCancelled);
+    const attended = todaysClasses.filter((item) => item.userAttended).length;
+    const missed = todaysClasses.filter((item) => {
+      if (item.userAttended) return false;
+      if (!item.classEndTime) return false;
+      return parseTimestampAsIST(item.classEndTime).getTime() < now.getTime();
+    }).length;
+
+    return {
+      todayTotal: todaysClasses.length,
+      attended,
+      missed,
+      upcoming: upcomingClasses.length,
+    };
+  }, [todaySchedule, upcomingClasses]);
+
+  const summaryItems = useMemo(
+    () => [
+      {
+        label: "Today's Classes",
+        value: summaryStats.todayTotal,
+        dot: "bg-black",
+        tone: "bg-white",
+      },
+      {
+        label: "Attended",
+        value: summaryStats.attended,
+        dot: "bg-green-600",
+        tone: "bg-green-50",
+      },
+      {
+        label: "Missed",
+        value: summaryStats.missed,
+        dot: "bg-red-600",
+        tone: "bg-red-50",
+      },
+      {
+        label: "Upcoming",
+        value: summaryStats.upcoming,
+        dot: "bg-blue-600",
+        tone: "bg-blue-50",
+      },
+    ],
+    [summaryStats],
+  );
+
+  const summaryLoading =
+    (scheduleLoading && todaySchedule.length === 0) ||
+    (upcomingLoading && upcomingClasses.length === 0);
+
   // Show loading state
   if (authLoading || userLoading) {
     return <div className="min-h-screen bg-[#fffdf5]" />;
@@ -255,14 +305,14 @@ export default function DashboardPage() {
       <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 sm:py-3 lg:px-8 lg:py-4 relative z-10">
         {/* Top Navigation */}
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleBackNavigation}
-              className="inline-flex items-center gap-2 border-2 border-black bg-white px-3 py-2 text-xs sm:text-sm font-bold uppercase shadow-[4px_4px_0_#000] transition-all duration-200 hover:translate-y-1 active:translate-y-2 active:translate-x-1"
+          <div className="flex flex-col gap-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-4 py-3 text-sm font-black uppercase shadow-[5px_5px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_#000] active:translate-y-0 active:shadow-[3px_3px_0px_0px_#000] self-start"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </button>
+              <ArrowLeft className="h-5 w-5" />
+              BACK TO HOME
+            </Link>
 
             <nav aria-label="Breadcrumb">
               <ol className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase">
@@ -299,7 +349,7 @@ export default function DashboardPage() {
         {/* Vertical Stack Layout */}
         <div className="flex flex-col gap-6 sm:gap-8 md:gap-10 lg:gap-12">
           {/* Main Hero: Countdown Card */}
-          <div className="w-full">
+          <SmoothSection delay={120} className="w-full">
             <CountdownCard
               classData={displayClass}
               type={displayType}
@@ -309,7 +359,7 @@ export default function DashboardPage() {
               onMarkAbsent={markAbsent}
               pendingByClassId={pendingByClassId}
             />
-          </div>
+          </SmoothSection>
 
           {/* Divider */}
           <div className="relative w-full h-8 flex items-center justify-center">
@@ -327,9 +377,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Today's Classes List */}
-          <div className="w-full">
+          <SmoothSection delay={160} className="w-full">
             {scheduleLoading ? (
-              <div className="h-64 animate-pulse bg-gray-100 rounded-lg border-2 border-black" />
+              <RetroSkeleton className="h-64 w-full" />
             ) : todaySchedule.length > 0 ? (
               <TodayClasses
                 classes={todaySchedule}
@@ -342,17 +392,17 @@ export default function DashboardPage() {
             ) : (
               <div className="border-2 border-black bg-white p-8 shadow-[4px_4px_0px_0px_#000]">
                 <p className="font-mono text-sm font-bold text-neutral-600">
-                  No classes found for today
+                  No classes today. Your next class appears below.
                 </p>
                 <button
                   onClick={() => handleManualRefresh()}
-                  className="mt-4 px-4 py-2 bg-black text-white font-bold uppercase text-xs"
+                  className="mt-4 px-4 py-2 bg-black text-white font-bold uppercase text-xs transition-transform hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_0px_#000] active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_#000]"
                 >
                   Refresh
                 </button>
               </div>
             )}
-          </div>
+          </SmoothSection>
 
           {/* Divider */}
           <div className="relative w-full h-8 flex items-center justify-center">
@@ -370,9 +420,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Upcoming Classes Widget */}
-          <div className="w-full">
+          <SmoothSection delay={200} className="w-full">
             {upcomingLoading ? (
-              <div className="h-64 animate-pulse bg-gray-100 rounded-lg border-2 border-black" />
+              <RetroSkeleton className="h-64 w-full" />
             ) : upcomingClasses.length > 0 ? (
               <UpcomingClasses
                 userId={user?.uid || null}
@@ -386,7 +436,7 @@ export default function DashboardPage() {
                 </p>
               </div>
             )}
-          </div>
+          </SmoothSection>
         </div>
 
         {/* Footer Spacer */}

@@ -9,22 +9,25 @@ export default function ScrollToTop() {
   const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
 
-  // Hide on dashboard, classes, and profile pages
+  // Hide on dashboard and profile pages
   const shouldHide =
-    pathname?.startsWith("/dashboard") ||
-    pathname?.startsWith("/classes") ||
-    pathname?.startsWith("/profile");
-
-  if (shouldHide) return null;
+    pathname?.startsWith("/dashboard") || pathname?.startsWith("/profile");
 
   useEffect(() => {
+    if (shouldHide) {
+      setIsVisible(false);
+      return;
+    }
+
     const handleScroll = () => {
       setIsVisible(window.scrollY > 400);
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [shouldHide]);
+
+  if (shouldHide) return null;
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });

@@ -50,6 +50,7 @@ interface ChallengeObject {
 interface FirestoreUser {
   uid: string;
   username: string;
+  username_lower: string;
   email: string;
   userRole: "student" | "admin";
   userBio: string;
@@ -65,8 +66,11 @@ interface FirestoreUser {
   lastDataFetchTime: FieldValue;
   currentWeekAmplixGained: number;
   streakHistory: number[];
-  display_name?: string;
-  photo_url?: string;
+  display_name: string;
+  photo_url: string;
+  consentTerms: boolean;
+  consentPromotions: boolean;
+  isOnboarded: boolean;
 }
 
 /**
@@ -165,7 +169,7 @@ function transformCourseToFirestore(
   const credits = course.credits ?? 3;
 
   return {
-    courseID: course.courseID,
+    courseID: course.courseID.trim(),
     courseName: course.courseName,
     credits: credits,
     courseType: parsedType,
@@ -287,9 +291,14 @@ export async function completeOnboarding(input: OnboardingInput): Promise<{
     // ========================================================================
     // STEP D: Create Firebase User Document
     // ========================================================================
+    const displayName = userProfile.displayName || userProfile.username;
+    const photoUrl = userProfile.photoUrl || "";
+    const usernameLower = userProfile.username.toLowerCase();
+
     const firestoreUser: FirestoreUser = {
       uid: uid,
       username: userProfile.username,
+      username_lower: usernameLower,
       email: email,
       userRole: "student",
       userBio: userProfile.bio || "",
@@ -305,8 +314,11 @@ export async function completeOnboarding(input: OnboardingInput): Promise<{
       lastDataFetchTime: FieldValue.serverTimestamp(),
       currentWeekAmplixGained: 0,
       streakHistory: [],
-      display_name: userProfile.displayName,
-      photo_url: userProfile.photoUrl,
+      display_name: displayName,
+      photo_url: photoUrl,
+      consentTerms: false,
+      consentPromotions: false,
+      isOnboarded: true,
     };
 
     // Write to Firestore

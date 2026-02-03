@@ -51,10 +51,24 @@ export async function classCheckInRpc(params: ClassCheckInParams) {
 
 export async function bulkCheckInRpc(params: {
   p_user_id: string;
-  p_class_ids: string[];
+  p_class_ids?: string[];
+  p_class_id?: string;
+  p_class_start?: string;
   p_enrolled_courses: string[];
 }) {
-  const { data, error } = await supabase.rpc("bulk_class_checkin", params);
+  const classIds =
+    params.p_class_ids ??
+    (params.p_class_id ? [params.p_class_id] : undefined);
+
+  if (!classIds || classIds.length === 0) {
+    throw new Error("bulk_class_checkin requires p_class_ids");
+  }
+
+  const { data, error } = await supabase.rpc("bulk_class_checkin", {
+    p_user_id: params.p_user_id,
+    p_class_ids: classIds,
+    p_enrolled_courses: params.p_enrolled_courses,
+  });
   if (error) {
     throw new Error(error.message || "bulk_class_checkin failed");
   }
@@ -201,6 +215,8 @@ export async function applyFirestoreAttendanceUpdates(params: {
     longestStreak?: number;
   };
 }) {
+  // Rule: Attendance actions must never add, remove, or restructure Firebase user documents.
+  // Only explicit numeric field updates are permitted (amplix/streaks and course totals only).
   const { uid, summary, amplixDelta, streakUpdates } = params;
   const summaryMap = buildCourseTotalsMap(summary);
 

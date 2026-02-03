@@ -46,7 +46,7 @@ export function SmoothSection({
       ref={sectionRef}
       id={id}
       className={cn(
-        "transition-all duration-700 ease-smooth",
+        "transition-all duration-700 ease-smooth motion-reduce:transition-none motion-reduce:transform-none motion-reduce:opacity-100",
         animationClass,
         className,
       )}

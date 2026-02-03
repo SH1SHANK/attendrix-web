@@ -358,11 +358,17 @@ export function TodayClasses({
   }, []);
 
   const handleRefresh = async () => {
-    if (!onRefresh) return;
+    if (!onRefresh || isRefreshing || loading) return;
     setIsRefreshing(true);
-    await onRefresh();
-    // Min delay to show animation
-    setTimeout(() => setIsRefreshing(false), 500);
+    const start = Date.now();
+    try {
+      await onRefresh();
+    } finally {
+      const elapsed = Date.now() - start;
+      const minDelay = 450;
+      const delay = Math.max(minDelay - elapsed, 0);
+      window.setTimeout(() => setIsRefreshing(false), delay);
+    }
   };
 
   return (
@@ -378,9 +384,12 @@ export function TodayClasses({
             <button
               onClick={handleRefresh}
               disabled={isRefreshing || loading}
+              aria-busy={isRefreshing || loading}
               className={cn(
-                "ml-2 sm:ml-4 p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors active:scale-95",
-                (isRefreshing || loading) && "opacity-50 cursor-not-allowed",
+                "ml-2 sm:ml-4 inline-flex items-center gap-1.5 rounded-full p-1.5 sm:p-2 transition-all active:scale-95",
+                isRefreshing || loading
+                  ? "opacity-70 cursor-not-allowed bg-neutral-100"
+                  : "hover:bg-neutral-100",
               )}
               title="Refresh Schedule"
             >
@@ -390,6 +399,11 @@ export function TodayClasses({
                   (isRefreshing || loading) && "animate-spin",
                 )}
               />
+              {isRefreshing && (
+                <span className="hidden sm:inline text-[9px] sm:text-[10px] font-black uppercase tracking-wide text-neutral-500">
+                  Refreshing
+                </span>
+              )}
             </button>
           )}
         </div>

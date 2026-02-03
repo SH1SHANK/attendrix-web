@@ -29,16 +29,16 @@ export default function CookieConsent() {
   const isHydrated = useHydrated();
   const storedConsent = isHydrated ? getStoredConsent() : null;
 
-  // Hide on dashboard, classes, and profile pages
-  const shouldHide =
-    pathname?.startsWith("/dashboard") ||
-    pathname?.startsWith("/classes") ||
-    pathname?.startsWith("/profile");
-
   const [isOpen, setIsOpen] = useState(false);
   const [, setHasConsented] = useState(() => !!storedConsent);
 
-  if (shouldHide) return null;
+  // Granular Preferences State - initialize from stored or defaults
+  const [preferences, setPreferences] = useState(() => ({
+    essential: true,
+    analytics: storedConsent?.analytics ?? true,
+    functional: storedConsent?.functional ?? true,
+    advertising: storedConsent?.advertising ?? false,
+  }));
 
   // Delay modal appearance to avoid overlap with preloader
   useEffect(() => {
@@ -52,13 +52,13 @@ export default function CookieConsent() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Granular Preferences State - initialize from stored or defaults
-  const [preferences, setPreferences] = useState(() => ({
-    essential: true,
-    analytics: storedConsent?.analytics ?? true,
-    functional: storedConsent?.functional ?? true,
-    advertising: storedConsent?.advertising ?? false,
-  }));
+  // Hide on dashboard, classes, and profile pages
+  const shouldHide =
+    pathname?.startsWith("/dashboard") ||
+    pathname?.startsWith("/classes") ||
+    pathname?.startsWith("/profile");
+
+  if (shouldHide) return null;
 
   const handleSave = () => {
     const dataToSave = {

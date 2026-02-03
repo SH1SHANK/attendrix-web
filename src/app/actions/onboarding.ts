@@ -345,7 +345,7 @@ export async function completeOnboarding(token: string, data: OnboardingData) {
         }
 
         return {
-          courseID: course.courseID,
+          courseID: course.courseID.trim(),
           courseName: course.courseName, // Trust DB
           credits: course.credits || 3, // Trust DB
           courseType: {
@@ -411,25 +411,52 @@ export async function completeOnboarding(token: string, data: OnboardingData) {
     const db = getAdminFirestore();
 
     const userDocRef = db.collection("users").doc(uid);
+    const userSnap = await userDocRef.get();
+    const existingUser = userSnap.exists ? userSnap.data() : null;
+
+    const fallbackUsername =
+      (existingUser?.username as string) ||
+      (decodedToken.email ? decodedToken.email.split("@")[0] : "student");
+    const usernameLower =
+      (existingUser?.username_lower as string) || fallbackUsername.toLowerCase();
+    const displayName =
+      (existingUser?.display_name as string) ||
+      decodedToken.name ||
+      fallbackUsername;
+    const photoUrl =
+      (existingUser?.photo_url as string) || decodedToken.picture || "";
+
+    const updatePayload: Record<string, unknown> = {
+      batchID: data.batchID,
+      semesterID: data.semesterID,
+      coursesEnrolled: coursesEnrolled,
+      challengesAllotted: challengesAllotted,
+      challengeKey: challengeKey,
+      lastDataFetchTime: FieldValue.serverTimestamp(),
+      isOnboarded: true,
+    };
+
+    if (!existingUser) {
+      updatePayload.uid = uid;
+      updatePayload.email = decodedToken.email || "";
+      updatePayload.username = fallbackUsername;
+      updatePayload.username_lower = usernameLower;
+      updatePayload.display_name = displayName;
+      updatePayload.photo_url = photoUrl;
+      updatePayload.userRole = "student";
+      updatePayload.userBio = "";
+      updatePayload.amplix = 0;
+      updatePayload.currentWeekAmplixGained = 0;
+      updatePayload.currentStreak = 0;
+      updatePayload.longestStreak = 0;
+      updatePayload.streakHistory = [];
+      updatePayload.consentTerms = false;
+      updatePayload.consentPromotions = false;
+      updatePayload.created_time = FieldValue.serverTimestamp();
+    }
+
     // Use merging to be safe
-    await userDocRef.set(
-      {
-        batchID: data.batchID,
-        semesterID: data.semesterID,
-        coursesEnrolled: coursesEnrolled,
-        challengesAllotted: challengesAllotted,
-        challengeKey: challengeKey,
-
-        // Reset Stats
-        amplix: 0,
-        currentWeekAmplixGained: 0,
-        stats: { streak: 0, totalClassesAttended: 0 },
-
-        lastDataFetchTime: FieldValue.serverTimestamp(),
-        isOnboarded: true,
-      },
-      { merge: true },
-    );
+    await userDocRef.set(updatePayload, { merge: true });
 
     return { success: true };
   } catch (err: unknown) {
@@ -534,7 +561,7 @@ export async function finalizeOnboarding(input: FinalizeOnboardingInput) {
         const isEditable = courseType === "elective" && !isLab;
 
         return {
-          courseID: course.courseID,
+          courseID: course.courseID.trim(),
           courseName: course.courseName,
           credits: course.credits || 3,
           courseType: {

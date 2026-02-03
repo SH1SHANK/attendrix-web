@@ -11,6 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import {
   ArrowLeft,
+  Calendar,
   Check,
   RefreshCw,
   X,
@@ -24,7 +25,10 @@ import { useAuth } from "@/context/AuthContext";
 import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { useAttendanceActions } from "@/hooks/useAttendanceActions";
 import {
+  applyFirestoreAttendanceUpdates,
   bulkCheckInRpc,
+  computeAmplixDelta,
+  getCourseAttendanceSummaryRpc,
   getUserCourseRecords,
   markClassAbsentRpc,
 } from "@/lib/attendance/attendance-service";
@@ -106,8 +110,9 @@ export default function ClassesPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
   const dropdownMenuRef = useRef<HTMLDivElement>(null);
-  const [dropdownStyle, setDropdownStyle] =
-    useState<CSSProperties | null>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties | null>(
+    null,
+  );
   const [isMounted, setIsMounted] = useState(false);
   const [selectedClasses, setSelectedClasses] = useState<Set<string>>(
     new Set(),
@@ -117,9 +122,9 @@ export default function ClassesPage() {
   const [recentlyUpdated, setRecentlyUpdated] = useState<Set<string>>(
     new Set(),
   );
-  const [fadeOutState, setFadeOutState] = useState<Record<string, "hold" | "fade">>(
-    {},
-  );
+  const [fadeOutState, setFadeOutState] = useState<
+    Record<string, "hold" | "fade">
+  >({});
   const [openDateMenu, setOpenDateMenu] = useState<string | null>(null);
   const [dateActionDialog, setDateActionDialog] = useState<{
     dateKey: string;
@@ -128,8 +133,9 @@ export default function ClassesPage() {
   const [dateActionPending, setDateActionPending] = useState(false);
   const dateMenuRef = useRef<HTMLDivElement | null>(null);
   const dateMenuButtonRef = useRef<HTMLButtonElement | null>(null);
-  const [dateMenuStyle, setDateMenuStyle] =
-    useState<CSSProperties | null>(null);
+  const [dateMenuStyle, setDateMenuStyle] = useState<CSSProperties | null>(
+    null,
+  );
 
   const markRecentlyUpdated = useCallback((classId: string) => {
     setRecentlyUpdated((prev) => {
@@ -236,9 +242,39 @@ export default function ClassesPage() {
   );
 
   const allClasses = useMemo(
-    () =>
-      sortedGroupKeys.flatMap((dateKey) => classesByDate[dateKey] ?? []),
+    () => sortedGroupKeys.flatMap((dateKey) => classesByDate[dateKey] ?? []),
     [sortedGroupKeys, classesByDate],
+  );
+
+  const activeFilterLabel = useMemo(
+    () =>
+      DATE_RANGES.find((range) => range.value === activeFilter)?.displayLabel ??
+      "All Time",
+    [activeFilter],
+  );
+
+  const totalCount = useMemo(() => allClasses.length, [allClasses]);
+
+  const missedCount = useMemo(
+    () =>
+      allClasses.filter((item) => item.attendanceStatus === "ABSENT").length,
+    [allClasses],
+  );
+
+  const todayKey = useMemo(() => getISTDateString(new Date()), [classesByDate]);
+
+  const canJumpToToday = useMemo(
+    () => activeTab === "all" && sortedGroupKeys.includes(todayKey),
+    [activeTab, sortedGroupKeys, todayKey],
+  );
+
+  const listPerfStyle = useMemo(
+    () =>
+      ({
+        contentVisibility: "auto",
+        containIntrinsicSize: "1px 800px",
+      }) as CSSProperties,
+    [],
   );
 
   const classById = useMemo(() => {
@@ -330,6 +366,25 @@ export default function ClassesPage() {
     [allClasses, dialogClassId],
   );
 
+  const dateActionTargets = useMemo(() => {
+    if (!dateActionDialog) return [];
+    const dayClasses = classesByDate[dateActionDialog.dateKey] ?? [];
+    return dayClasses.filter((item) =>
+      dateActionDialog.action === "present"
+        ? item.attendanceStatus === "ABSENT"
+        : item.attendanceStatus === "PRESENT",
+    );
+  }, [classesByDate, dateActionDialog]);
+
+  const dateActionPreview = useMemo(() => {
+    const previewItems = dateActionTargets.slice(0, 2);
+    return {
+      items: previewItems,
+      remaining: Math.max(0, dateActionTargets.length - previewItems.length),
+      count: dateActionTargets.length,
+    };
+  }, [dateActionTargets]);
+
   const updateClassAttendance = useCallback(
     (classIds: Set<string>, status: AttendanceStatus) => {
       setClassesByDate((prev) => {
@@ -388,18 +443,18 @@ export default function ClassesPage() {
       markRecentlyUpdated(activeDialogClass.classID);
       setDialogClassId(null);
     }
-  }, [activeDialogClass, markAbsent, markRecentlyUpdated, updateClassAttendance]);
+  }, [
+    activeDialogClass,
+    markAbsent,
+    markRecentlyUpdated,
+    updateClassAttendance,
+  ]);
 
   const handleConfirmDateAction = async () => {
     if (!dateActionDialog || !userId) return;
 
     const { dateKey, action } = dateActionDialog;
-    const dayClasses = classesByDate[dateKey] ?? [];
-    const targets = dayClasses.filter((item) =>
-      action === "present"
-        ? item.attendanceStatus === "ABSENT"
-        : item.attendanceStatus === "PRESENT",
-    );
+    const targets = dateActionTargets;
 
     if (targets.length === 0) {
       toast.error("No classes to update for this date.");
@@ -434,10 +489,12 @@ export default function ClassesPage() {
         }
 
         const successIds = new Set<string>();
-        const successfulResults = response
-          .successful_results as Array<{ class_id?: string }> | undefined;
-        const alreadyRecorded = response
-          .already_recorded_results as Array<{ class_id?: string }> | undefined;
+        const successfulResults = response.successful_results as
+          | Array<{ class_id?: string }>
+          | undefined;
+        const alreadyRecorded = response.already_recorded_results as
+          | Array<{ class_id?: string }>
+          | undefined;
 
         successfulResults?.forEach((item) => {
           if (item?.class_id) successIds.add(item.class_id);
@@ -464,10 +521,14 @@ export default function ClassesPage() {
             | undefined,
         );
 
+        const totalAmplix = Number(response.total_amplix_gained ?? 0);
+        if (successIds.size > 0 || totalAmplix !== 0) {
+          await syncAttendanceTotals(totalAmplix);
+        }
+
         toast.success(
           String(
-            response.message ??
-              `Marked ${successIds.size} classes present.`,
+            response.message ?? `Marked ${successIds.size} classes present.`,
           ),
         );
       } else {
@@ -483,16 +544,15 @@ export default function ClassesPage() {
                 classID: item.classID,
                 ok: response.status === "success",
                 message: response.message,
+                delta: computeAmplixDelta({
+                  amplix_gained: response.amplix_gained,
+                  amplix_lost: response.amplix_lost,
+                }),
               };
             } catch (error) {
-              console.error(
-                "Date action failed for class:",
-                item.classID,
-                error,
-              );
               const message =
                 error instanceof Error ? error.message : "Unknown error";
-              return { classID: item.classID, ok: false, message };
+              return { classID: item.classID, ok: false, message, delta: 0 };
             }
           }),
         );
@@ -522,9 +582,12 @@ export default function ClassesPage() {
         }
 
         if (succeeded.length > 0) {
-          toast.success(
-            `Marked ${succeeded.length} classes absent.`,
+          toast.success(`Marked ${succeeded.length} classes absent.`);
+          const totalDelta = succeeded.reduce(
+            (sum, item) => sum + (item.delta || 0),
+            0,
           );
+          await syncAttendanceTotals(totalDelta);
         }
       }
 
@@ -547,6 +610,30 @@ export default function ClassesPage() {
     if (isRefreshing) return;
     void fetchPastClasses({ reason: "refresh" });
   };
+
+  const syncAttendanceTotals = useCallback(
+    async (amplixDelta: number) => {
+      if (!userId) return;
+      try {
+        const summary = await getCourseAttendanceSummaryRpc(userId);
+        await applyFirestoreAttendanceUpdates({
+          uid: userId,
+          summary,
+          amplixDelta,
+        });
+      } catch {
+        toast.error("Unable to sync attendance totals.");
+      }
+    },
+    [userId],
+  );
+
+  const handleJumpToToday = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const target = document.getElementById(`date-${todayKey}`);
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [todayKey]);
 
   const handleToggleClass = (classId: string) => {
     if (!eligibleMissedIds.has(classId)) return;
@@ -626,10 +713,12 @@ export default function ClassesPage() {
       }
 
       const successIds = new Set<string>();
-      const successfulResults = response
-        .successful_results as Array<{ class_id?: string }> | undefined;
-      const alreadyRecorded = response
-        .already_recorded_results as Array<{ class_id?: string }> | undefined;
+      const successfulResults = response.successful_results as
+        | Array<{ class_id?: string }>
+        | undefined;
+      const alreadyRecorded = response.already_recorded_results as
+        | Array<{ class_id?: string }>
+        | undefined;
 
       successfulResults?.forEach((item) => {
         if (item?.class_id) successIds.add(item.class_id);
@@ -656,6 +745,11 @@ export default function ClassesPage() {
           | Array<{ class_id?: string; error?: string }>
           | undefined,
       );
+
+      const totalAmplix = Number(response.total_amplix_gained ?? 0);
+      if (successIds.size > 0 || totalAmplix !== 0) {
+        await syncAttendanceTotals(totalAmplix);
+      }
 
       toast.success(
         String(
@@ -770,7 +864,9 @@ export default function ClassesPage() {
   }, [isDropdownOpen]);
 
   const showEmptyState =
-    activeTab === "missed" ? missedClasses.length === 0 : allClasses.length === 0;
+    activeTab === "missed"
+      ? missedClasses.length === 0
+      : allClasses.length === 0;
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-24 transition-colors duration-300 relative isolate">
@@ -779,39 +875,36 @@ export default function ClassesPage() {
       <div className="mx-auto max-w-3xl relative z-10">
         <header className="bg-white border-b-4 border-black px-4 py-3 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
           <div className="mb-4 flex flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleBackNavigation}
-                className="inline-flex items-center gap-2 border-2 border-black bg-white px-3 py-2 text-xs sm:text-sm font-bold uppercase shadow-[4px_4px_0_#000] transition-all duration-200 hover:translate-y-1 active:translate-y-2 active:translate-x-1"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </button>
-              <nav aria-label="Breadcrumb">
-                <ol className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase">
-                  <li>
-                    <Link
-                      href="/"
-                      className="text-neutral-500 hover:text-black transition-colors"
-                    >
-                      Home
-                    </Link>
-                  </li>
-                  <li className="text-neutral-300">/</li>
-                  <li>
-                    <Link
-                      href="/dashboard"
-                      className="text-neutral-500 hover:text-black transition-colors"
-                    >
-                      Dashboard
-                    </Link>
-                  </li>
-                  <li className="text-neutral-300">/</li>
-                  <li className="text-black">Classes</li>
-                </ol>
-              </nav>
-            </div>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-4 py-3 text-sm font-black uppercase shadow-[5px_5px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_#000] active:translate-y-0 active:shadow-[3px_3px_0px_0px_#000] self-start"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              BACK TO HOME
+            </Link>
+            <nav aria-label="Breadcrumb">
+              <ol className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase">
+                <li>
+                  <Link
+                    href="/"
+                    className="text-neutral-500 hover:text-black transition-colors"
+                  >
+                    Home
+                  </Link>
+                </li>
+                <li className="text-neutral-300">/</li>
+                <li>
+                  <Link
+                    href="/dashboard"
+                    className="text-neutral-500 hover:text-black transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                </li>
+                <li className="text-neutral-300">/</li>
+                <li className="text-black">Classes</li>
+              </ol>
+            </nav>
             <h1 className="font-display text-2xl sm:text-3xl font-black uppercase text-stone-900 tracking-tight">
               Classes
             </h1>
@@ -851,6 +944,29 @@ export default function ClassesPage() {
               )}
             </button>
           </div>
+
+          {isMounted && (
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] sm:text-xs font-black uppercase tracking-wide">
+              <div className="flex items-center gap-2 border-2 border-black bg-white px-2.5 py-1 shadow-[2px_2px_0_#0a0a0a]">
+                <span className="h-2 w-2 rounded-full bg-stone-900" />
+                <span>Range: {activeFilterLabel}</span>
+              </div>
+              <div className="flex items-center gap-2 border-2 border-black bg-yellow-100 px-2.5 py-1 shadow-[2px_2px_0_#0a0a0a]">
+                <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                <span>Total: {totalCount}</span>
+              </div>
+              <div className="flex items-center gap-2 border-2 border-black bg-red-100 px-2.5 py-1 shadow-[2px_2px_0_#0a0a0a]">
+                <span className="h-2 w-2 rounded-full bg-red-500" />
+                <span>Missed: {missedCount}</span>
+              </div>
+              {activeTab === "missed" && isMultiSelectMode && (
+                <div className="flex items-center gap-2 border-2 border-black bg-green-100 px-2.5 py-1 shadow-[2px_2px_0_#0a0a0a]">
+                  <span className="h-2 w-2 rounded-full bg-green-600" />
+                  <span>Selected: {selectedClasses.size}</span>
+                </div>
+              )}
+            </div>
+          )}
         </header>
 
         <section className="bg-white border-b-4 border-black px-4 py-3 sm:px-6 sticky top-0 z-10 shadow-[0_6px_0_#0a0a0a] backdrop-blur-sm bg-white/95">
@@ -864,8 +980,10 @@ export default function ClassesPage() {
               >
                 <Filter className="h-4 w-4" />
                 <span>
-                  {DATE_RANGES.find((r) => r.value === activeFilter)
-                    ?.displayLabel}
+                  {
+                    DATE_RANGES.find((r) => r.value === activeFilter)
+                      ?.displayLabel
+                  }
                 </span>
                 <ChevronDown
                   className={`h-4 w-4 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`}
@@ -934,12 +1052,24 @@ export default function ClassesPage() {
               </button>
             )}
 
+            {canJumpToToday && (
+              <button
+                type="button"
+                onClick={handleJumpToToday}
+                className="ml-auto flex items-center gap-2 h-11 px-3.5 py-2.5 border-2 border-black text-xs font-black uppercase whitespace-nowrap bg-white text-stone-900 shadow-[4px_4px_0_#0a0a0a] transition-all duration-300 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
+              >
+                <Calendar className="h-4 w-4" />
+                <span>Jump to Today</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleRefresh}
               disabled={isRefreshing}
               aria-label="Refresh classes"
-              className={`group ml-auto flex items-center justify-center h-11 w-11 border-2 border-black text-xs font-black uppercase whitespace-nowrap transition-all duration-300 ${
+              aria-busy={isRefreshing}
+              className={`group ${canJumpToToday ? "" : "ml-auto"} flex items-center justify-center h-11 w-11 border-2 border-black text-xs font-black uppercase whitespace-nowrap transition-all duration-300 ${
                 isRefreshing
                   ? "bg-yellow-400 text-stone-900 shadow-[3px_3px_0_#0a0a0a] scale-95"
                   : "bg-white text-stone-900 shadow-[4px_4px_0_#0a0a0a] hover:shadow-[6px_6px_0_#0a0a0a] hover:-translate-y-1 hover:bg-yellow-50 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
@@ -1018,9 +1148,14 @@ export default function ClassesPage() {
                         type="button"
                         onClick={handleBulkCheckIn}
                         disabled={isBulkPending}
+                        aria-busy={isBulkPending}
                         className="px-3 py-1.5 bg-stone-900 text-white border-2 border-black text-xs font-black uppercase shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a] disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <Check className="h-3 w-3 inline mr-1" />
+                        {isBulkPending ? (
+                          <RefreshCw className="h-3 w-3 inline mr-1 animate-spin" />
+                        ) : (
+                          <Check className="h-3 w-3 inline mr-1" />
+                        )}
                         {isBulkPending
                           ? "Checking In..."
                           : `Check In (${selectedClasses.size})`}
@@ -1030,7 +1165,7 @@ export default function ClassesPage() {
                 </div>
               )}
 
-              <div className="space-y-2.5">
+              <div className="space-y-2.5" style={listPerfStyle}>
                 {missedClasses.map((item, index) => {
                   const isSelected = selectedClasses.has(item.classID);
                   const isMissed = item.attendanceStatus === "ABSENT";
@@ -1051,7 +1186,7 @@ export default function ClassesPage() {
                   return (
                     <div
                       key={cardKey}
-                      className={`group relative px-4 py-4 border-2 border-black transition-all duration-300 ease-out transform ${
+                      className={`group relative px-4 py-4 border-2 border-black transition-all duration-300 ease-out transform animate-in fade-in slide-in-from-bottom-2 motion-reduce:animate-none motion-reduce:opacity-100 motion-reduce:transform-none ${
                         isSelected
                           ? "bg-yellow-400 shadow-[5px_5px_0_#0a0a0a] scale-[1.01]"
                           : isMissed && !isFadingOut
@@ -1098,7 +1233,9 @@ export default function ClassesPage() {
                               <span className="font-mono text-sm">
                                 {timeRange}
                               </span>
-                              <span className="hidden sm:inline text-xs">•</span>
+                              <span className="hidden sm:inline text-xs">
+                                •
+                              </span>
                               <span className="text-xs opacity-90">
                                 {formatDateLabel(dateKey)}
                               </span>
@@ -1112,84 +1249,111 @@ export default function ClassesPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4" style={listPerfStyle}>
               {sortedGroupKeys.map((dateKey, dateIndex) => {
+                const dayClasses = classesByDate[dateKey] ?? [];
+                const isMenuOpen = openDateMenu === dateKey;
+
                 return (
-                  <div key={dateKey} className="space-y-2">
                   <div
-                    className="border-2 border-black bg-yellow-400 px-4 py-2.5 shadow-[4px_4px_0_#0a0a0a] transition-all duration-200 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-1 active:shadow-[2px_2px_0_#0a0a0a] flex items-center justify-between gap-3"
-                    style={{
-                      animationDelay: `${dateIndex * 50}ms`,
-                    }}
+                    key={dateKey}
+                    id={`date-${dateKey}`}
+                    className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 motion-reduce:animate-none motion-reduce:opacity-100"
+                    style={
+                      {
+                        animationDelay: `${dateIndex * 80}ms`,
+                        contentVisibility: "auto",
+                        containIntrinsicSize: "1px 360px",
+                        scrollMarginTop: "140px",
+                      } as CSSProperties
+                    }
                   >
-                    <h2 className="text-xs font-black uppercase tracking-wider text-stone-900">
-                      {formatDateHeader(dateKey)}
-                    </h2>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          if (openDateMenu === dateKey) {
-                            setOpenDateMenu(null);
-                            return;
-                          }
-                          dateMenuButtonRef.current = event.currentTarget;
-                          setOpenDateMenu(dateKey);
-                        }}
-                        className="h-8 w-8 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a]"
-                        aria-label="Date actions"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
+                    <div
+                      className={`border-2 border-black bg-yellow-400 px-4 py-2.5 shadow-[4px_4px_0_#0a0a0a] transition-all duration-200 flex items-center justify-between gap-3 ${
+                        isMenuOpen
+                          ? "ring-2 ring-black/40 shadow-[5px_5px_0_#0a0a0a] -translate-y-0.5"
+                          : "hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-1 active:shadow-[2px_2px_0_#0a0a0a]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <h2 className="text-xs font-black uppercase tracking-wider text-stone-900">
+                          {formatDateHeader(dateKey)}
+                        </h2>
+                        <span className="text-[10px] font-black uppercase tracking-wide text-stone-700 border-2 border-black bg-white px-2 py-0.5 shadow-[2px_2px_0_#0a0a0a]">
+                          {dayClasses.length}{" "}
+                          {dayClasses.length === 1 ? "class" : "classes"}
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (openDateMenu === dateKey) {
+                              setOpenDateMenu(null);
+                              return;
+                            }
+                            dateMenuButtonRef.current = event.currentTarget;
+                            setOpenDateMenu(dateKey);
+                          }}
+                          className={`h-8 w-8 border-2 border-black flex items-center justify-center transition-all duration-200 ${
+                            isMenuOpen
+                              ? "bg-stone-900 text-white shadow-[3px_3px_0_#0a0a0a]"
+                              : "bg-white shadow-[2px_2px_0_#0a0a0a] hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a]"
+                          }`}
+                          aria-label="Date actions"
+                          aria-expanded={isMenuOpen}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {dayClasses.map((item, itemIndex) => {
+                        const isMissed = item.attendanceStatus === "ABSENT";
+                        const timeRange = `${formatTime(
+                          item.classStartTime,
+                        )} – ${formatTime(item.classEndTime)}`;
+                        const isPending =
+                          pendingByClassId?.has(item.classID) ?? false;
+                        const isRecentlyUpdated = recentlyUpdated.has(
+                          item.classID,
+                        );
+                        const cardKey = `${item.classID}-${item.classStartTime}`;
+
+                        return (
+                          <button
+                            key={cardKey}
+                            type="button"
+                            onClick={() => setDialogClassId(item.classID)}
+                            className={`group w-full text-left px-5 py-4 border-2 border-black transition-all duration-300 ease-out transform hover:scale-[1.02] animate-in fade-in slide-in-from-bottom-2 motion-reduce:animate-none motion-reduce:opacity-100 motion-reduce:transform-none ${
+                              isMissed
+                                ? "bg-red-500 shadow-[5px_5px_0_#0a0a0a] hover:shadow-[7px_7px_0_#0a0a0a] hover:-translate-y-1 hover:brightness-105 active:translate-y-0.5 active:shadow-[3px_3px_0_#0a0a0a] active:scale-100"
+                                : "bg-green-400 shadow-[5px_5px_0_#0a0a0a] hover:shadow-[7px_7px_0_#0a0a0a] hover:-translate-y-1 hover:brightness-105 active:translate-y-0.5 active:shadow-[3px_3px_0_#0a0a0a] active:scale-100"
+                            } ${isPending ? "opacity-70 animate-pulse" : ""} ${
+                              isRecentlyUpdated ? "ring-4 ring-yellow-300" : ""
+                            }`}
+                            style={{
+                              animationDelay: `${dateIndex * 50 + itemIndex * 30}ms`,
+                            }}
+                          >
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-black text-base uppercase tracking-wide mb-1 truncate text-stone-900 transition-all duration-300 group-hover:tracking-wider">
+                                  {item.courseName}
+                                </h3>
+                                <p className="text-sm font-bold font-mono text-stone-800 transition-all duration-300 group-hover:text-stone-900">
+                                  {timeRange}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    {classesByDate[dateKey]?.map((item, itemIndex) => {
-                      const isMissed = item.attendanceStatus === "ABSENT";
-                      const timeRange = `${formatTime(
-                        item.classStartTime,
-                      )} – ${formatTime(item.classEndTime)}`;
-                      const isPending =
-                        pendingByClassId?.has(item.classID) ?? false;
-                      const isRecentlyUpdated = recentlyUpdated.has(
-                        item.classID,
-                      );
-                      const cardKey = `${item.classID}-${item.classStartTime}`;
-
-                      return (
-                        <button
-                          key={cardKey}
-                          type="button"
-                          onClick={() => setDialogClassId(item.classID)}
-                          className={`group w-full text-left px-5 py-4 border-2 border-black transition-all duration-300 ease-out transform hover:scale-[1.02] ${
-                            isMissed
-                              ? "bg-red-500 shadow-[5px_5px_0_#0a0a0a] hover:shadow-[7px_7px_0_#0a0a0a] hover:-translate-y-1 hover:brightness-105 active:translate-y-0.5 active:shadow-[3px_3px_0_#0a0a0a] active:scale-100"
-                              : "bg-green-400 shadow-[5px_5px_0_#0a0a0a] hover:shadow-[7px_7px_0_#0a0a0a] hover:-translate-y-1 hover:brightness-105 active:translate-y-0.5 active:shadow-[3px_3px_0_#0a0a0a] active:scale-100"
-                          } ${isPending ? "opacity-70 animate-pulse" : ""} ${
-                            isRecentlyUpdated ? "ring-4 ring-yellow-300" : ""
-                          }`}
-                          style={{
-                            animationDelay: `${dateIndex * 50 + itemIndex * 30}ms`,
-                          }}
-                        >
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-black text-base uppercase tracking-wide mb-1 truncate text-stone-900 transition-all duration-300 group-hover:tracking-wider">
-                                {item.courseName}
-                              </h3>
-                              <p className="text-sm font-bold font-mono text-stone-800 transition-all duration-300 group-hover:text-stone-900">
-                                {timeRange}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
+                );
               })}
             </div>
           )}
@@ -1401,28 +1565,28 @@ export default function ClassesPage() {
                 </p>
                 <p className="text-sm font-bold text-stone-700">
                   This will update{" "}
-                  {(() => {
-                    const dayClasses =
-                      classesByDate[dateActionDialog.dateKey] ?? [];
-                    const count =
-                      dateActionDialog.action === "present"
-                        ? dayClasses.filter(
-                            (item) => item.attendanceStatus === "ABSENT",
-                          ).length
-                        : dayClasses.filter(
-                            (item) => item.attendanceStatus === "PRESENT",
-                          ).length;
-                    return (
-                      <>
-                        <span className="font-black text-stone-900">
-                          {count}
-                        </span>{" "}
-                        {count === 1 ? "class" : "classes"}
-                      </>
-                    );
-                  })()}{" "}
-                  for the selected date.
+                  <span className="font-black text-stone-900">
+                    {dateActionPreview.count}
+                  </span>{" "}
+                  {dateActionPreview.count === 1 ? "class" : "classes"} for the
+                  selected date.
                 </p>
+                {dateActionPreview.count > 0 && (
+                  <div className="mt-3 text-xs font-bold uppercase tracking-wide text-stone-500">
+                    Preview:{" "}
+                    <span className="text-stone-900">
+                      {dateActionPreview.items
+                        .map((item) => item.courseName)
+                        .join(" • ")}
+                    </span>
+                    {dateActionPreview.remaining > 0 && (
+                      <span className="text-stone-500">
+                        {" "}
+                        +{dateActionPreview.remaining} more
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="space-y-3">
                 <button
