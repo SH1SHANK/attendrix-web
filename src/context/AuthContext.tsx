@@ -110,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isRedirecting = useRef(false);
   const lastPathname = useRef(pathname);
   const authTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const guardInFlight = useRef(false);
 
   // Reset auth state to idle
   const resetAuthState = useCallback(() => {
@@ -149,35 +150,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Skip if already redirecting or path hasn't settled
       if (isRedirecting.current) return;
 
-      if (currentUser) {
-        // Only redirect if NOT on public pages
-        const isPublicPage =
-          pathname === "/" ||
-          pathname.startsWith("/legal") ||
-          pathname.startsWith("/api") ||
-          pathname.startsWith("/download");
+      if (!currentUser) return;
 
-        if (!isPublicPage) {
-          try {
-            const isOnboarded = await checkOnboardingStatus(currentUser.uid);
+      const isPublicPage =
+        pathname === "/" ||
+        pathname.startsWith("/legal") ||
+        pathname.startsWith("/api") ||
+        pathname.startsWith("/download");
 
-            // Smart Redirects - only if needed
-            if (isOnboarded) {
-              if (pathname === "/onboarding" || pathname.startsWith("/auth")) {
-                isRedirecting.current = true;
-                router.push("/placeholder");
-              }
-            } else {
-              if (pathname.startsWith("/placeholder")) {
-                isRedirecting.current = true;
-                router.push("/onboarding");
-              }
-            }
-          } catch (error) {
-            console.error("Error checking onboarding status:", error);
-          }
-        }
-      }
+      if (isPublicPage) return;
     },
     [pathname, router],
   );
@@ -189,6 +170,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastPathname.current = pathname;
     }
   }, [pathname]);
+
+  useEffect(() => {
+    if (!user || loading || guardInFlight.current) return;
+
+    const isPublicPage =
+      pathname === "/" ||
+      pathname.startsWith("/legal") ||
+      pathname.startsWith("/api") ||
+      pathname.startsWith("/download");
+
+    if (isPublicPage) return;
+
+    const isOnboardingPage = pathname.startsWith("/onboarding");
+    const isAuthPage = pathname.startsWith("/auth");
+
+    const currentPath =
+      typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search}`
+        : pathname;
+
+    guardInFlight.current = true;
+
+    const runGuard = async () => {
+      try {
+        const isOnboarded = await checkOnboardingStatus(user.uid);
+
+        if (!isOnboarded) {
+          if (!isOnboardingPage) {
+            const nextParam = encodeURIComponent(
+              isAuthPage ? "/dashboard" : currentPath,
+            );
+            isRedirecting.current = true;
+            router.push(`/onboarding?next=${nextParam}`);
+          }
+          return;
+        }
+
+        if (isOnboarded && isOnboardingPage) {
+          const params = new URLSearchParams(
+            typeof window !== "undefined" ? window.location.search : "",
+          );
+          const next = params.get("next");
+          const safeNext =
+            next && next.startsWith("/") && !next.startsWith("/onboarding")
+              ? next
+              : "/dashboard";
+          isRedirecting.current = true;
+          router.push(safeNext);
+          return;
+        }
+
+        if (isOnboarded && isAuthPage) {
+          isRedirecting.current = true;
+          router.push("/dashboard");
+        }
+      } catch (error) {
+        console.error("Error checking onboarding status:", error);
+      } finally {
+        guardInFlight.current = false;
+      }
+    };
+
+    runGuard();
+  }, [user, loading, pathname, router]);
 
   // Reset auth state when navigation completes after successful auth
   useEffect(() => {
@@ -245,7 +290,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       isRedirecting.current = true;
       if (isOnboarded) {
-        router.push("/placeholder");
+        router.push("/dashboard");
       } else {
         router.push("/onboarding");
       }

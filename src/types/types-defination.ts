@@ -408,6 +408,7 @@ export interface FirebaseUserDocument {
   uid: string;
   email: string;
   username: string;
+  username_lower?: string;
   display_name: string;
   photo_url: string;
   userRole: "student" | "faculty" | "admin";
@@ -430,6 +431,10 @@ export interface FirebaseUserDocument {
 
   // Challenges
   challengesAllotted: FirebaseChallengeAllotment[];
+
+  // Consents
+  consentTerms?: boolean;
+  consentPromotions?: boolean;
 
   // Metadata
   created_time: string; // ISO timestamp
@@ -464,6 +469,8 @@ export interface FirebaseChallengeAllotment {
   challengeName: string;
   challengeCondition: string;
   challengeDescription: string;
+  targetValue?: number;
+  amplixReward?: number;
 }
 
 /**

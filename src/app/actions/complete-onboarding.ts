@@ -243,6 +243,8 @@ export async function completeOnboarding(input: OnboardingInput): Promise<{
         p_user_id: uid,
         p_course_ids: allCourseIDs,
         p_is_admin: false,
+        p_batch_id: batchID,
+        p_semester_id: Number(semesterID || 0),
       }),
 
       // Step C: Generate challenges via RPC

@@ -86,7 +86,7 @@ export default function SignInPage() {
         toast.success("Welcome back!");
 
         if (isOnboarded) {
-          router.push("/profile");
+          router.push("/dashboard");
         } else {
           router.push("/onboarding");
         }

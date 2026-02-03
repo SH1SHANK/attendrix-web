@@ -1,9 +1,17 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 import { verifySession } from "@/lib/auth-guard";
 import { getAdminFirestore } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { SESSION_COOKIE_NAME } from "@/lib/auth-config";
+import {
+  getUsernameError,
+  normalizeUsername,
+  normalizeUsernameLower,
+} from "@/lib/onboarding/username";
+import { parseCourseType } from "@/lib/onboarding/course-utils";
 import {
   BatchRecord,
   CourseRecord,
@@ -36,6 +44,21 @@ function safeParseJSON<T>(input: unknown, defaultVal: T): T {
   }
   return input as T;
 }
+
+export type BatchOnboardingData = {
+  batch: Pick<
+    BatchRecord,
+    | "batchID"
+    | "batchCode"
+    | "semester"
+    | "semester_name"
+    | "department_id"
+    | "courseCatalog"
+    | "electiveCatalog"
+  >;
+  coreCourses: CourseRecord[];
+  electiveCourses: CourseRecord[];
+};
 
 export async function getAvailableBatches() {
   // Use Admin Client to bypass RLS for this public-facing onboarding data
@@ -151,6 +174,86 @@ export async function getBatchCurriculum(
     };
   } catch (err) {
     console.error("Unexpected error in getBatchCurriculum:", err);
+    return null;
+  }
+}
+
+export async function getBatchOnboardingData(
+  batchID: string,
+): Promise<BatchOnboardingData | null> {
+  try {
+    const { data: batch, error: batchError } = await supabaseAdmin
+      .from("batchRecords")
+      .select(
+        "batchID, batchCode, semester, semester_name, department_id, courseCatalog, electiveCatalog",
+      )
+      .eq("batchID", batchID)
+      .limit(1)
+      .maybeSingle();
+
+    if (batchError || !batch) {
+      console.error("Error fetching batch onboarding data:", batchError);
+      return null;
+    }
+
+    const coreIds: string[] = safeParseJSON(batch.courseCatalog, []);
+    const electiveCategories: string[] = safeParseJSON(
+      batch.electiveCatalog,
+      [],
+    );
+
+    const [coreResult, electiveResult] = await Promise.all([
+      coreIds.length > 0
+        ? supabaseAdmin
+            .from("courseRecords")
+            .select("*")
+            .in("courseID", coreIds)
+        : Promise.resolve({ data: [] as CourseRecord[], error: null }),
+      electiveCategories.length > 0
+        ? supabaseAdmin
+            .from("courseRecords")
+            .select("*")
+            .eq("isElective", true)
+            .overlaps("electiveScope", electiveCategories)
+        : Promise.resolve({ data: [] as CourseRecord[], error: null }),
+    ]);
+
+    let electiveCourses = (electiveResult.data || []) as CourseRecord[];
+
+    if (electiveResult.error) {
+      console.error(
+        "Elective overlap query failed. Falling back to manual filter.",
+        electiveResult.error,
+      );
+      const { data: fallbackElectives, error: fallbackError } =
+        await supabaseAdmin
+          .from("courseRecords")
+          .select("*")
+          .eq("isElective", true);
+
+      if (fallbackError) {
+        console.error("Fallback elective fetch failed:", fallbackError);
+        electiveCourses = [];
+      } else {
+        electiveCourses = (fallbackElectives || []) as CourseRecord[];
+      }
+    }
+
+    return {
+      batch: {
+        batchID: batch.batchID,
+        batchCode: batch.batchCode,
+        semester: batch.semester,
+        semester_name: batch.semester_name,
+        department_id: batch.department_id,
+        courseCatalog: coreIds,
+        electiveCatalog: electiveCategories,
+      },
+      coreCourses: (coreResult.data || []) as CourseRecord[],
+      electiveCourses,
+    };
+  } catch (error) {
+    console.error("Unexpected error in getBatchOnboardingData:", error);
     return null;
   }
 }
@@ -272,6 +375,8 @@ export async function completeOnboarding(token: string, data: OnboardingData) {
         p_user_id: uid,
         p_course_ids: finalCourseIDs,
         p_is_admin: false,
+        p_batch_id: data.batchID,
+        p_semester_id: Number(data.semesterID || 0),
       },
     );
 
@@ -331,5 +436,246 @@ export async function completeOnboarding(token: string, data: OnboardingData) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
     console.error("completeOnboarding error:", err);
     throw new Error(errorMessage || "Onboarding failed");
+  }
+}
+
+// ============================================================================
+// New Onboarding Flow - Finalize Action
+// ============================================================================
+
+export type FinalizeOnboardingInput = {
+  username: string;
+  batchID: string;
+  semesterID: string;
+  coreCourseIDs: string[];
+  labCourseIDs: string[];
+  electiveCourseIDs: string[];
+  consentTerms: boolean;
+  consentPromotions: boolean;
+};
+
+type ChallengePayload = {
+  progressID?: string;
+  challengeID?: string;
+  challengeKey?: string;
+  challengeName?: string;
+  challengeDescription?: string;
+  challengeCondition?: string;
+  targetValue?: number;
+  amplixReward?: number;
+};
+
+export async function finalizeOnboarding(input: FinalizeOnboardingInput) {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    const decodedToken = await verifySession(sessionCookie);
+    const uid = decodedToken.uid;
+
+    const username = normalizeUsername(input.username);
+    const usernameLower = normalizeUsernameLower(username);
+
+    const usernameError = getUsernameError(username);
+
+    if (usernameError || !input.batchID) {
+      throw new Error(usernameError || "Missing onboarding fields");
+    }
+    if (!input.consentTerms) {
+      throw new Error("Terms must be accepted");
+    }
+
+    const uniqueCourseIDs = [
+      ...new Set([
+        ...input.coreCourseIDs,
+        ...input.labCourseIDs,
+        ...input.electiveCourseIDs,
+      ]),
+    ];
+
+    if (uniqueCourseIDs.length === 0) {
+      throw new Error("No courses selected");
+    }
+
+    if (input.coreCourseIDs.length === 0) {
+      throw new Error("Core courses are required");
+    }
+
+    const { data: fetchedCourses, error: fetchError } = await supabaseAdmin
+      .from("courseRecords")
+      .select("*")
+      .in("courseID", uniqueCourseIDs);
+
+    if (fetchError || !fetchedCourses) {
+      console.error("Error fetching course details:", fetchError);
+      throw new Error("Failed to resolve selected courses");
+    }
+
+    const courseMap = new Map<string, CourseRecord>();
+    fetchedCourses.forEach((course) =>
+      courseMap.set(course.courseID, course as CourseRecord),
+    );
+
+    const coursesEnrolled = uniqueCourseIDs
+      .map((id) => {
+        const course = courseMap.get(id);
+        if (!course) return null;
+
+        const type = parseCourseType(course.courseType);
+        const isLab = Boolean(type.isLab);
+        const courseType =
+          type.courseType || (course.isElective ? "elective" : "core");
+        const electiveCategory =
+          type.electiveCategory ||
+          (Array.isArray(course.electiveScope)
+            ? course.electiveScope[0]
+            : "") ||
+          "";
+
+        const isEditable = courseType === "elective" && !isLab;
+
+        return {
+          courseID: course.courseID,
+          courseName: course.courseName,
+          credits: course.credits || 3,
+          courseType: {
+            isLab,
+            courseType,
+            electiveCategory,
+          },
+          isEditable,
+          totalClasses: 0,
+          attendedClasses: 0,
+        };
+      })
+      .filter((course): course is NonNullable<typeof course> =>
+        Boolean(course),
+      );
+
+    if (coursesEnrolled.length === 0) {
+      throw new Error("No valid courses resolved");
+    }
+
+    const db = getAdminFirestore();
+    const userRef = db.collection("users").doc(uid);
+    const userSnap = await userRef.get();
+    const existingUser = userSnap.exists ? userSnap.data() : null;
+
+    const existingChallenges: ChallengePayload[] = Array.isArray(
+      existingUser?.challengesAllotted,
+    )
+      ? (existingUser?.challengesAllotted as ChallengePayload[])
+      : [];
+
+    const existingChallengeIds = existingChallenges
+      .map((challenge) => challenge.challengeID)
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+    const [setCoursesResult, challengeResult] = await Promise.all([
+      supabaseAdmin.rpc("set_user_courses", {
+        p_user_id: uid,
+        p_course_ids: uniqueCourseIDs,
+        p_is_admin: false,
+        p_batch_id: input.batchID,
+        p_semester_id: Number(input.semesterID || 0),
+      }),
+      supabaseAdmin.rpc("generate_user_challenges_v2", {
+        p_user_id: uid,
+        p_current_challenges: existingChallengeIds,
+        p_weekly_amplix_limit: 300,
+        p_monthly_amplix_limit: 1000,
+      }),
+    ]);
+
+    if (setCoursesResult.error) {
+      throw new Error(
+        `Failed to set user courses: ${setCoursesResult.error.message}`,
+      );
+    }
+
+    if (challengeResult.error) {
+      throw new Error(
+        `Failed to generate challenges: ${challengeResult.error.message}`,
+      );
+    }
+
+    const challengesData = (challengeResult.data || {}) as {
+      challenges?: ChallengePayload[];
+      weekly_key?: string;
+      monthly_key?: string;
+    };
+
+    const mergedChallenges = new Map<string, ChallengePayload>();
+    existingChallenges.forEach((challenge) => {
+      const key = challenge.challengeID || challenge.progressID;
+      if (key) mergedChallenges.set(key, challenge);
+    });
+
+    (challengesData.challenges || []).forEach((challenge) => {
+      const key = challenge.challengeID || challenge.progressID;
+      if (key) mergedChallenges.set(key, challenge);
+    });
+
+    const challengesAllotted = Array.from(mergedChallenges.values()).map(
+      (challenge) => ({
+        progressID: challenge.progressID || "",
+        challengeID: challenge.challengeID || "",
+        challengeKey: challenge.challengeKey || challengesData.weekly_key || "",
+        challengeName: challenge.challengeName || "",
+        challengeDescription: challenge.challengeDescription || "",
+        challengeCondition: challenge.challengeCondition || "",
+        targetValue: challenge.targetValue || 0,
+        amplixReward: challenge.amplixReward || 0,
+      }),
+    );
+
+    const challengeKey =
+      challengesData.weekly_key ||
+      challengesData.monthly_key ||
+      challengesAllotted[0]?.challengeKey ||
+      "";
+
+    const updatePayload: Record<string, unknown> = {
+      username,
+      username_lower: usernameLower,
+      batchID: input.batchID,
+      semesterID: input.semesterID,
+      coursesEnrolled,
+      challengesAllotted,
+      challengeKey,
+      consentTerms: input.consentTerms,
+      consentPromotions: input.consentPromotions,
+      lastDataFetchTime: FieldValue.serverTimestamp(),
+      isOnboarded: true,
+    };
+
+    if (!existingUser) {
+      updatePayload.uid = uid;
+      updatePayload.email = decodedToken.email || "";
+      updatePayload.userRole = "student";
+      updatePayload.userBio = "";
+      updatePayload.display_name = decodedToken.name || "";
+      updatePayload.photo_url = decodedToken.picture || "";
+      updatePayload.amplix = 0;
+      updatePayload.currentWeekAmplixGained = 0;
+      updatePayload.currentStreak = 0;
+      updatePayload.longestStreak = 0;
+      updatePayload.streakHistory = [];
+      updatePayload.created_time = FieldValue.serverTimestamp();
+    }
+
+    await userRef.set(updatePayload, { merge: true });
+
+    return {
+      success: true,
+      data: {
+        uid,
+        coursesCount: coursesEnrolled.length,
+        challengesCount: challengesAllotted.length,
+      },
+    };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("finalizeOnboarding error:", error);
+    return { success: false, message } as const;
   }
 }

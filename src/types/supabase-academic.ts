@@ -7,6 +7,7 @@ export interface BatchRecord {
   courseCatalog: string[]; // Array of courseIDs
   enrollmentCapacity?: number;
   electiveCatalog: string[]; // Array of Category Strings (e.g. "OE", "LAB1")
+  department_id?: string;
 }
 
 export type Json =
