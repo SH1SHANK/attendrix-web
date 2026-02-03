@@ -65,21 +65,27 @@ export default function OnboardingStepComplete({
           <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-600 mb-1">
             Batch
           </p>
-          <p className="text-sm sm:text-base font-bold text-black">{batchLabel}</p>
+          <p className="text-sm sm:text-base font-bold text-black">
+            {batchLabel}
+          </p>
         </div>
 
         <div className="border-2 border-black bg-neutral-50 p-3">
           <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-600 mb-1">
             Semester
           </p>
-          <p className="text-sm sm:text-base font-bold text-black">{semesterLabel}</p>
+          <p className="text-sm sm:text-base font-bold text-black">
+            {semesterLabel}
+          </p>
         </div>
 
         <div className="border-2 border-black bg-neutral-50 p-3">
           <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-600 mb-1">
             Courses
           </p>
-          <p className="text-sm sm:text-base font-bold text-black">{coursesCount}</p>
+          <p className="text-sm sm:text-base font-bold text-black">
+            {coursesCount}
+          </p>
         </div>
       </motion.div>
 
@@ -109,7 +115,9 @@ export default function OnboardingStepComplete({
               className="flex items-center gap-2 bg-white border-2 border-black p-2"
             >
               <span className="w-2 h-2 bg-black" />
-              <span className="text-xs sm:text-sm font-semibold text-black">{item.text}</span>
+              <span className="text-xs sm:text-sm font-semibold text-black">
+                {item.text}
+              </span>
             </motion.div>
           ))}
         </div>
