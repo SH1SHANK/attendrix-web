@@ -2,6 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { CountdownCard } from "@/components/dashboard/CountdownCard";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -16,6 +18,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { TodayScheduleClass, UpcomingClass } from "@/types/supabase-academic";
 import { getISTParts } from "@/lib/time/ist";
+import DotPatternBackground from "@/components/ui/DotPatternBackground";
 
 // Lazy load heavy components for code splitting
 const TodayClasses = dynamic(
@@ -54,6 +57,7 @@ export default function DashboardPage() {
   const [batchId, setBatchId] = useState<string>(DEFAULT_BATCH_ID);
   const [displayName, setDisplayName] = useState<string>("Student");
   const [userLoading, setUserLoading] = useState(true);
+  const [enrolledCourses, setEnrolledCourses] = useState<string[]>([]);
 
   // Verify authentication on mount and redirect if needed
   useEffect(() => {
@@ -88,6 +92,7 @@ export default function DashboardPage() {
         } else if (userRecord) {
           console.log("[Dashboard] Found user record:", userRecord);
           setBatchId(userRecord.batchID || DEFAULT_BATCH_ID);
+          setEnrolledCourses(userRecord.enrolledCourses || []);
           // userCourseRecords doesn't strictly have display_name in schema provided
           // but we can try to get it if it exists or fallback to Auth
           // Schema: userID, batchID, semesterID, enrolledCourses, lastUpdated, metadata
@@ -95,6 +100,7 @@ export default function DashboardPage() {
           // Stick to Auth display name or "Student"
         } else {
           setBatchId(DEFAULT_BATCH_ID);
+          setEnrolledCourses([]);
         }
 
         // Always set display name from Auth if available
@@ -102,6 +108,7 @@ export default function DashboardPage() {
       } catch (error) {
         console.error("Error in fetchUserData:", error);
         setBatchId(DEFAULT_BATCH_ID);
+        setEnrolledCourses([]);
       } finally {
         setUserLoading(false);
       }
@@ -110,20 +117,20 @@ export default function DashboardPage() {
     fetchUserData();
   }, [user]);
 
-  // Fetch today's schedule
+  // Fetch today's schedule with enrolled courses filter
   const {
     data: todaySchedule,
     loading: scheduleLoading,
     error: scheduleError,
     refetch: refreshSchedule,
-  } = useTodaySchedule(user?.uid || null, batchId, 75);
+  } = useTodaySchedule(user?.uid || null, batchId, 75, enrolledCourses);
 
-  // Fetch upcoming classes
+  // Fetch upcoming classes with enrolled courses filter
   const {
     data: upcomingClasses,
     loading: upcomingLoading,
     error: upcomingError,
-  } = useUpcomingClasses(user?.uid || null, batchId);
+  } = useUpcomingClasses(user?.uid || null, batchId, enrolledCourses);
 
   const { refreshTotals } = useCourseTotalsSync(user?.uid || null);
   const { checkIn, markAbsent, pendingByClassId } = useAttendanceActions({
@@ -137,6 +144,14 @@ export default function DashboardPage() {
   const handleManualRefresh = async () => {
     await refreshSchedule();
     await refreshTotals();
+  };
+
+  const handleBackNavigation = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push("/");
   };
 
   // Determine current or next class
@@ -229,23 +244,45 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#fffdf5] relative overflow-x-hidden">
-      {/* Global Dotted Grid Background - Memoized */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-20"
-        style={{
-          backgroundImage: "radial-gradient(#000 1.5px, transparent 1.5px)",
-          backgroundSize: "24px 24px",
-        }}
+      {/* Dot Grid Background */}
+      <DotPatternBackground
+        dotColor="#000"
+        dotSize={1.5}
+        dotSpacing={24}
+        opacity={0.15}
       />
 
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-12 relative z-10">
+      <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 sm:py-3 lg:px-8 lg:py-4 relative z-10">
+        {/* Top Navigation */}
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleBackNavigation}
+              className="inline-flex items-center gap-2 border-2 border-black bg-white px-3 py-2 text-xs sm:text-sm font-bold uppercase shadow-[4px_4px_0_#000] transition-all duration-200 hover:translate-y-1 active:translate-y-2 active:translate-x-1"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+
+            <nav aria-label="Breadcrumb">
+              <ol className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase">
+                <li>
+                  <Link
+                    href="/"
+                    className="text-neutral-500 hover:text-black transition-colors"
+                  >
+                    Home
+                  </Link>
+                </li>
+                <li className="text-neutral-300">/</li>
+                <li className="text-black">Dashboard</li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+
         {/* Header Section */}
         <header className="mb-8 flex flex-col items-start gap-3">
-          <div className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-white px-3 py-1.5 sm:py-1 text-xs font-bold uppercase tracking-widest shadow-[2px_2px_0_#0a0a0a] transition-all duration-200">
-            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-            Online
-          </div>
-
           <div>
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase text-black tracking-tighter leading-[0.9]">
               {greeting},{" "}

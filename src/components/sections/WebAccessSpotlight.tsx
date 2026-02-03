@@ -173,7 +173,7 @@ function BrowserWindow() {
         </div>
 
         {/* Window Content */}
-        <div className="h-[280px] md:h-[320px] overflow-hidden bg-[#fffdf5] p-3 space-y-3 relative">
+        <div className="h-70 md:h-80 overflow-hidden bg-[#fffdf5] p-3 space-y-3 relative">
           <MockDashboard />
 
           {/* Mouse Follower for Dashboard (Visual decoration) */}
@@ -301,7 +301,7 @@ export default function WebAccessSpotlight() {
             <div className="flex flex-wrap items-center gap-4">
               {/* Primary Button */}
               <motion.a
-                href="/placeholder"
+                href="/dashboard"
                 className="inline-flex items-center gap-3 px-8 py-4 bg-black text-[#FFD02F] border-[3px] border-black font-bold uppercase tracking-wider shadow-[6px_6px_0px_0px_#FFD02F] transition-all"
                 whileHover={{
                   x: -2,

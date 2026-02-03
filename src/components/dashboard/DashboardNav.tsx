@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Home, Calendar, User } from "lucide-react";
 import { motion, useScroll, useMotionValueEvent } from "framer-motion";
-import { useUserPreferences } from "@/context/UserPreferencesContext";
 
 interface NavItem {
   href: string;
@@ -24,7 +23,6 @@ export const DashboardNav = memo(function DashboardNav() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const { scrollY } = useScroll();
-  const { is24Hour, toggleTimeFormat } = useUserPreferences();
 
   // Scroll detection with hysteresis
   useMotionValueEvent(scrollY, "change", (latest) => {
@@ -44,20 +42,6 @@ export const DashboardNav = memo(function DashboardNav() {
     }, 0);
     return () => clearTimeout(timer);
   }, []);
-
-  const toggleButtonJsx = (
-    <button
-      onClick={toggleTimeFormat}
-      className={cn(
-        "relative flex items-center justify-center gap-2 px-3 py-2.5 border-2 border-black font-bold uppercase text-xs sm:text-sm",
-        "bg-white shadow-[4px_4px_0_0_#000] hover:shadow-[6px_6px_0_0_#000] active:shadow-[2px_2px_0_0_#000]",
-        "transition-all duration-200 ease-out touch-manipulation group min-w-14",
-        "hover:translate-y-1 active:translate-y-2 active:translate-x-1",
-      )}
-    >
-      <span className="font-mono">{is24Hour ? "24H" : "12H"}</span>
-    </button>
-  );
 
   if (!mounted) {
     // Render a static version first to match server
@@ -86,15 +70,6 @@ export const DashboardNav = memo(function DashboardNav() {
                 <span className="hidden sm:inline">{item.label}</span>
               </Link>
             ))}
-            {/* Toggle Button for Static View - matching style roughly but static */}
-            <button
-              className={cn(
-                "relative flex items-center justify-center gap-2 px-3 py-2.5 border-2 border-black font-bold uppercase text-xs sm:text-sm",
-                "bg-white shadow-[4px_4px_0_0_#000] min-w-14",
-              )}
-            >
-              <span className="font-mono">12H</span>
-            </button>
           </div>
         </nav>
         <div className="h-20" />
@@ -157,7 +132,6 @@ export const DashboardNav = memo(function DashboardNav() {
               </Link>
             );
           })}
-          {toggleButtonJsx}
         </div>
       </motion.nav>
 

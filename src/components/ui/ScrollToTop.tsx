@@ -1,11 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { ArrowUp } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function ScrollToTop() {
+  const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
+
+  // Hide on dashboard, classes, and profile pages
+  const shouldHide =
+    pathname?.startsWith("/dashboard") ||
+    pathname?.startsWith("/classes") ||
+    pathname?.startsWith("/profile");
+
+  if (shouldHide) return null;
 
   useEffect(() => {
     const handleScroll = () => {

@@ -116,7 +116,7 @@ export default function Hero({ isVisible = false }: HeroProps) {
           {/* Secondary: Launch Web App */}
           <Link
             ref={secondaryRef}
-            href="/app"
+            href="/dashboard"
             className="ripple-effect group inline-flex items-center gap-3 border-2 border-black bg-white px-6 py-3 text-lg font-bold uppercase tracking-tight text-stone-900 shadow-[6px_6px_0_#0a0a0a] transition-all duration-300 ease-smooth hover:shadow-[8px_8px_0_#0a0a0a] hover:-translate-x-0.75 hover:-translate-y-0.75 active:shadow-[2px_2px_0_#0a0a0a] active:translate-x-0.5 active:translate-y-0.5"
           >
             <span className="inline-flex h-10 w-10 items-center justify-center border-2 border-black bg-stone-900 text-white transition-transform duration-300 group-hover:scale-110">

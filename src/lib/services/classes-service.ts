@@ -4,6 +4,7 @@ import {
   TodayScheduleClass,
   UpcomingClass,
 } from "@/types/supabase-academic";
+import { FilterPeriod, PastClass } from "@/types/types-defination";
 import { getISTDateString } from "@/lib/time/ist";
 
 /**
@@ -24,6 +25,7 @@ export const ClassesService = {
     batchId: string,
     attendanceGoalPercentage: number = 75,
     dateIso?: string,
+    enrolledCourses?: string[],
   ): Promise<TodayScheduleClass[]> {
     if (!userId || !batchId) return [];
 
@@ -37,6 +39,7 @@ export const ClassesService = {
         user_id: userId,
         date: dateString,
         attendance_goal_percentage: attendanceGoalPercentage,
+        enrolled_courses: enrolledCourses,
       });
 
       const { data, error } = await supabase.rpc("get_today_schedule", {
@@ -57,7 +60,21 @@ export const ClassesService = {
 
       // RPC returns rows matching the TodayScheduleClass interface structure directly
       // but we ensure it matches the interface
-      return (data as any[]).map((row) => ({
+      let filteredData = data as any[];
+
+      // Filter by enrolled courses if provided
+      if (enrolledCourses && enrolledCourses.length > 0) {
+        filteredData = filteredData.filter((row) =>
+          enrolledCourses.includes(row.courseID || row.courseid),
+        );
+        console.log("[getTodaySchedule] Filtered to enrolled courses:", {
+          total: data.length,
+          filtered: filteredData.length,
+          enrolledCourses,
+        });
+      }
+
+      return filteredData.map((row) => ({
         classID: row.classID || row.classid,
         courseID: row.courseID || row.courseid,
         courseName: row.courseName || row.coursename || "Unknown Course",
@@ -88,12 +105,79 @@ export const ClassesService = {
   },
 
   /**
+   * Fetch past classes for a user
+   * Uses get_user_past_classes RPC
+   */
+  async getUserPastClasses(
+    userId: string,
+    filter: FilterPeriod = "all",
+  ): Promise<PastClass[]> {
+    if (!userId) return [];
+
+    const { data, error } = await supabase.rpc("get_user_past_classes", {
+      uid: userId,
+      filter,
+    });
+
+    if (error) {
+      console.error("Error fetching past classes:", error);
+      throw error;
+    }
+
+    const rows = (data as Array<Record<string, unknown>>) || [];
+
+    const normalized = rows
+      .map((row) => {
+        const rawStatus = String(
+          row.attendanceStatus ?? row.attendancestatus ?? "ABSENT",
+        ).toUpperCase();
+        const attendanceStatus: PastClass["attendanceStatus"] =
+          rawStatus === "PRESENT" ? "PRESENT" : "ABSENT";
+
+        return {
+          classID: (row.classID ?? row.classid) as string | undefined,
+          courseID: (row.courseID ?? row.courseid) as string | undefined,
+          courseName:
+            (row.courseName ?? row.coursename ?? "Unknown Course") as string,
+          classStartTime: (row.classStartTime ?? row.classstarttime) as
+            | string
+            | undefined,
+          classEndTime: (row.classEndTime ?? row.classendtime) as
+            | string
+            | undefined,
+          classVenue: (row.classVenue ?? row.classvenue ?? null) as
+            | string
+            | null,
+          attendanceStatus,
+        };
+      })
+      .filter(
+        (item): item is PastClass =>
+          !!item.classID &&
+          !!item.courseID &&
+          !!item.courseName &&
+          !!item.classStartTime &&
+          !!item.classEndTime,
+      );
+
+    if (normalized.length !== rows.length) {
+      console.warn(
+        "[getUserPastClasses] Dropped rows due to missing fields:",
+        rows.length - normalized.length,
+      );
+    }
+
+    return normalized;
+  },
+
+  /**
    * Fetch upcoming classes
    * RAW QUERY: 'timetableRecords' filtered by date > now
    */
   async getUpcomingClasses(
     userId: string,
     batchId: string,
+    enrolledCourses?: string[],
   ): Promise<UpcomingClass[]> {
     if (!userId || !batchId) return [];
 
@@ -101,11 +185,22 @@ export const ClassesService = {
       const now = new Date().toISOString();
 
       // Fetch next 5 classes for the specific batch
-      const { data: classes, error } = await supabase
+      let query = supabase
         .from("timetableRecords")
         .select("*")
         .eq("batchID", batchId) // Use passed batchId
-        .gt("classStartTime", now)
+        .gt("classStartTime", now);
+
+      // Filter by enrolled courses if provided
+      if (enrolledCourses && enrolledCourses.length > 0) {
+        query = query.in("courseID", enrolledCourses);
+        console.log(
+          "[getUpcomingClasses] Filtering by enrolled courses:",
+          enrolledCourses,
+        );
+      }
+
+      const { data: classes, error } = await query
         .order("classStartTime", { ascending: true })
         .limit(5);
 
@@ -134,16 +229,25 @@ export const ClassesService = {
     userId: string,
     batchId: string,
     targetDate: string,
+    enrolledCourses?: string[],
   ): Promise<ClassByDate[]> {
     if (!userId || !batchId || !targetDate) return [];
 
     try {
-      const { data: classes, error } = await supabase
+      let query = supabase
         .from("timetableRecords")
         .select("*")
         .eq("batchID", batchId)
-        .eq("classDate", targetDate)
-        .order("classStartTime", { ascending: true });
+        .eq("classDate", targetDate);
+
+      // Filter by enrolled courses if provided
+      if (enrolledCourses && enrolledCourses.length > 0) {
+        query = query.in("courseID", enrolledCourses);
+      }
+
+      const { data: classes, error } = await query.order("classStartTime", {
+        ascending: true,
+      });
 
       if (error) throw error;
       if (!classes) return [];
@@ -172,17 +276,25 @@ export const ClassesService = {
   async getNextClass(
     userId: string,
     batchId: string,
+    enrolledCourses?: string[],
   ): Promise<TodayScheduleClass | null> {
     if (!userId || !batchId) return null;
 
     try {
       const now = new Date().toISOString();
 
-      const { data: classes, error } = await supabase
+      let query = supabase
         .from("timetableRecords")
         .select("*")
         .eq("batchID", batchId)
-        .gt("classEndTime", now) // Show class if it hasn't ended yet (Current) OR is in future
+        .gt("classEndTime", now); // Show class if it hasn't ended yet (Current) OR is in future
+
+      // Filter by enrolled courses if provided
+      if (enrolledCourses && enrolledCourses.length > 0) {
+        query = query.in("courseID", enrolledCourses);
+      }
+
+      const { data: classes, error } = await query
         .order("classStartTime", { ascending: true })
         .limit(1);
 

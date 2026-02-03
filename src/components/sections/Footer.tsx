@@ -1,57 +1,9 @@
 "use client";
 
+import { useRef } from "react";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
-import { Github, Twitter, Send, Signal, ChevronRight } from "lucide-react";
-
-// ============================================
-// ANIMATION VARIANTS
-// ============================================
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.4,
-    },
-  },
-};
-
-const mobileContainerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.2,
-    },
-  },
-};
-
-const columnVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      ease: "easeOut" as const,
-    },
-  },
-};
-
-const bottomBarVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      duration: 0.4,
-      delay: 0.8,
-    },
-  },
-};
+import { Github, Twitter, Send } from "lucide-react";
+import { useInView } from "@/hooks/useInView";
 
 // ============================================
 // FOOTER LINK DATA
@@ -67,7 +19,7 @@ const productLinks = [
 const legalLinks = [
   { label: "Privacy Policy", href: "/privacy" },
   { label: "Terms of Service", href: "/terms" },
-  { label: "Data Processing", href: "/data-processing" },
+  { label: "Cookies", href: "/cookies" },
 ];
 
 const socialLinks = [
@@ -77,10 +29,9 @@ const socialLinks = [
 ];
 
 // ============================================
-// ANIMATED COMPONENTS
+// FOOTER LINK COMPONENT
 // ============================================
 
-// Animated Footer Link with Magnetic Slide + Chevron
 function FooterLink({
   href,
   children,
@@ -89,44 +40,17 @@ function FooterLink({
   children: React.ReactNode;
 }) {
   return (
-    <motion.div
-      className="group relative will-change-transform"
-      initial="rest"
-      whileHover="hover"
-      animate="rest"
+    <Link
+      href={href}
+      className="group inline-flex flex-col gap-1 text-sm font-bold uppercase tracking-wider text-neutral-300 transition-colors duration-200 hover:text-white focus-visible:text-white"
     >
-      <Link
-        href={href}
-        className="flex items-center gap-1 text-neutral-400 py-2 text-sm font-medium transition-colors duration-200 group-hover:text-[#FFD02F]"
-      >
-        {/* Chevron that fades in on hover */}
-        <motion.span
-          className="text-[#FFD02F]"
-          variants={{
-            rest: { opacity: 0, x: -8 },
-            hover: { opacity: 1, x: 0 },
-          }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        >
-          <ChevronRight className="w-3 h-3" strokeWidth={3} />
-        </motion.span>
-
-        {/* Link text that slides right */}
-        <motion.span
-          variants={{
-            rest: { x: 0 },
-            hover: { x: 4 },
-          }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        >
-          {children}
-        </motion.span>
-      </Link>
-    </motion.div>
+      <span>{children}</span>
+      <span className="h-0.5 w-full origin-left scale-x-0 bg-white transition-transform duration-300 ease-smooth group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:scale-x-100 motion-reduce:transition-none" />
+    </Link>
   );
 }
 
-// Social Button with Physical Press Effect
+// Social Button with Border Style
 function SocialButton({
   icon: Icon,
   href,
@@ -137,60 +61,18 @@ function SocialButton({
   label: string;
 }) {
   return (
-    <motion.a
+    <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="w-11 h-11 bg-white text-black flex items-center justify-center border-2 border-white will-change-transform"
-      initial={{ boxShadow: "3px 3px 0px 0px rgba(255,255,255,0.3)" }}
-      whileHover={{
-        y: -4,
-        x: -2,
-        boxShadow: "5px 5px 0px 0px #333333",
-      }}
-      whileTap={{
-        y: 0,
-        x: 0,
-        boxShadow: "1px 1px 0px 0px #333333",
-      }}
-      transition={{ type: "spring", stiffness: 400, damping: 15 }}
+      className="group w-11 h-11 bg-[#FFD02F] border-2 border-black text-black flex items-center justify-center shadow-[3px_3px_0_0_#000] hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] active:translate-y-1 active:shadow-[1px_1px_0_0_#000] transition-all duration-150 motion-reduce:transition-none"
     >
-      <Icon className="w-5 h-5" strokeWidth={2.5} />
-    </motion.a>
-  );
-}
-
-// Pulsing Status Dot with Breathing Animation
-function PulsingDot() {
-  return (
-    <span className="relative flex h-2.5 w-2.5">
-      {/* Outer ripple */}
-      <motion.span
-        className="absolute inline-flex h-full w-full rounded-full bg-green-400"
-        animate={{
-          scale: [1, 1.5, 1],
-          opacity: [0.75, 0, 0.75],
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
+      <Icon
+        className="w-5 h-5 transition-transform duration-200 group-hover:-rotate-6 group-hover:scale-105 motion-reduce:transform-none"
+        strokeWidth={2}
       />
-      {/* Inner breathing dot */}
-      <motion.span
-        className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"
-        animate={{
-          scale: [1, 1.15, 1],
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
-    </span>
+    </a>
   );
 }
 
@@ -199,126 +81,149 @@ function PulsingDot() {
 // ============================================
 
 export default function Footer() {
-  const prefersReducedMotion = useReducedMotion();
+  const footerRef = useRef<HTMLElement>(null);
+  const isInView = useInView(footerRef, {
+    threshold: 0.2,
+    rootMargin: "0px 0px -10% 0px",
+    triggerOnce: true,
+  });
 
-  // Use simpler variants on mobile or reduced motion
-  const activeContainerVariants = prefersReducedMotion
-    ? mobileContainerVariants
-    : containerVariants;
+  const lineRevealClass = isInView ? "scale-x-100" : "scale-x-0";
 
   return (
-    <footer className="bg-neutral-950 text-white overflow-hidden">
-      {/* Section A: Link Grid */}
-      <motion.div
-        className="max-w-7xl mx-auto px-4 py-12 md:py-16"
-        variants={activeContainerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-      >
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-10 md:gap-8">
-          {/* Column 1: Brand & Status */}
-          <motion.div
-            className="col-span-2 md:col-span-1"
-            variants={columnVariants}
-          >
-            {/* Logo */}
-            <div className="flex items-center gap-3 mb-4">
-              <motion.div
-                className="w-10 h-10 bg-[#FFD02F] border-2 border-white flex items-center justify-center"
-                whileHover={{ rotate: -5 }}
-                transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                style={{ boxShadow: "2px 2px 0 rgba(255,255,255,0.3)" }}
-              >
-                <span className="font-mono font-bold text-lg text-black">
+    <footer
+      ref={footerRef}
+      className="relative bg-black text-white border-t-4 border-white overflow-hidden"
+    >
+      {/* Main content */}
+      <div className="relative z-10">
+        {/* Unified footer surface */}
+        <div className="max-w-7xl mx-auto px-6 py-10 sm:px-8 lg:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+            {/* Brand + Identity */}
+            <div className="lg:col-span-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-[#FFD02F] border-2 border-black flex items-center justify-center shadow-[3px_3px_0_#000] font-mono font-bold text-xl">
                   A
-                </span>
-              </motion.div>
-              <span className="font-bold text-xl tracking-tight">
-                ATTENDRIX
-              </span>
+                </div>
+                <div className="font-display text-2xl font-black uppercase tracking-tight">
+                  ATTENDRIX
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <p className="font-mono text-xs font-bold text-neutral-300 uppercase tracking-[0.22em]">
+                  Attendance Hub
+                </p>
+                <p className="text-base font-bold leading-relaxed text-neutral-200">
+                  The bespoke academic ecosystem for NITC. Track attendance,
+                  gamify learning, and level up your academic journey.
+                </p>
+                <p className="font-mono text-xs font-bold uppercase tracking-widest text-neutral-400">
+                  Built by students, for students, at NITC
+                </p>
+              </div>
             </div>
 
-            {/* Tagline */}
-            <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
-              Built by NITC Students,
-              <br />
-              for NITC Students.
-            </p>
+            {/* Navigation + Legal */}
+            <div className="lg:col-span-4 lg:border-l-2 lg:border-white lg:pl-6">
+              <div className="flex items-center justify-between">
+                <h4 className="font-display font-black uppercase text-sm tracking-widest">
+                  Navigation
+                </h4>
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-neutral-400">
+                  Core
+                </span>
+              </div>
+              <span
+                className={`mt-3 block h-0.5 origin-left bg-white transition-transform duration-700 ease-smooth motion-reduce:transition-none motion-reduce:scale-x-100 ${lineRevealClass}`}
+              />
 
-            {/* Live Status Badge */}
-            <motion.div
-              className="inline-flex items-center gap-2 bg-neutral-900 border border-neutral-800 px-3 py-1.5"
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 400, damping: 20 }}
-            >
-              <PulsingDot />
-              <Signal className="w-3 h-3 text-green-500" />
-              <span className="text-xs font-medium text-neutral-400">
-                Systems Normal
-              </span>
-            </motion.div>
-          </motion.div>
+              <div className="mt-5 grid grid-cols-2 gap-8">
+                <div>
+                  <h5 className="font-display font-black uppercase text-xs tracking-widest mb-3 text-neutral-200">
+                    Product
+                  </h5>
+                  <ul className="space-y-2">
+                    {productLinks.map((link) => (
+                      <li key={link.label}>
+                        <FooterLink href={link.href}>{link.label}</FooterLink>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
-          {/* Column 2: Product */}
-          <motion.div variants={columnVariants}>
-            <h4 className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-4">
-              Product
-            </h4>
-            <ul className="space-y-0.5">
-              {productLinks.map((link) => (
-                <li key={link.label}>
-                  <FooterLink href={link.href}>{link.label}</FooterLink>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
+                <div>
+                  <h5 className="font-display font-black uppercase text-xs tracking-widest mb-3 text-neutral-200">
+                    Legal
+                  </h5>
+                  <ul className="space-y-2">
+                    {legalLinks.map((link) => (
+                      <li key={link.label}>
+                        <FooterLink href={link.href}>{link.label}</FooterLink>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
 
-          {/* Column 4: Legal */}
-          <motion.div variants={columnVariants}>
-            <h4 className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-4">
-              Legal
-            </h4>
-            <ul className="space-y-0.5">
-              {legalLinks.map((link) => (
-                <li key={link.label}>
-                  <FooterLink href={link.href}>{link.label}</FooterLink>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-        </div>
-      </motion.div>
+            {/* Status + Social */}
+            <div className="lg:col-span-4 lg:border-l-2 lg:border-white lg:pl-6">
+              <div className="flex items-center justify-between">
+                <h4 className="font-display font-black uppercase text-sm tracking-widest">
+                  System Status
+                </h4>
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-neutral-400">
+                  Live
+                </span>
+              </div>
+              <span
+                className={`mt-3 block h-0.5 origin-left bg-white transition-transform duration-700 ease-smooth motion-reduce:transition-none motion-reduce:scale-x-100 ${lineRevealClass}`}
+              />
 
-      {/* Section C: Bottom Bar */}
-      <motion.div
-        className="border-t border-white/10"
-        variants={bottomBarVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true }}
-      >
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* Copyright */}
-            <p className="text-xs text-neutral-500 font-medium uppercase tracking-wide">
-              © 2026 Attendrix Open Source
-            </p>
+              <div className="mt-4 flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                  <span className="font-mono text-xs font-bold text-neutral-300 uppercase tracking-wider">
+                    Systems Normal
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {socialLinks.map((social) => (
+                    <SocialButton
+                      key={social.label}
+                      icon={social.icon}
+                      href={social.href}
+                      label={social.label}
+                    />
+                  ))}
+                </div>
+              </div>
+              <p className="mt-4 font-mono text-xs font-bold uppercase tracking-wider text-neutral-400">
+                © 2026 Attendrix. Open Source.
+              </p>
+            </div>
+          </div>
 
-            {/* Social Icons */}
-            <div className="flex items-center gap-3">
-              {socialLinks.map((social) => (
-                <SocialButton
-                  key={social.label}
-                  icon={social.icon}
-                  href={social.href}
-                  label={social.label}
-                />
-              ))}
+          {/* Signature / Authorship */}
+          <div className="border-t-4 border-white mt-6 pt-6">
+            <div className="border-2 border-black bg-[#FFD02F] text-black p-6 shadow-[4px_4px_0_#000]">
+              <div className="flex flex-col items-start">
+                <p className="font-display text-2xl sm:text-3xl font-black leading-tight tracking-tight uppercase">
+                  Dreamt, designed, and built by Shashank
+                </p>
+                <p className="mt-2 font-mono text-xs font-bold uppercase tracking-wider text-black/70">
+                  Open-sourced and maintained by Attendrix Inc.
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </motion.div>
+
+        {/* Bottom accent bar */}
+        <div className="h-2 bg-white" />
+      </div>
     </footer>
   );
 }

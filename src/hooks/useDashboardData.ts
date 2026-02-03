@@ -34,6 +34,7 @@ export function useTodaySchedule(
   userId: string | null,
   batchId: string,
   attendanceGoalPercentage: number = 75,
+  enrolledCourses?: string[],
 ) {
   const [data, setData] = useState<TodayScheduleClass[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +57,8 @@ export function useTodaySchedule(
         userId as string,
         batchId,
         attendanceGoalPercentage,
+        undefined,
+        enrolledCourses,
       );
 
       setData(scheduleData);
@@ -67,7 +70,7 @@ export function useTodaySchedule(
     } finally {
       setLoading(false);
     }
-  }, [userId, batchId, attendanceGoalPercentage, data.length]);
+  }, [userId, batchId, attendanceGoalPercentage, data.length, enrolledCourses]);
 
   // Initial load
   useEffect(() => {
@@ -121,7 +124,11 @@ export function useTodaySchedule(
  * @param userId - Firebase Auth UID
  * @param batchId - User's batch ID
  */
-export function useUpcomingClasses(userId: string | null, batchId: string) {
+export function useUpcomingClasses(
+  userId: string | null,
+  batchId: string,
+  enrolledCourses?: string[],
+) {
   const [data, setData] = useState<UpcomingClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -139,6 +146,7 @@ export function useUpcomingClasses(userId: string | null, batchId: string) {
       const upcomingData = await ClassesService.getUpcomingClasses(
         userId as string,
         batchId,
+        enrolledCourses,
       );
       setData(upcomingData);
     } catch (err) {
@@ -148,7 +156,7 @@ export function useUpcomingClasses(userId: string | null, batchId: string) {
     } finally {
       setLoading(false);
     }
-  }, [userId, batchId, data.length]);
+  }, [userId, batchId, data.length, enrolledCourses]);
 
   useEffect(() => {
     fetchData();

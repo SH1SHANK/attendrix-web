@@ -49,6 +49,24 @@ export async function classCheckInRpc(params: ClassCheckInParams) {
   return normalized;
 }
 
+export async function bulkCheckInRpc(params: {
+  p_user_id: string;
+  p_class_ids: string[];
+  p_enrolled_courses: string[];
+}) {
+  const { data, error } = await supabase.rpc("bulk_class_checkin", params);
+  if (error) {
+    throw new Error(error.message || "bulk_class_checkin failed");
+  }
+
+  const normalized = normalizeRpcData<Record<string, unknown>>(data);
+  if (!normalized) {
+    throw new Error("bulk_class_checkin returned no data");
+  }
+
+  return normalized;
+}
+
 export async function markClassAbsentRpc(params: MarkClassAbsentParams) {
   const { data, error } = await supabase.rpc("mark_class_absent", params);
   if (error) {

@@ -199,7 +199,7 @@ export default function ChooseYourWeapon() {
               {/* CTA */}
               <Link
                 href="/download"
-                className="inline-flex items-center gap-3 border-2 border-black bg-white px-6 py-3 text-sm font-bold uppercase shadow-[4px_4px_0_#0a0a0a] transition-all hover:shadow-[2px_2px_0_#0a0a0a] hover:-translate-x-[2px] hover:-translate-y-[2px] mt-4"
+                className="inline-flex items-center gap-3 border-2 border-black bg-white px-6 py-3 text-sm font-bold uppercase shadow-[4px_4px_0_#0a0a0a] transition-all hover:shadow-[2px_2px_0_#0a0a0a] hover:-translate-x-0.5 hover:-translate-y-0.5 mt-4"
               >
                 <Download className="h-4 w-4" />
                 Download .APK
@@ -280,8 +280,8 @@ export default function ChooseYourWeapon() {
 
               {/* CTA */}
               <Link
-                href="/app"
-                className="inline-flex items-center gap-3 border-2 border-black bg-white px-6 py-3 text-sm font-bold uppercase shadow-[4px_4px_0_#0a0a0a] transition-all hover:shadow-[2px_2px_0_#0a0a0a] hover:-translate-x-[2px] hover:-translate-y-[2px] mt-4"
+                href="/dashboard"
+                className="inline-flex items-center gap-3 border-2 border-black bg-white px-6 py-3 text-sm font-bold uppercase shadow-[4px_4px_0_#0a0a0a] transition-all hover:shadow-[2px_2px_0_#0a0a0a] hover:-translate-x-0.5 hover:-translate-y-0.5 mt-4"
               >
                 <ExternalLink className="h-4 w-4" />
                 Launch Web

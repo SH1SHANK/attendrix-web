@@ -414,7 +414,7 @@ export function UserMenu() {
             {/* Primary Actions */}
             <MenuSection className="py-1">
               <MenuItem
-                href="/app"
+                href="/dashboard"
                 icon={<Rocket className="w-4 h-4" />}
                 label="Launch Web App"
                 description="Access the full dashboard"

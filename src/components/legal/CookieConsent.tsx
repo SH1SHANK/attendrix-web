@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
 import { ShieldCheck, X, Cookie } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Switch } from "@/components/ui/Switch";
@@ -24,11 +25,20 @@ function getStoredConsent() {
 }
 
 export default function CookieConsent() {
+  const pathname = usePathname();
   const isHydrated = useHydrated();
   const storedConsent = isHydrated ? getStoredConsent() : null;
 
+  // Hide on dashboard, classes, and profile pages
+  const shouldHide =
+    pathname?.startsWith("/dashboard") ||
+    pathname?.startsWith("/classes") ||
+    pathname?.startsWith("/profile");
+
   const [isOpen, setIsOpen] = useState(false);
   const [, setHasConsented] = useState(() => !!storedConsent);
+
+  if (shouldHide) return null;
 
   // Delay modal appearance to avoid overlap with preloader
   useEffect(() => {
