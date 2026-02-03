@@ -67,6 +67,7 @@ export function containsDate(sortedDates: number[], targetDate: number) {
     const mid = left + ((right - left) >> 1);
     const midVal = sortedDates[mid];
 
+    if (midVal === undefined) return false;
     if (midVal === targetDate) return true;
     if (midVal < targetDate) {
       left = mid + 1;
@@ -84,7 +85,8 @@ export function findInsertionIndex(sortedDates: number[], targetDate: number) {
 
   while (left < right) {
     const mid = left + ((right - left) >> 1);
-    if (sortedDates[mid] < targetDate) {
+    const midVal = sortedDates[mid];
+    if (midVal !== undefined && midVal < targetDate) {
       left = mid + 1;
     } else {
       right = mid;
@@ -135,7 +137,9 @@ export function calculateLongestStreak(sortedDates: number[]) {
   let currentStreak = 1;
 
   for (let i = 1; i < sortedDates.length; i += 1) {
-    if (sortedDates[i] === sortedDates[i - 1] + 1) {
+    const current = sortedDates[i];
+    const previous = sortedDates[i - 1];
+    if (current !== undefined && previous !== undefined && current === previous + 1) {
       currentStreak += 1;
       if (currentStreak > maxStreak) {
         maxStreak = currentStreak;

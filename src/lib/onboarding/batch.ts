@@ -7,11 +7,11 @@ export type ParsedBatchId = {
 export function parseBatchId(batchID: string): ParsedBatchId | null {
   if (!batchID) return null;
   const match = batchID.toUpperCase().match(/^([A-Z]{2,4})(\d{2})(\d{2})$/);
-  if (!match) return null;
+  if (!match || match.length < 4) return null;
   return {
-    branch: match[1],
-    batch: match[2],
-    semester: match[3],
+    branch: match[1]!,
+    batch: match[2]!,
+    semester: match[3]!,
   };
 }
 

@@ -150,8 +150,8 @@ export function useAttendanceActions(params: {
           : { streakData: null, updates: {} };
 
         const computedCurrentStreak =
-          typeof streakPayload.updates.currentStreak === "number"
-            ? streakPayload.updates.currentStreak
+          typeof (streakPayload.updates as any).currentStreak === "number"
+            ? (streakPayload.updates as any).currentStreak
             : (user?.currentStreak ?? 0);
 
         let challengeResult: EvaluateChallengesResponse | null = null;

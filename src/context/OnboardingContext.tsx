@@ -103,7 +103,8 @@ function onboardingReducer(
         "complete",
       ];
       const index = order.indexOf(state.step);
-      const next = order[Math.min(order.length - 1, index + 1)];
+      const nextIndex = Math.min(order.length - 1, index + 1);
+      const next = order[nextIndex] || state.step;
       return { ...state, step: next };
     }
     case "PREV_STEP": {
@@ -114,7 +115,8 @@ function onboardingReducer(
         "complete",
       ];
       const index = order.indexOf(state.step);
-      const prev = order[Math.max(0, index - 1)];
+      const prevIndex = Math.max(0, index - 1);
+      const prev = order[prevIndex] || state.step;
       return { ...state, step: prev };
     }
     case "SET_STEP":

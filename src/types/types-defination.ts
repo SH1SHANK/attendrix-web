@@ -217,7 +217,7 @@ export interface PastClass {
   classStartTime: string; // ISO timestamp
   classEndTime: string; // ISO timestamp
   classVenue: string | null;
-  attendanceStatus: "PRESENT" | "ABSENT";
+  attendanceStatus: AttendanceStatus;
 }
 
 /**

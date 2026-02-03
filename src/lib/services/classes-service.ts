@@ -132,7 +132,7 @@ export const ClassesService = {
           row.attendanceStatus ?? row.attendancestatus ?? "ABSENT",
         ).toUpperCase();
         const attendanceStatus: PastClass["attendanceStatus"] =
-          rawStatus === "PRESENT" ? "PRESENT" : "ABSENT";
+          rawStatus === "PRESENT" ? "PRESENT" : rawStatus === "PENDING" ? "PENDING" : "ABSENT";
 
         return {
           classID: (row.classID ?? row.classid) as string | undefined,

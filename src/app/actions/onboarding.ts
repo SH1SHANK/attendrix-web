@@ -416,9 +416,11 @@ export async function completeOnboarding(token: string, data: OnboardingData) {
 
     const fallbackUsername =
       (existingUser?.username as string) ||
-      (decodedToken.email ? decodedToken.email.split("@")[0] : "student");
+      (decodedToken.email ? decodedToken.email.split("@")[0] : "student") ||
+      "student";
     const usernameLower =
-      (existingUser?.username_lower as string) || fallbackUsername.toLowerCase();
+      (existingUser?.username_lower as string) ||
+      fallbackUsername.toLowerCase();
     const displayName =
       (existingUser?.display_name as string) ||
       decodedToken.name ||
