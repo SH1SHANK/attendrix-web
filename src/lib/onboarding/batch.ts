@@ -21,7 +21,9 @@ export function formatBatchLabel(params: {
 }) {
   const parsed = parseBatchId(params.batchID);
   if (!parsed) {
-    const semesterLabel = params.semester ? `Semester ${params.semester}` : "Semester";
+    const semesterLabel = params.semester
+      ? `Semester ${params.semester}`
+      : "Semester";
     return `${params.batchID} · ${semesterLabel}`;
   }
 

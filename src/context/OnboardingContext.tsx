@@ -135,7 +135,11 @@ type OnboardingContextValue = {
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
-export function OnboardingProvider({ children }: { children: React.ReactNode }) {
+export function OnboardingProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [state, dispatch] = useReducer(onboardingReducer, initialState);
   const value = useMemo(() => ({ state, dispatch }), [state]);
 

@@ -132,13 +132,18 @@ export const ClassesService = {
           row.attendanceStatus ?? row.attendancestatus ?? "ABSENT",
         ).toUpperCase();
         const attendanceStatus: PastClass["attendanceStatus"] =
-          rawStatus === "PRESENT" ? "PRESENT" : rawStatus === "PENDING" ? "PENDING" : "ABSENT";
+          rawStatus === "PRESENT"
+            ? "PRESENT"
+            : rawStatus === "PENDING"
+              ? "PENDING"
+              : "ABSENT";
 
         return {
           classID: (row.classID ?? row.classid) as string | undefined,
           courseID: (row.courseID ?? row.courseid) as string | undefined,
-          courseName:
-            (row.courseName ?? row.coursename ?? "Unknown Course") as string,
+          courseName: (row.courseName ??
+            row.coursename ??
+            "Unknown Course") as string,
           classStartTime: (row.classStartTime ?? row.classstarttime) as
             | string
             | undefined,

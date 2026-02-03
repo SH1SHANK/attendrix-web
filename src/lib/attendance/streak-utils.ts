@@ -96,7 +96,10 @@ export function findInsertionIndex(sortedDates: number[], targetDate: number) {
   return left;
 }
 
-export function calculateCurrentStreak(sortedDates: number[], currentDateInt: number) {
+export function calculateCurrentStreak(
+  sortedDates: number[],
+  currentDateInt: number,
+) {
   if (sortedDates.length === 0) return 0;
 
   const hasToday = containsDate(sortedDates, currentDateInt);
@@ -115,7 +118,10 @@ export function calculateCurrentStreak(sortedDates: number[], currentDateInt: nu
   return streak;
 }
 
-export function calculateStreakEndingAt(sortedDates: number[], endDate: number) {
+export function calculateStreakEndingAt(
+  sortedDates: number[],
+  endDate: number,
+) {
   if (!containsDate(sortedDates, endDate)) return 0;
 
   let streak = 1;
@@ -139,7 +145,11 @@ export function calculateLongestStreak(sortedDates: number[]) {
   for (let i = 1; i < sortedDates.length; i += 1) {
     const current = sortedDates[i];
     const previous = sortedDates[i - 1];
-    if (current !== undefined && previous !== undefined && current === previous + 1) {
+    if (
+      current !== undefined &&
+      previous !== undefined &&
+      current === previous + 1
+    ) {
       currentStreak += 1;
       if (currentStreak > maxStreak) {
         maxStreak = currentStreak;
@@ -156,7 +166,7 @@ export function computeStreakUpdatesForAddition(params: {
   streakData: StreakData;
   targetDateInt: number;
   currentDateInt: number;
-}) : StreakUpdateResult {
+}): StreakUpdateResult {
   const { streakData, targetDateInt, currentDateInt } = params;
   const isPastDate = targetDateInt < currentDateInt;
   const isFutureDate = targetDateInt > currentDateInt;
@@ -184,10 +194,7 @@ export function computeStreakUpdatesForAddition(params: {
   const insertIndex = findInsertionIndex(updatedDates, targetDateInt);
   updatedDates.splice(insertIndex, 0, targetDateInt);
 
-  const newCurrentStreak = calculateCurrentStreak(
-    updatedDates,
-    currentDateInt,
-  );
+  const newCurrentStreak = calculateCurrentStreak(updatedDates, currentDateInt);
   const newLongestStreak = calculateLongestStreak(updatedDates);
 
   const updates: StreakUpdateResult = {
@@ -206,7 +213,7 @@ export function computeStreakUpdatesForRemoval(params: {
   streakData: StreakData;
   targetDateInt: number;
   currentDateInt: number;
-}) : StreakUpdateResult {
+}): StreakUpdateResult {
   const { streakData, targetDateInt, currentDateInt } = params;
 
   const dateExists = containsDate(streakData.dates, targetDateInt);
@@ -214,7 +221,9 @@ export function computeStreakUpdatesForRemoval(params: {
     return {};
   }
 
-  const updatedDates = streakData.dates.filter((date) => date !== targetDateInt);
+  const updatedDates = streakData.dates.filter(
+    (date) => date !== targetDateInt,
+  );
 
   if (updatedDates.length === 0) {
     return {
@@ -223,10 +232,7 @@ export function computeStreakUpdatesForRemoval(params: {
     };
   }
 
-  const newCurrentStreak = calculateCurrentStreak(
-    updatedDates,
-    currentDateInt,
-  );
+  const newCurrentStreak = calculateCurrentStreak(updatedDates, currentDateInt);
   const newLongestStreak = calculateLongestStreak(updatedDates);
 
   const updates: StreakUpdateResult = {
