@@ -21,75 +21,71 @@ export const ClassesService = {
   async getTodaySchedule(
     userId: string,
     batchId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    attendanceGoalPercentage: number = 80,
+    attendanceGoalPercentage: number = 75,
     dateIso?: string,
   ): Promise<TodayScheduleClass[]> {
     if (!userId || !batchId) return [];
 
     try {
       const targetDate = dateIso ? new Date(dateIso) : new Date();
-      // Format to "D/M/YYYY" to match database format (non-padded day/month?)
-      // Check existing logs: "3/2/2026" (D/M/YYYY)
-      const day = targetDate.getDate();
-      const month = targetDate.getMonth() + 1;
+      // RPC expects 'date' as YYYY-MM-DD
+      // Use local date components to avoid UTC shifts
       const year = targetDate.getFullYear();
-      const dateString = `${day}/${month}/${year}`;
+      const month = String(targetDate.getMonth() + 1).padStart(2, "0");
+      const day = String(targetDate.getDate()).padStart(2, "0");
+      const dateString = `${year}-${month}-${day}`;
 
-      // 1. Fetch Schedule
-      const { data: classes, error: classesError } = await supabase
-        .from("timetableRecords")
-        .select("*")
-        .eq("batchID", batchId)
-        .eq("classDate", dateString)
-        .order("classStartTime", { ascending: true });
+      console.log("[getTodaySchedule] Calling RPC with:", {
+        batch_id: batchId,
+        user_id: userId,
+        date: dateString,
+        attendance_goal_percentage: attendanceGoalPercentage,
+      });
 
-      if (classesError) {
-        console.error("Error fetching timetable:", classesError);
-        throw classesError;
+      const { data, error } = await supabase.rpc("get_today_schedule", {
+        batch_id: batchId,
+        user_id: userId,
+        date: dateString,
+        attendance_goal_percentage: attendanceGoalPercentage,
+      });
+
+      if (error) {
+        console.error("Error fetching timetable RPC:", error);
+        throw error;
       }
 
-      if (!classes || classes.length === 0) return [];
+      if (!data) return [];
 
-      // 2. Fetch User Attendance for these classes
-      const classIds = classes.map((c) => c.classID);
-      const { data: attendance, error: attendanceError } = await supabase
-        .from("attendanceRecords")
-        .select("classID")
-        .eq("userID", userId)
-        .in("classID", classIds);
+      console.log("[getTodaySchedule] RPC Response:", data);
 
-      if (attendanceError) {
-        console.error("Error fetching attendance:", attendanceError);
-        // Continue without attendance status rather than failing completely?
-        // Better to throw so UI knows something is wrong, or warn.
-      }
-
-      const attendedClassIds = new Set(
-        (attendance || []).map((a) => a.classID),
-      );
-
-      // 3. Map to TodayScheduleClass
-      // NOTE: Complex stats (totalClasses, etc.) are set to default values
-      // to keep this fetch simple and fast as requested.
-      return classes.map((cls) => ({
-        classID: cls.classID,
-        courseID: cls.courseID,
-        courseName: cls.courseName || "Unknown Course",
-        classStartTime: cls.classStartTime,
-        classEndTime: cls.classEndTime,
-        classVenue: cls.classVenue,
-        isCancelled: cls.classStatus?.isCancelled || false,
-        userAttended: attendedClassIds.has(cls.classID),
-        userCheckinTime: null, // Could fetch if needed
-        totalClasses: 0, // Simplified -> 0
-        attendedClasses: 0, // Simplified -> 0
-        currentAttendancePercentage: 0, // Simplified -> 0
-        classesRequiredToReachGoal: 0, // Simplified -> 0
-        classesCanSkipAndStayAboveGoal: 0, // Simplified -> 0
+      // RPC returns rows matching the TodayScheduleClass interface structure directly
+      // but we ensure it matches the interface
+      return (data as any[]).map((row) => ({
+        classID: row.classID || row.classid,
+        courseID: row.courseID || row.courseid,
+        courseName: row.courseName || row.coursename || "Unknown Course",
+        classStartTime: row.classStartTime || row.classstarttime,
+        classEndTime: row.classEndTime || row.classendtime,
+        classVenue: row.classVenue || row.classvenue,
+        isCancelled: row.isCancelled ?? row.iscancelled ?? false,
+        userAttended: row.userAttended ?? row.userattended ?? false,
+        userCheckinTime: row.userCheckinTime || row.usercheckintime,
+        totalClasses: row.totalClasses ?? row.totalclasses ?? 0,
+        attendedClasses: row.attendedClasses ?? row.attendedclasses ?? 0,
+        currentAttendancePercentage:
+          row.currentAttendancePercentage ??
+          row.currentattendancepercentage ??
+          0,
+        classesRequiredToReachGoal:
+          row.classesRequiredToReachGoal ?? row.classesrequiredtoreachgoal ?? 0,
+        classesCanSkipAndStayAboveGoal:
+          row.classesCanSkipAndStayAboveGoal ??
+          row.classescanskipandstayabovegoal ??
+          0,
       }));
     } catch (err) {
       console.error("[getTodaySchedule] Failed:", err);
+      // Return empty array instead of throwing to prevent UI crash
       return [];
     }
   },

@@ -12,9 +12,7 @@ import {
 import { DEFAULT_BATCH_ID } from "@/lib/constants";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-// Removed Firestore imports
 import { TodayScheduleClass, UpcomingClass } from "@/types/supabase-academic";
-// ... (imports)
 
 // Lazy load heavy components for code splitting
 const TodayClasses = dynamic(
@@ -114,6 +112,7 @@ export default function DashboardPage() {
     data: todaySchedule,
     loading: scheduleLoading,
     error: scheduleError,
+    refetch: refreshSchedule,
   } = useTodaySchedule(user?.uid || null, batchId, 75);
 
   // Fetch upcoming classes
@@ -274,12 +273,22 @@ export default function DashboardPage() {
             {scheduleLoading ? (
               <div className="h-64 animate-pulse bg-gray-100 rounded-lg border-2 border-black" />
             ) : todaySchedule.length > 0 ? (
-              <TodayClasses classes={todaySchedule} />
+              <TodayClasses
+                classes={todaySchedule}
+                onRefresh={refreshSchedule}
+                loading={scheduleLoading}
+              />
             ) : (
               <div className="border-2 border-black bg-white p-8 shadow-[4px_4px_0px_0px_#000]">
                 <p className="font-mono text-sm font-bold text-neutral-600">
                   No classes found for today
                 </p>
+                <button
+                  onClick={() => refreshSchedule()}
+                  className="mt-4 px-4 py-2 bg-black text-white font-bold uppercase text-xs"
+                >
+                  Refresh
+                </button>
               </div>
             )}
           </div>

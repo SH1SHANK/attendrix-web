@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Home, Calendar, User } from "lucide-react";
 import { motion, useScroll, useMotionValueEvent } from "framer-motion";
-import { useTimeFormat } from "@/context/TimeFormatContext";
+import { useUserPreferences } from "@/context/UserPreferencesContext";
 
 interface NavItem {
   href: string;
@@ -24,7 +24,7 @@ export const DashboardNav = memo(function DashboardNav() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const { scrollY } = useScroll();
-  const { is24Hour, toggleTimeFormat } = useTimeFormat();
+  const { is24Hour, toggleTimeFormat } = useUserPreferences();
 
   // Scroll detection with hysteresis
   useMotionValueEvent(scrollY, "change", (latest) => {

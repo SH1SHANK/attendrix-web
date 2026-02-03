@@ -90,7 +90,7 @@ function CountdownCardEmpty({ className }: { className?: string }) {
   );
 }
 
-import { useTimeFormat } from "@/context/TimeFormatContext";
+import { useUserPreferences } from "@/context/UserPreferencesContext";
 
 interface CountdownCardViewProps {
   classData: TodayScheduleClass | UpcomingClass;
@@ -103,7 +103,7 @@ function CountdownCardView({
   type,
   className,
 }: CountdownCardViewProps) {
-  const { formatTime } = useTimeFormat();
+  const { formatTime } = useUserPreferences();
   const [timeLeft, setTimeLeft] = useState({
     hours: 0,
     minutes: 0,

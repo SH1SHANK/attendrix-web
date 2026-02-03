@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTimeFormat } from "@/context/TimeFormatContext";
+import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { ClassByDate, UpcomingClass } from "@/types/supabase-academic";
@@ -85,7 +85,7 @@ function UpcomingClassRow({
 }: {
   classData: ClassByDate | UpcomingClass;
 }) {
-  const { formatTime } = useTimeFormat();
+  const { formatTime } = useUserPreferences();
 
   const time = formatTime(classData.classStartTime);
   const isLab = "courseType" in classData && classData.courseType?.isLab;

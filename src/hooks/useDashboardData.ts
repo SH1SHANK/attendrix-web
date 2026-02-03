@@ -12,13 +12,14 @@
  * - Use Supabase as single source of truth for timetable data
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ClassesService } from "@/lib/services/classes-service";
 import {
   TodayScheduleClass,
   UpcomingClass,
   ClassByDate,
 } from "@/types/supabase-academic";
+import { supabase } from "@/lib/supabase/client";
 
 /**
  * Hook to fetch today's schedule
@@ -37,77 +38,71 @@ export function useTodaySchedule(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    console.log("[useTodaySchedule] Effect triggered:", {
-      userId,
-      batchId,
-      attendanceGoalPercentage,
-    });
-
+  // Initial Fetch Function
+  const fetchData = useCallback(async () => {
     if (!userId) {
-      console.log("[useTodaySchedule] Missing userId - returning early");
       setData([]);
       setLoading(false);
       return;
     }
 
-    async function fetchData() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Let the service handle 'today' using local time by not passing a specific date
-        // This avoids timezone issues where toISOString() uses UTC
-        console.log("[useTodaySchedule] Calling Service with:", {
-          userId,
-          batchId,
-          attendanceGoalPercentage,
-        });
-
-        const scheduleData = await ClassesService.getTodaySchedule(
-          userId as string,
-          batchId,
-          attendanceGoalPercentage,
-          // dateIso: undefined -> defaults to new Date() in service
-        );
-
-        setData(scheduleData);
-      } catch (err) {
-        console.error("Error fetching today's schedule:", err);
-        setError(err instanceof Error ? err : new Error("Unknown error"));
-        setData([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [userId, batchId, attendanceGoalPercentage]);
-
-  const refetch = async () => {
-    if (!userId) return;
-
     try {
       setLoading(true);
       setError(null);
 
-      const today = new Date();
-      const formattedDate = today.toISOString().split("T")[0];
+      // Let the service handle 'today' using local time by not passing a specific date
       const scheduleData = await ClassesService.getTodaySchedule(
         userId as string,
         batchId,
         attendanceGoalPercentage,
-        formattedDate,
       );
 
       setData(scheduleData);
     } catch (err) {
-      console.error("Error refetching today's schedule:", err);
+      console.error("Error fetching today's schedule:", err);
       setError(err instanceof Error ? err : new Error("Unknown error"));
+      // Don't clear data immediately on error to avoid flicker
+      if (data.length === 0) setData([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, batchId, attendanceGoalPercentage, data.length]);
+
+  // Initial load
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Realtime Subscription
+  useEffect(() => {
+    if (!batchId) return;
+
+    // console.log("[useTodaySchedule] Subscribing to realtime changes for batch:", batchId);
+
+    const channel = supabase
+      .channel(`today-schedule-${batchId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*", // INSERT, UPDATE, DELETE
+          schema: "public",
+          table: "timetableRecords",
+          filter: `batchID=eq.${batchId}`,
+        },
+        (payload) => {
+          console.log("[useTodaySchedule] Realtime update received:", payload);
+          // Refetch data on any change to the timetable
+          fetchData();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [batchId, fetchData]);
+
+  const refetch = () => fetchData();
 
   return { data, loading, error, refetch };
 }
@@ -130,63 +125,64 @@ export function useUpcomingClasses(userId: string | null, batchId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    console.log("[useUpcomingClasses] Effect triggered:", { userId });
-
+  const fetchData = useCallback(async () => {
     if (!userId || !batchId) {
-      console.log(
-        "[useUpcomingClasses] Missing userId or batchId - returning early",
-      );
       setData([]);
       setLoading(false);
       return;
     }
 
-    async function fetchData() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        console.log("[useUpcomingClasses] Calling Service with:", {
-          userId,
-          batchId,
-        });
-        const upcomingData = await ClassesService.getUpcomingClasses(
-          userId as string,
-          batchId,
-        );
-        setData(upcomingData);
-      } catch (err) {
-        console.error("Error fetching upcoming classes:", err);
-        setError(err instanceof Error ? err : new Error("Unknown error"));
-        setData([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [userId, batchId]);
-
-  const refetch = async () => {
-    if (!userId || !batchId) return;
-
     try {
       setLoading(true);
       setError(null);
-
       const upcomingData = await ClassesService.getUpcomingClasses(
-        userId,
+        userId as string,
         batchId,
       );
       setData(upcomingData);
     } catch (err) {
-      console.error("Error refetching upcoming classes:", err);
+      console.error("Error fetching upcoming classes:", err);
       setError(err instanceof Error ? err : new Error("Unknown error"));
+      if (data.length === 0) setData([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, batchId, data.length]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Realtime Subscription
+  useEffect(() => {
+    if (!batchId) return;
+
+    const channel = supabase
+      .channel(`upcoming-classes-${batchId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "timetableRecords",
+          filter: `batchID=eq.${batchId}`,
+        },
+        (payload) => {
+          console.log(
+            "[useUpcomingClasses] Realtime update received:",
+            payload,
+          );
+          fetchData();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [batchId, userId]);
+
+  const refetch = () => fetchData();
 
   return { data, loading, error, refetch };
 }
