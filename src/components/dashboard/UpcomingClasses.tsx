@@ -6,6 +6,15 @@ import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { ClassByDate, UpcomingClass } from "@/types/supabase-academic";
 import { useClassesByDate } from "@/hooks/useDashboardData";
+import {
+  addISTDays,
+  getISTDateNumber,
+  getISTDayOfWeek,
+  getISTMidnight,
+  getISTParts,
+  isSameISTDate,
+  parseTimestampAsIST,
+} from "@/lib/time/ist";
 
 interface DateData {
   date: Date;
@@ -34,11 +43,10 @@ function HorizontalCalendar({
   return (
     <div className="mb-6 sm:mb-8 md:mb-12 w-full -mx-3 sm:-mx-4 md:-mx-6 lg:-mx-8">
       {/* Scrollable Container */}
-      <div className="overflow-x-auto pb-4 sm:pb-6 md:pb-8 px-3 sm:px-4 md:px-6 lg:px-8">
+      <div className="overflow-x-auto overflow-y-visible pb-5 sm:pb-6 md:pb-8 px-3 sm:px-4 md:px-6 lg:px-8">
         <div className="flex gap-2 sm:gap-2.5 md:gap-3 min-w-max">
           {dates.map((dateData) => {
-            const isSelected =
-              dateData.date.toDateString() === selectedDate.toDateString();
+            const isSelected = isSameISTDate(dateData.date, selectedDate);
 
             return (
               <button
@@ -143,28 +151,36 @@ export function UpcomingClasses({
   className,
 }: UpcomingClassesProps) {
   // Helper to check for weekend
-  const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
+  const isWeekend = (d: Date) =>
+    getISTDayOfWeek(d) === 0 || getISTDayOfWeek(d) === 6;
 
-  // Generate Date Range (excluding weekends)
+  const getNextWorkingDay = (from: Date) => {
+    let d = addISTDays(getISTMidnight(from), 1);
+    while (isWeekend(d)) {
+      d = addISTDays(d, 1);
+    }
+    return d;
+  };
+
+  // Generate Date Range (excluding weekends) in IST
   const dateRange: DateData[] = [];
-  const today = new Date();
+  const today = getISTMidnight();
+  const startDay = getNextWorkingDay(today);
   let daysAdded = 0;
   let dayOffset = 0;
 
   while (daysAdded < 14) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + dayOffset);
+    const date = addISTDays(startDay, dayOffset);
     dayOffset++;
 
     if (isWeekend(date)) continue;
 
-    const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
-    const dayNumber = date.getDate();
-    // Check if truly today (ignoring time)
-    const isToday =
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear();
+    const dayName = new Intl.DateTimeFormat("en-US", {
+      weekday: "long",
+      timeZone: "Asia/Kolkata",
+    }).format(date);
+    const dayNumber = getISTDateNumber(date);
+    const isToday = isSameISTDate(date, today);
 
     dateRange.push({
       date,
@@ -184,35 +200,33 @@ export function UpcomingClasses({
       defaultClasses.length > 0 &&
       defaultClasses[0]
     ) {
-      const classDate = new Date(defaultClasses[0].classStartTime);
+      const classDate = getISTMidnight(
+        parseTimestampAsIST(defaultClasses[0].classStartTime),
+      );
       if (!isNaN(classDate.getTime())) {
+        if (isSameISTDate(classDate, today)) {
+          return getNextWorkingDay(today);
+        }
         return classDate;
       }
     }
 
     // 2. Otherwise default to the first available day in our range (usually Today or next Monday)
     // We can re-calculate the first valid day here briefly
-    const d = new Date();
-    while (d.getDay() === 0 || d.getDay() === 6) {
-      d.setDate(d.getDate() + 1);
-    }
-    d.setHours(0, 0, 0, 0);
-    return d;
+    return getNextWorkingDay(today);
   });
 
   const formatDateForRPC = (date: Date) => {
     if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
       return null;
     }
-    const day = date.getDate();
-    const month = date.getMonth() + 1;
-    const year = date.getFullYear();
+    const { day, month, year } = getISTParts(date);
     // Matches ClassesService format: D/M/YYYY (no padding)
     return `${day}/${month}/${year}`;
   };
 
   const targetDateString =
-    formatDateForRPC(selectedDate) || formatDateForRPC(new Date());
+    formatDateForRPC(selectedDate) || formatDateForRPC(getISTMidnight());
 
   const { data: dateClasses, loading: dateLoading } = useClassesByDate(
     userId,
@@ -231,22 +245,16 @@ export function UpcomingClasses({
       defaultClasses.length > 0 &&
       defaultClasses[0]
     ) {
-      const defaultDate = new Date(defaultClasses[0].classStartTime);
+      const defaultDate = parseTimestampAsIST(defaultClasses[0].classStartTime);
       if (
         !isNaN(defaultDate.getTime()) &&
-        defaultDate.getDate() === selectedDate.getDate() &&
-        defaultDate.getMonth() === selectedDate.getMonth() &&
-        defaultDate.getFullYear() === selectedDate.getFullYear()
+        isSameISTDate(defaultDate, selectedDate)
       ) {
         // FILTER to only show classes for this specific date
         // defaultClasses contains next 5 classes which might span multiple days
         return defaultClasses.filter((c) => {
-          const cDate = new Date(c.classStartTime);
-          return (
-            cDate.getDate() === selectedDate.getDate() &&
-            cDate.getMonth() === selectedDate.getMonth() &&
-            cDate.getFullYear() === selectedDate.getFullYear()
-          );
+          const cDate = parseTimestampAsIST(c.classStartTime);
+          return isSameISTDate(cDate, selectedDate);
         });
       }
     }

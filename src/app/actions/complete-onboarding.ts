@@ -87,16 +87,6 @@ interface OnboardingInput {
 }
 
 /**
- * Response from Supabase set_user_courses RPC
- */
-interface SetUserCoursesResponse {
-  success: boolean;
-  user_id: string;
-  courses_enrolled: number;
-  timestamp: string;
-}
-
-/**
  * Response from Supabase generate_user_challenges_v2 RPC
  */
 interface GenerateChallengesResponse {
@@ -270,10 +260,6 @@ export async function completeOnboarding(input: OnboardingInput): Promise<{
         `Failed to set user courses: ${setCoursesResult.error.message}`,
       );
     }
-    const coursesRpcData = setCoursesResult.data as SetUserCoursesResponse;
-    if (!coursesRpcData?.success) {
-      throw new Error("set_user_courses RPC did not return success");
-    }
 
     // Validate Step C result
     if (generateChallengesResult.error) {
@@ -282,7 +268,10 @@ export async function completeOnboarding(input: OnboardingInput): Promise<{
       );
     }
     const challengesRpcData =
-      generateChallengesResult.data as GenerateChallengesResponse;
+      generateChallengesResult.data as GenerateChallengesResponse | null;
+    if (!challengesRpcData) {
+      throw new Error("generate_user_challenges_v2 returned no data");
+    }
     if (!challengesRpcData?.success) {
       throw new Error("generate_user_challenges_v2 RPC did not return success");
     }

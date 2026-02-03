@@ -9,10 +9,13 @@ import {
   useUpcomingClasses,
   getCurrentOrNextClass,
 } from "@/hooks/useDashboardData";
+import { useAttendanceActions } from "@/hooks/useAttendanceActions";
+import { useCourseTotalsSync } from "@/hooks/useCourseTotalsSync";
 import { DEFAULT_BATCH_ID } from "@/lib/constants";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { TodayScheduleClass, UpcomingClass } from "@/types/supabase-academic";
+import { getISTParts } from "@/lib/time/ist";
 
 // Lazy load heavy components for code splitting
 const TodayClasses = dynamic(
@@ -122,6 +125,20 @@ export default function DashboardPage() {
     error: upcomingError,
   } = useUpcomingClasses(user?.uid || null, batchId);
 
+  const { refreshTotals } = useCourseTotalsSync(user?.uid || null);
+  const { checkIn, markAbsent, pendingByClassId } = useAttendanceActions({
+    userId: user?.uid || null,
+    onAfterSuccess: async () => {
+      await refreshSchedule();
+      await refreshTotals();
+    },
+  });
+
+  const handleManualRefresh = async () => {
+    await refreshSchedule();
+    await refreshTotals();
+  };
+
   // Determine current or next class
   const { class: currentOrNextClass, type: classType } =
     getCurrentOrNextClass(todaySchedule);
@@ -154,7 +171,7 @@ export default function DashboardPage() {
   });
 
   // Generate greeting based on time of day
-  const hour = new Date().getHours();
+  const hour = getISTParts(new Date()).hour;
   const greeting =
     hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
 
@@ -164,6 +181,7 @@ export default function DashboardPage() {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "Asia/Kolkata",
   });
 
   // Show loading state
@@ -250,6 +268,9 @@ export default function DashboardPage() {
               type={displayType}
               loading={cardLoading}
               className="h-full"
+              onCheckIn={checkIn}
+              onMarkAbsent={markAbsent}
+              pendingByClassId={pendingByClassId}
             />
           </div>
 
@@ -275,8 +296,11 @@ export default function DashboardPage() {
             ) : todaySchedule.length > 0 ? (
               <TodayClasses
                 classes={todaySchedule}
-                onRefresh={refreshSchedule}
+                onRefresh={handleManualRefresh}
                 loading={scheduleLoading}
+                onCheckIn={checkIn}
+                onMarkAbsent={markAbsent}
+                pendingByClassId={pendingByClassId}
               />
             ) : (
               <div className="border-2 border-black bg-white p-8 shadow-[4px_4px_0px_0px_#000]">
@@ -284,7 +308,7 @@ export default function DashboardPage() {
                   No classes found for today
                 </p>
                 <button
-                  onClick={() => refreshSchedule()}
+                  onClick={() => handleManualRefresh()}
                   className="mt-4 px-4 py-2 bg-black text-white font-bold uppercase text-xs"
                 >
                   Refresh

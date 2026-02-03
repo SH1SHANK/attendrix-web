@@ -3,12 +3,16 @@
 import { useEffect, useState, useMemo, memo } from "react";
 import { cn } from "@/lib/utils";
 import { TodayScheduleClass, UpcomingClass } from "@/types/supabase-academic";
+import { parseTimestampAsIST } from "@/lib/time/ist";
 
 interface CountdownCardProps {
   classData: TodayScheduleClass | UpcomingClass | null;
   type: "current" | "next" | "none";
   loading?: boolean;
   className?: string;
+  onCheckIn?: (args: { classID: string; classStartTime: string }) => Promise<unknown>;
+  onMarkAbsent?: (args: { classID: string; classStartTime: string }) => Promise<unknown>;
+  pendingByClassId?: Set<string>;
 }
 
 export const CountdownCard = memo(function CountdownCard({
@@ -16,6 +20,9 @@ export const CountdownCard = memo(function CountdownCard({
   type,
   loading = false,
   className,
+  onCheckIn,
+  onMarkAbsent,
+  pendingByClassId,
 }: CountdownCardProps) {
   if (loading) {
     return <CountdownCardLoading className={className} />;
@@ -30,6 +37,9 @@ export const CountdownCard = memo(function CountdownCard({
       classData={classData}
       type={type}
       className={className}
+      onCheckIn={onCheckIn}
+      onMarkAbsent={onMarkAbsent}
+      pendingByClassId={pendingByClassId}
     />
   );
 });
@@ -96,12 +106,18 @@ interface CountdownCardViewProps {
   classData: TodayScheduleClass | UpcomingClass;
   type: "current" | "next";
   className?: string;
+  onCheckIn?: (args: { classID: string; classStartTime: string }) => Promise<unknown>;
+  onMarkAbsent?: (args: { classID: string; classStartTime: string }) => Promise<unknown>;
+  pendingByClassId?: Set<string>;
 }
 
 function CountdownCardView({
   classData,
   type,
   className,
+  onCheckIn,
+  onMarkAbsent,
+  pendingByClassId,
 }: CountdownCardViewProps) {
   const { formatTime } = useUserPreferences();
   const [timeLeft, setTimeLeft] = useState({
@@ -110,20 +126,30 @@ function CountdownCardView({
     seconds: 0,
   });
   const [progress, setProgress] = useState(0);
+  const now = new Date();
+  const startTime = parseTimestampAsIST(classData.classStartTime);
+  const endTime = parseTimestampAsIST(classData.classEndTime);
+  const isTodayClass = "userAttended" in classData;
+  const isCheckedIn = isTodayClass ? classData.userAttended : false;
+  const hasStarted = now >= startTime;
+  const isUpcoming = now < startTime;
+  const isPending = pendingByClassId?.has(classData.classID) ?? false;
+  const canCheckIn = hasStarted && !isCheckedIn;
+  const canMarkAbsent = hasStarted && isCheckedIn;
 
   /* Safe Date Handling */
   const isValidDate = (d: Date) => d instanceof Date && !isNaN(d.getTime());
 
   const { targetTime, timeRange } = useMemo(() => {
-    let start = new Date(classData.classStartTime);
-    let end = new Date(classData.classEndTime);
+    let start = parseTimestampAsIST(classData.classStartTime);
+    let end = parseTimestampAsIST(classData.classEndTime);
 
     if (!isValidDate(start)) start = new Date();
     if (!isValidDate(end)) end = new Date(start.getTime() + 1000 * 60 * 60);
 
     return {
-      targetTime: start,
-      timeRange: isValidDate(new Date(classData.classStartTime))
+      targetTime: type === "current" ? end : start,
+      timeRange: isValidDate(parseTimestampAsIST(classData.classStartTime))
         ? `${formatTime(start)} - ${formatTime(end)}`
         : "Time N/A",
     };
@@ -137,8 +163,8 @@ function CountdownCardView({
       const now = Date.now();
       const nowTime = new Date();
 
-      const startTime = new Date(classData.classStartTime);
-      const endTime = new Date(classData.classEndTime);
+      const startTime = parseTimestampAsIST(classData.classStartTime);
+      const endTime = parseTimestampAsIST(classData.classEndTime);
 
       if (!isValidDate(startTime) || !isValidDate(endTime)) {
         setProgress(0);
@@ -263,6 +289,67 @@ function CountdownCardView({
             <div className="inline-block bg-black text-white px-3 py-1 font-mono text-lg font-bold transform -rotate-1 border-2 border-transparent">
               {timeRange}
             </div>
+            {(type === "current" || type === "next") && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {type === "current" && isTodayClass && (
+                  <>
+                    {isCheckedIn && (
+                      <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000]">
+                        Checked In
+                      </span>
+                    )}
+                    {canCheckIn && (
+                      <button
+                        onClick={() =>
+                          onCheckIn?.({
+                            classID: classData.classID,
+                            classStartTime: classData.classStartTime,
+                          })
+                        }
+                        disabled={!onCheckIn || isPending}
+                        className={cn(
+                          "border-2 border-black px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000] transition-transform",
+                          isPending || !onCheckIn
+                            ? "bg-neutral-200 text-neutral-500 cursor-not-allowed"
+                            : "bg-[#51CF66] text-black hover:-translate-y-0.5 hover:-translate-x-0.5",
+                        )}
+                      >
+                        {isPending ? "Checking In..." : "Check In"}
+                      </button>
+                    )}
+                    {canMarkAbsent && (
+                      <button
+                        onClick={() =>
+                          onMarkAbsent?.({
+                            classID: classData.classID,
+                            classStartTime: classData.classStartTime,
+                          })
+                        }
+                        disabled={!onMarkAbsent || isPending}
+                        className={cn(
+                          "border-2 border-black px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000] transition-transform",
+                          isPending || !onMarkAbsent
+                            ? "bg-neutral-200 text-neutral-500 cursor-not-allowed"
+                            : "bg-[#FF6B6B] text-black hover:-translate-y-0.5 hover:-translate-x-0.5",
+                        )}
+                      >
+                        {isPending ? "Updating..." : "Mark Absent"}
+                      </button>
+                    )}
+                    {!isCheckedIn && isUpcoming && (
+                      <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000]">
+                        Upcoming
+                      </span>
+                    )}
+                  </>
+                )}
+                {type === "next" && (
+                  <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000]">
+                    Upcoming
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

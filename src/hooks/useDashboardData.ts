@@ -20,6 +20,7 @@ import {
   ClassByDate,
 } from "@/types/supabase-academic";
 import { supabase } from "@/lib/supabase/client";
+import { parseTimestampAsIST } from "@/lib/time/ist";
 
 /**
  * Hook to fetch today's schedule
@@ -285,16 +286,16 @@ export function getCurrentOrNextClass(schedule: TodayScheduleClass[]): {
 
   const sorted = [...schedule].sort((a, b) => {
     return (
-      new Date(a.classStartTime).getTime() -
-      new Date(b.classStartTime).getTime()
+      parseTimestampAsIST(a.classStartTime).getTime() -
+      parseTimestampAsIST(b.classStartTime).getTime()
     );
   });
 
   const now = new Date();
 
   for (const cls of sorted) {
-    const startTime = new Date(cls.classStartTime);
-    const endTime = new Date(cls.classEndTime);
+    const startTime = parseTimestampAsIST(cls.classStartTime);
+    const endTime = parseTimestampAsIST(cls.classEndTime);
 
     if (startTime <= now && now < endTime) {
       return { class: cls, type: "current" };
@@ -302,7 +303,7 @@ export function getCurrentOrNextClass(schedule: TodayScheduleClass[]): {
   }
 
   for (const cls of sorted) {
-    const startTime = new Date(cls.classStartTime);
+    const startTime = parseTimestampAsIST(cls.classStartTime);
 
     if (startTime > now) {
       return { class: cls, type: "next" };

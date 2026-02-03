@@ -265,6 +265,54 @@ export interface CheckInResponse {
   error?: string;
 }
 
+/**
+ * class_check_in RPC function return type (authoritative)
+ */
+export interface ClassCheckInRpcResponse {
+  status: string;
+  message: string;
+  amplix_gained?: number;
+  amplix_lost?: number;
+  full_day_completed?: boolean;
+  attended_classes?: number;
+  total_classes?: number;
+  attended_class_ids?: string[];
+}
+
+/**
+ * mark_class_absent RPC function return type (authoritative)
+ */
+export interface MarkClassAbsentRpcResponse {
+  status: string;
+  message: string;
+  amplix_gained?: number;
+  amplix_lost?: number;
+  attended_classes?: number;
+  total_classes?: number;
+  attended_class_ids?: string[];
+}
+
+/**
+ * evaluate_user_challenges RPC function return type
+ */
+export interface EvaluateChallengesResponse {
+  status: string;
+  message: string;
+  claimable_challenges_count?: number;
+  processed_challenges?: number;
+  total_challenges?: number;
+  points_to_deduct?: number;
+  deduction_details?: unknown;
+  processed_at?: string;
+}
+
+export type AttendanceActionState =
+  | "upcoming"
+  | "live"
+  | "checked_in"
+  | "absent"
+  | "cancelled";
+
 // ============================================================================
 // RPC FUNCTION PARAMETER TYPES
 // ============================================================================
@@ -337,6 +385,15 @@ export interface ClassCheckInParams {
   p_class_id: string;
   p_enrolled_courses: string[];
   p_class_start: string; // ISO timestamp
+}
+
+/**
+ * Parameters for mark_class_absent
+ */
+export interface MarkClassAbsentParams {
+  p_user_id: string;
+  p_class_id: string;
+  p_enrolled_courses: string[];
 }
 
 // ============================================================================

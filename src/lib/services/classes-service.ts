@@ -4,6 +4,7 @@ import {
   TodayScheduleClass,
   UpcomingClass,
 } from "@/types/supabase-academic";
+import { getISTDateString } from "@/lib/time/ist";
 
 /**
  * Classes Service (Raw Fetch Implementation)
@@ -28,12 +29,8 @@ export const ClassesService = {
 
     try {
       const targetDate = dateIso ? new Date(dateIso) : new Date();
-      // RPC expects 'date' as YYYY-MM-DD
-      // Use local date components to avoid UTC shifts
-      const year = targetDate.getFullYear();
-      const month = String(targetDate.getMonth() + 1).padStart(2, "0");
-      const day = String(targetDate.getDate()).padStart(2, "0");
-      const dateString = `${year}-${month}-${day}`;
+      // RPC expects 'date' as YYYY-MM-DD in IST
+      const dateString = getISTDateString(targetDate);
 
       console.log("[getTodaySchedule] Calling RPC with:", {
         batch_id: batchId,

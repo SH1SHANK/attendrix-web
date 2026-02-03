@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { formatISTTime } from "@/lib/time/ist";
 
 /**
  * Global User Preferences
@@ -70,22 +71,7 @@ export function UserPreferencesProvider({
   };
 
   const formatTime = (dateInput: Date | string): string => {
-    const date =
-      typeof dateInput === "string" ? new Date(dateInput) : dateInput;
-    if (isNaN(date.getTime())) return "--:--";
-
-    if (is24Hour) {
-      // 24-hour format: HH:mm (e.g., 14:30)
-      return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-    } else {
-      // 12-hour format: h:mm A (e.g., 2:30 PM)
-      let hours = date.getHours();
-      const minutes = date.getMinutes();
-      const ampm = hours >= 12 ? "PM" : "AM";
-      hours = hours % 12;
-      hours = hours ? hours : 12; // the hour '0' should be '12'
-      return `${hours}:${String(minutes).padStart(2, "0")} ${ampm}`;
-    }
+    return formatISTTime(dateInput, is24Hour);
   };
 
   return (
