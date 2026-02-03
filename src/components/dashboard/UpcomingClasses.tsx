@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, memo, useCallback, useMemo } from "react";
+import { useState } from "react";
+import { useTimeFormat } from "@/context/TimeFormatContext";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { ClassByDate, UpcomingClass } from "@/types/supabase-academic";
@@ -16,11 +17,12 @@ interface DateData {
 
 interface UpcomingClassesProps {
   userId: string | null;
+  batchId: string;
   defaultClasses: UpcomingClass[]; // From get_upcoming_classes
   className?: string;
 }
 
-const HorizontalCalendar = memo(function HorizontalCalendar({
+function HorizontalCalendar({
   dates,
   selectedDate,
   onDateSelect,
@@ -76,17 +78,14 @@ const HorizontalCalendar = memo(function HorizontalCalendar({
       </div>
     </div>
   );
-});
+}
 
-const UpcomingClassRow = memo(function UpcomingClassRow({
+function UpcomingClassRow({
   classData,
 }: {
   classData: ClassByDate | UpcomingClass;
 }) {
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-  };
+  const { formatTime } = useTimeFormat();
 
   const time = formatTime(classData.classStartTime);
   const isLab = "courseType" in classData && classData.courseType?.isLab;
@@ -135,145 +134,132 @@ const UpcomingClassRow = memo(function UpcomingClassRow({
       </div>
     </div>
   );
-});
+}
 
 export function UpcomingClasses({
   userId,
+  batchId,
   defaultClasses = [],
   className,
 }: UpcomingClassesProps) {
-  const normalizedDefaultClasses = useMemo(
-    () =>
-      defaultClasses && Array.isArray(defaultClasses) ? defaultClasses : [],
-    [defaultClasses],
-  );
-  // Generate date range for the horizontal calendar (next 14 days)
-  const dateRange = useMemo(() => {
-    const dates: DateData[] = [];
-    const today = new Date();
+  // Helper to check for weekend
+  const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
 
-    for (let i = 0; i < 14; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
+  // Generate Date Range (excluding weekends)
+  const dateRange: DateData[] = [];
+  const today = new Date();
+  let daysAdded = 0;
+  let dayOffset = 0;
 
-      const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
-      const dayNumber = date.getDate();
-      const isToday = i === 0;
-      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  while (daysAdded < 14) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + dayOffset);
+    dayOffset++;
 
-      dates.push({ date, dayName, dayNumber, isToday, isWeekend });
-    }
+    if (isWeekend(date)) continue;
 
-    return dates;
-  }, []);
+    const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+    const dayNumber = date.getDate();
+    // Check if truly today (ignoring time)
+    const isToday =
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear();
 
-  // Track selected date (default to first day with classes or first date in range)
+    dateRange.push({
+      date,
+      dayName,
+      dayNumber,
+      isToday,
+      isWeekend: false, // We filtered them out
+    });
+    daysAdded++;
+  }
+
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    // Initialize from defaultClasses if available
-    if (normalizedDefaultClasses.length > 0 && normalizedDefaultClasses[0]) {
-      const classDate = new Date(normalizedDefaultClasses[0].classStartTime);
+    // 1. If we have default classes (upcoming), use the first one's date
+    if (
+      defaultClasses &&
+      Array.isArray(defaultClasses) &&
+      defaultClasses.length > 0 &&
+      defaultClasses[0]
+    ) {
+      const classDate = new Date(defaultClasses[0].classStartTime);
       if (!isNaN(classDate.getTime())) {
         return classDate;
       }
     }
-    // Fallback to today (first date in range)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return today;
+
+    // 2. Otherwise default to the first available day in our range (usually Today or next Monday)
+    // We can re-calculate the first valid day here briefly
+    const d = new Date();
+    while (d.getDay() === 0 || d.getDay() === 6) {
+      d.setDate(d.getDate() + 1);
+    }
+    d.setHours(0, 0, 0, 0);
+    return d;
   });
 
-  // Format date for RPC call (D/M/YYYY)
-  const formatDateForRPC = useCallback((date: Date) => {
-    // Validate date before formatting
+  const formatDateForRPC = (date: Date) => {
     if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-      console.error("[formatDateForRPC] Invalid date:", date, typeof date);
       return null;
     }
     const day = date.getDate();
     const month = date.getMonth() + 1;
     const year = date.getFullYear();
+    // Matches ClassesService format: D/M/YYYY (no padding)
+    return `${day}/${month}/${year}`;
+  };
 
-    // Additional validation after extraction
-    if (isNaN(day) || isNaN(month) || isNaN(year)) {
-      console.error("[formatDateForRPC] Date parts are NaN:", {
-        day,
-        month,
-        year,
-        originalDate: date,
-      });
-      return null;
-    }
+  const targetDateString =
+    formatDateForRPC(selectedDate) || formatDateForRPC(new Date());
 
-    const formatted = `${day}/${month}/${year}`;
-
-    // Final sanity check
-    if (formatted.includes("NaN")) {
-      console.error(
-        "[formatDateForRPC] Generated invalid date string:",
-        formatted,
-      );
-      return null;
-    }
-
-    console.log("[formatDateForRPC] Formatted date:", formatted);
-    return formatted;
-  }, []);
-
-  // Get target date string for RPC
-  const targetDateString = useMemo(() => {
-    return formatDateForRPC(selectedDate);
-  }, [selectedDate, formatDateForRPC]);
-
-  // Fetch classes by date when user selects a date
   const { data: dateClasses, loading: dateLoading } = useClassesByDate(
     userId,
+    batchId,
     targetDateString,
   );
 
-  // Determine which classes to show
-  const displayClasses = useMemo(() => {
-    // If no date selected or invalid, show default classes
+  const displayClasses = (() => {
     if (!selectedDate || isNaN(selectedDate.getTime())) {
-      return normalizedDefaultClasses;
+      return defaultClasses;
     }
 
-    // Check if selected date matches default classes date
-    if (normalizedDefaultClasses.length > 0 && normalizedDefaultClasses[0]) {
-      const defaultDate = new Date(normalizedDefaultClasses[0].classStartTime);
+    if (
+      defaultClasses &&
+      Array.isArray(defaultClasses) &&
+      defaultClasses.length > 0 &&
+      defaultClasses[0]
+    ) {
+      const defaultDate = new Date(defaultClasses[0].classStartTime);
       if (
         !isNaN(defaultDate.getTime()) &&
         defaultDate.getDate() === selectedDate.getDate() &&
         defaultDate.getMonth() === selectedDate.getMonth() &&
         defaultDate.getFullYear() === selectedDate.getFullYear()
       ) {
-        return normalizedDefaultClasses;
+        // FILTER to only show classes for this specific date
+        // defaultClasses contains next 5 classes which might span multiple days
+        return defaultClasses.filter((c) => {
+          const cDate = new Date(c.classStartTime);
+          return (
+            cDate.getDate() === selectedDate.getDate() &&
+            cDate.getMonth() === selectedDate.getMonth() &&
+            cDate.getFullYear() === selectedDate.getFullYear()
+          );
+        });
       }
     }
 
-    // Otherwise, use classes fetched by date
     return Array.isArray(dateClasses) ? dateClasses : [];
-  }, [selectedDate, normalizedDefaultClasses, dateClasses]);
+  })();
 
-  // Memoize date selection handler with validation
-  const handleDateSelect = useCallback((date: Date) => {
-    // Validate the date before setting it
+  const handleDateSelect = (date: Date) => {
     if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-      console.warn("Invalid date received in handleDateSelect:", date);
-      // Fallback to today if invalid
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      setSelectedDate(today);
       return;
     }
-
-    console.log(
-      "Setting selected date:",
-      date.toISOString(),
-      "Formatted:",
-      `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`,
-    );
     setSelectedDate(date);
-  }, []);
+  };
 
   return (
     <div

@@ -1,7 +1,7 @@
 "use client";
 
-import { memo } from "react";
 import { cn } from "@/lib/utils";
+import { useTimeFormat } from "@/context/TimeFormatContext";
 import { Clock, MapPin, Check } from "lucide-react";
 import { TodayScheduleClass } from "@/types/supabase-academic";
 
@@ -15,11 +15,7 @@ interface TodayClassesProps {
  * Shows attendance status from userAttended field
  * Button is DISABLED - no marking allowed in Phase 2
  */
-const AttendanceDisplay = memo(function AttendanceDisplay({
-  attended,
-}: {
-  attended: boolean;
-}) {
+function AttendanceDisplay({ attended }: { attended: boolean }) {
   return (
     <div
       className={cn(
@@ -45,19 +41,16 @@ const AttendanceDisplay = memo(function AttendanceDisplay({
       )}
     </div>
   );
-});
+}
 
-const ClassRow = memo(function ClassRow({
+function ClassRow({
   classData,
   index,
 }: {
   classData: TodayScheduleClass;
   index: number;
 }) {
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-  };
+  const { formatTime } = useTimeFormat();
 
   const startTime = formatTime(classData.classStartTime);
   const endTime = formatTime(classData.classEndTime);
@@ -116,7 +109,7 @@ const ClassRow = memo(function ClassRow({
       </div>
     </div>
   );
-});
+}
 
 export function TodayClasses({ classes, className }: TodayClassesProps) {
   return (
@@ -137,7 +130,7 @@ export function TodayClasses({ classes, className }: TodayClassesProps) {
       <div className="grid gap-3 sm:gap-4 md:gap-6">
         {classes.length > 0 ? (
           classes.map((c, idx) => {
-            const uniqueKey = `class-${idx}-${c.classID || "no-id"}-${c.classStartTime || "no-time"}`;
+            const uniqueKey = `${c.classID || c.courseID || "class"}-${c.classStartTime || "start"}-${c.classEndTime || "end"}-${idx}`;
             return <ClassRow key={uniqueKey} classData={c} index={idx} />;
           })
         ) : (

@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import CookieConsent from "@/components/legal/CookieConsent";
 import ScrollToTop from "@/components/ui/ScrollToTop";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { TimeFormatProvider } from "@/context/TimeFormatContext";
 import "./globals.css";
 
 // Display font: Space Grotesk - Bold, geometric, high visual weight
@@ -106,10 +107,12 @@ export default function RootLayout({
     >
       <body className="antialiased" suppressHydrationWarning>
         <QueryProvider>
-          <AuthProvider>
-            {children}
-            <Toaster />
-          </AuthProvider>
+          <TimeFormatProvider>
+            <AuthProvider>
+              {children}
+              <Toaster />
+            </AuthProvider>
+          </TimeFormatProvider>
           <CookieConsent />
           <ScrollToTop />
         </QueryProvider>

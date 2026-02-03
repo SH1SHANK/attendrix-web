@@ -12,7 +12,7 @@
  * - Use Supabase as single source of truth for timetable data
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { ClassesService } from "@/lib/services/classes-service";
 import {
   TodayScheduleClass,
@@ -25,24 +25,67 @@ import {
  * Uses get_today_schedule RPC
  *
  * @param userId - Firebase Auth UID
- * @param batchId - User's batch ID from Firebase user document
+ * @param batchId - User's batch ID (defaults to ME0204)
  * @param attendanceGoalPercentage - User's attendance goal (default 75%)
  */
 export function useTodaySchedule(
   userId: string | null,
-  batchId: string | null,
+  batchId: string,
   attendanceGoalPercentage: number = 75,
 ) {
   const [data, setData] = useState<TodayScheduleClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchData = useCallback(async () => {
-    if (!userId || !batchId) {
+  useEffect(() => {
+    console.log("[useTodaySchedule] Effect triggered:", {
+      userId,
+      batchId,
+      attendanceGoalPercentage,
+    });
+
+    if (!userId) {
+      console.log("[useTodaySchedule] Missing userId - returning early");
       setData([]);
       setLoading(false);
       return;
     }
+
+    async function fetchData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Let the service handle 'today' using local time by not passing a specific date
+        // This avoids timezone issues where toISOString() uses UTC
+        console.log("[useTodaySchedule] Calling Service with:", {
+          userId,
+          batchId,
+          attendanceGoalPercentage,
+        });
+
+        const scheduleData = await ClassesService.getTodaySchedule(
+          userId as string,
+          batchId,
+          attendanceGoalPercentage,
+          // dateIso: undefined -> defaults to new Date() in service
+        );
+
+        setData(scheduleData);
+      } catch (err) {
+        console.error("Error fetching today's schedule:", err);
+        setError(err instanceof Error ? err : new Error("Unknown error"));
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [userId, batchId, attendanceGoalPercentage]);
+
+  const refetch = async () => {
+    if (!userId) return;
 
     try {
       setLoading(true);
@@ -51,7 +94,7 @@ export function useTodaySchedule(
       const today = new Date();
       const formattedDate = today.toISOString().split("T")[0];
       const scheduleData = await ClassesService.getTodaySchedule(
-        userId,
+        userId as string,
         batchId,
         attendanceGoalPercentage,
         formattedDate,
@@ -59,19 +102,14 @@ export function useTodaySchedule(
 
       setData(scheduleData);
     } catch (err) {
-      console.error("Error fetching today's schedule:", err);
+      console.error("Error refetching today's schedule:", err);
       setError(err instanceof Error ? err : new Error("Unknown error"));
-      setData([]);
     } finally {
       setLoading(false);
     }
-  }, [userId, batchId, attendanceGoalPercentage]);
+  };
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refetch };
 }
 
 /**
@@ -80,38 +118,77 @@ export function useTodaySchedule(
  *
  * @param userId - Firebase Auth UID
  */
-export function useUpcomingClasses(userId: string | null) {
+/**
+ * Hook to fetch upcoming classes (next working day)
+ * Uses get_upcoming_classes RPC
+ *
+ * @param userId - Firebase Auth UID
+ * @param batchId - User's batch ID
+ */
+export function useUpcomingClasses(userId: string | null, batchId: string) {
   const [data, setData] = useState<UpcomingClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchData = useCallback(async () => {
-    if (!userId) {
+  useEffect(() => {
+    console.log("[useUpcomingClasses] Effect triggered:", { userId });
+
+    if (!userId || !batchId) {
+      console.log(
+        "[useUpcomingClasses] Missing userId or batchId - returning early",
+      );
       setData([]);
       setLoading(false);
       return;
     }
 
+    async function fetchData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        console.log("[useUpcomingClasses] Calling Service with:", {
+          userId,
+          batchId,
+        });
+        const upcomingData = await ClassesService.getUpcomingClasses(
+          userId as string,
+          batchId,
+        );
+        setData(upcomingData);
+      } catch (err) {
+        console.error("Error fetching upcoming classes:", err);
+        setError(err instanceof Error ? err : new Error("Unknown error"));
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [userId, batchId]);
+
+  const refetch = async () => {
+    if (!userId || !batchId) return;
+
     try {
       setLoading(true);
       setError(null);
 
-      const upcomingData = await ClassesService.getUpcomingClasses(userId);
+      const upcomingData = await ClassesService.getUpcomingClasses(
+        userId,
+        batchId,
+      );
       setData(upcomingData);
     } catch (err) {
-      console.error("Error fetching upcoming classes:", err);
+      console.error("Error refetching upcoming classes:", err);
       setError(err instanceof Error ? err : new Error("Unknown error"));
-      setData([]);
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  };
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refetch };
 }
 
 /**
@@ -119,102 +196,75 @@ export function useUpcomingClasses(userId: string | null) {
  * Uses get_classes_by_date RPC
  *
  * @param userId - Firebase Auth UID
- * @param targetDate - Date in "D/M/YYYY" format (e.g., "2/2/2026" or "29/1/2026")
+ * @param batchId - User's batch ID
+ * @param targetDate - Date in "D/M/YYYY" format
  */
 export function useClassesByDate(
   userId: string | null,
+  batchId: string,
   targetDate: string | null,
 ) {
   const [data, setData] = useState<ClassByDate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const isValidTargetDate = useCallback((value: string) => {
-    const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (!match) {
-      return false;
-    }
-
-    const day = Number(match[1]);
-    const month = Number(match[2]);
-    const year = Number(match[3]);
-
-    if (
-      !Number.isFinite(day) ||
-      !Number.isFinite(month) ||
-      !Number.isFinite(year)
-    ) {
-      return false;
-    }
-
-    if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) {
-      return false;
-    }
-
-    const candidate = new Date(year, month - 1, day);
-    return (
-      candidate.getFullYear() === year &&
-      candidate.getMonth() === month - 1 &&
-      candidate.getDate() === day
-    );
-  }, []);
-
-  const fetchData = useCallback(async () => {
-    if (!userId || !targetDate) {
+  useEffect(() => {
+    if (!userId || !targetDate || !batchId) {
       setData([]);
       setLoading(false);
       return;
     }
 
-    if (!isValidTargetDate(targetDate)) {
-      setData([]);
-      setLoading(false);
-      return;
+    async function fetchData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        console.log("[useClassesByDate] Fetching classes for:", {
+          userId,
+          targetDate,
+        });
+
+        const classesData = await ClassesService.getClassesByDate(
+          userId as string,
+          batchId,
+          targetDate as string,
+        );
+        setData(classesData);
+      } catch (err) {
+        console.error("Error fetching classes by date:", err);
+        setError(err instanceof Error ? err : new Error("Unknown error"));
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
     }
+
+    fetchData();
+  }, [userId, targetDate, batchId]);
+
+  const refetch = async () => {
+    if (!userId || !targetDate || !batchId) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      // Defensive check for invalid date strings
-      if (typeof targetDate === "string" && targetDate.includes("NaN")) {
-        // This is expected during initial render or invalid date selection
-        // silently handle it or warn
-        if (process.env.NODE_ENV === "development") {
-          console.warn(
-            "[useClassesByDate] Invalid date string prevents fetch:",
-            targetDate,
-          );
-        }
-        setData([]);
-        setLoading(false);
-        return;
-      }
-
-      console.log("[useClassesByDate] Fetching classes for:", {
-        userId,
-        targetDate,
-      });
-
       const classesData = await ClassesService.getClassesByDate(
-        userId,
-        targetDate,
+        userId as string,
+        batchId,
+        targetDate as string,
       );
       setData(classesData);
     } catch (err) {
-      console.error("Error fetching classes by date:", err);
+      console.error("Error refetching classes by date:", err);
       setError(err instanceof Error ? err : new Error("Unknown error"));
-      setData([]);
     } finally {
       setLoading(false);
     }
-  }, [userId, targetDate, isValidTargetDate]);
+  };
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refetch };
 }
 
 /**
@@ -237,7 +287,6 @@ export function getCurrentOrNextClass(schedule: TodayScheduleClass[]): {
     return { class: null, type: "none" };
   }
 
-  // Sort by classStartTime ascending
   const sorted = [...schedule].sort((a, b) => {
     return (
       new Date(a.classStartTime).getTime() -
@@ -247,7 +296,6 @@ export function getCurrentOrNextClass(schedule: TodayScheduleClass[]): {
 
   const now = new Date();
 
-  // Find current class
   for (const cls of sorted) {
     const startTime = new Date(cls.classStartTime);
     const endTime = new Date(cls.classEndTime);
@@ -257,7 +305,6 @@ export function getCurrentOrNextClass(schedule: TodayScheduleClass[]): {
     }
   }
 
-  // Find next class
   for (const cls of sorted) {
     const startTime = new Date(cls.classStartTime);
 
@@ -266,6 +313,77 @@ export function getCurrentOrNextClass(schedule: TodayScheduleClass[]): {
     }
   }
 
-  // No current or next class
   return { class: null, type: "none" };
+}
+
+/**
+ * Hook to fetch the next upcoming class
+ * Uses get_next_class RPC for real-time data
+ *
+ * @param userId - Firebase Auth UID
+ * @param batchId - User's batch ID
+ */
+export function useNextClass(userId: string | null, batchId: string) {
+  const [data, setData] = useState<TodayScheduleClass | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    console.log("[useNextClass] Effect triggered:", { userId, batchId });
+
+    if (!userId) {
+      console.log("[useNextClass] Missing userId - returning early");
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
+    async function fetchData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        console.log("[useNextClass] Calling Service with:", {
+          userId,
+          batchId,
+        });
+
+        const nextClass = await ClassesService.getNextClass(
+          userId as string,
+          batchId,
+        );
+
+        setData(nextClass);
+      } catch (err) {
+        console.error("Error fetching next class:", err);
+        setError(err instanceof Error ? err : new Error("Unknown error"));
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [userId, batchId]);
+
+  const refetch = async () => {
+    if (!userId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const nextClass = await ClassesService.getNextClass(
+        userId as string,
+        batchId,
+      );
+      setData(nextClass);
+    } catch (err) {
+      console.error("Error refetching next class:", err);
+      setError(err instanceof Error ? err : new Error("Unknown error"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { data, loading, error, refetch };
 }
