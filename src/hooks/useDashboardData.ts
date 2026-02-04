@@ -12,7 +12,7 @@
  * - Use Supabase as single source of truth for timetable data
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ClassesService } from "@/lib/services/classes-service";
 import {
   TodayScheduleClass,
@@ -21,6 +21,7 @@ import {
 } from "@/types/supabase-academic";
 import { supabase } from "@/lib/supabase/client";
 import { parseTimestampAsIST } from "@/lib/time/ist";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 /**
  * Hook to fetch today's schedule
@@ -30,73 +31,90 @@ import { parseTimestampAsIST } from "@/lib/time/ist";
  * @param batchId - User's batch ID (defaults to ME0204)
  * @param attendanceGoalPercentage - User's attendance goal (default 75%)
  */
-export function useTodaySchedule(
+type DashboardScheduleData = {
+  todaySchedule: TodayScheduleClass[];
+  upcomingClasses: UpcomingClass[];
+};
+
+const buildEnrolledKey = (enrolledCourses?: string[]) =>
+  (enrolledCourses ?? []).slice().sort().join("|");
+
+const buildDashboardScheduleKey = (params: {
+  userId: string | null;
+  batchId: string;
+  attendanceGoalPercentage: number;
+  enrolledKey: string;
+}) => [
+  "dashboard-schedule",
+  params.userId,
+  params.batchId,
+  params.attendanceGoalPercentage,
+  params.enrolledKey,
+] as const;
+
+export function useDashboardSchedule(
   userId: string | null,
   batchId: string,
   attendanceGoalPercentage: number = 75,
   enrolledCourses?: string[],
+  options: { subscribe?: boolean } = {},
 ) {
-  const [data, setData] = useState<TodayScheduleClass[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
+  const enrolledKey = useMemo(
+    () => buildEnrolledKey(enrolledCourses),
+    [enrolledCourses],
+  );
 
-  // Initial Fetch Function
-  const fetchData = useCallback(async () => {
-    if (!userId) {
-      setData([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Let the service handle 'today' using local time by not passing a specific date
-      const scheduleData = await ClassesService.getTodaySchedule(
-        userId as string,
+  const queryKey = useMemo(
+    () =>
+      buildDashboardScheduleKey({
+        userId,
         batchId,
         attendanceGoalPercentage,
-        undefined,
-        enrolledCourses,
-      );
+        enrolledKey,
+      }),
+    [userId, batchId, attendanceGoalPercentage, enrolledKey],
+  );
 
-      setData(scheduleData);
-    } catch (err) {
-      console.error("Error fetching today's schedule:", err);
-      setError(err instanceof Error ? err : new Error("Unknown error"));
-      // Don't clear data immediately on error to avoid flicker
-      if (data.length === 0) setData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, batchId, attendanceGoalPercentage, data.length, enrolledCourses]);
+  const query = useQuery<DashboardScheduleData, Error>({
+    queryKey,
+    enabled: Boolean(userId && batchId),
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      if (!userId || !batchId) {
+        return { todaySchedule: [], upcomingClasses: [] };
+      }
 
-  // Initial load
+      const [todaySchedule, upcomingClasses] = await Promise.all([
+        ClassesService.getTodaySchedule(
+          userId,
+          batchId,
+          attendanceGoalPercentage,
+          undefined,
+          enrolledCourses,
+        ),
+        ClassesService.getUpcomingClasses(userId, batchId, enrolledCourses),
+      ]);
+
+      return { todaySchedule, upcomingClasses };
+    },
+  });
+
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Realtime Subscription
-  useEffect(() => {
-    if (!batchId) return;
-
-    // console.log("[useTodaySchedule] Subscribing to realtime changes for batch:", batchId);
+    if (!options.subscribe || !batchId) return;
 
     const channel = supabase
-      .channel(`today-schedule-${batchId}`)
+      .channel(`dashboard-schedule-${batchId}`)
       .on(
         "postgres_changes",
         {
-          event: "*", // INSERT, UPDATE, DELETE
+          event: "*",
           schema: "public",
           table: "timetableRecords",
           filter: `batchID=eq.${batchId}`,
         },
-        (payload) => {
-          console.log("[useTodaySchedule] Realtime update received:", payload);
-          // Refetch data on any change to the timetable
-          fetchData();
+        () => {
+          queryClient.invalidateQueries({ queryKey });
         },
       )
       .subscribe();
@@ -104,11 +122,32 @@ export function useTodaySchedule(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [batchId, fetchData]);
+  }, [batchId, options.subscribe, queryClient, queryKey]);
 
-  const refetch = () => fetchData();
+  return {
+    data: query.data ?? { todaySchedule: [], upcomingClasses: [] },
+    loading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+  };
+}
 
-  return { data, loading, error, refetch };
+// Backwards-compatible wrappers (no realtime subscription)
+export function useTodaySchedule(
+  userId: string | null,
+  batchId: string,
+  attendanceGoalPercentage: number = 75,
+  enrolledCourses?: string[],
+) {
+  const { data, loading, error, refetch } = useDashboardSchedule(
+    userId,
+    batchId,
+    attendanceGoalPercentage,
+    enrolledCourses,
+    { subscribe: false },
+  );
+
+  return { data: data.todaySchedule, loading, error, refetch };
 }
 
 /**
@@ -129,71 +168,15 @@ export function useUpcomingClasses(
   batchId: string,
   enrolledCourses?: string[],
 ) {
-  const [data, setData] = useState<UpcomingClass[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const { data, loading, error, refetch } = useDashboardSchedule(
+    userId,
+    batchId,
+    75,
+    enrolledCourses,
+    { subscribe: false },
+  );
 
-  const fetchData = useCallback(async () => {
-    if (!userId || !batchId) {
-      setData([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      const upcomingData = await ClassesService.getUpcomingClasses(
-        userId as string,
-        batchId,
-        enrolledCourses,
-      );
-      setData(upcomingData);
-    } catch (err) {
-      console.error("Error fetching upcoming classes:", err);
-      setError(err instanceof Error ? err : new Error("Unknown error"));
-      if (data.length === 0) setData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, batchId, data.length, enrolledCourses]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Realtime Subscription
-  useEffect(() => {
-    if (!batchId) return;
-
-    const channel = supabase
-      .channel(`upcoming-classes-${batchId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "timetableRecords",
-          filter: `batchID=eq.${batchId}`,
-        },
-        (payload) => {
-          console.log(
-            "[useUpcomingClasses] Realtime update received:",
-            payload,
-          );
-          fetchData();
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [batchId, userId]);
-
-  const refetch = () => fetchData();
-
-  return { data, loading, error, refetch };
+  return { data: data.upcomingClasses, loading, error, refetch };
 }
 
 /**
@@ -208,67 +191,20 @@ export function useNextEnrolledClass(
   batchId: string,
   enrolledCourses?: string[],
 ) {
-  const [data, setData] = useState<UpcomingClass | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const { data, loading, error, refetch } = useDashboardSchedule(
+    userId,
+    batchId,
+    75,
+    enrolledCourses,
+    { subscribe: false },
+  );
 
-  const fetchData = useCallback(async () => {
-    if (!userId || !batchId) {
-      setData(null);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      const nextClass = await ClassesService.getNextEnrolledClass(
-        userId as string,
-        batchId,
-        enrolledCourses,
-      );
-      setData(nextClass);
-    } catch (err) {
-      console.error("Error fetching next enrolled class:", err);
-      setError(err instanceof Error ? err : new Error("Unknown error"));
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, batchId, enrolledCourses]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Realtime Subscription
-  useEffect(() => {
-    if (!batchId) return;
-
-    const channel = supabase
-      .channel(`next-enrolled-class-${batchId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "timetableRecords",
-          filter: `batchID=eq.${batchId}`,
-        },
-        () => {
-          fetchData();
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [batchId, fetchData]);
-
-  const refetch = () => fetchData();
-
-  return { data, loading, error, refetch };
+  return {
+    data: data.upcomingClasses[0] ?? null,
+    loading,
+    error,
+    refetch,
+  };
 }
 
 /**

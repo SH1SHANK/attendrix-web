@@ -1,6 +1,74 @@
 import type { NextConfig } from "next";
+import type { RuntimeCaching } from "workbox-build";
 import withPWAInit from "next-pwa";
 import withBundleAnalyzerInit from "@next/bundle-analyzer";
+
+const runtimeCaching: RuntimeCaching[] = [
+  // Never cache Supabase traffic
+  {
+    urlPattern: /^https?:\/\/.*\.supabase\.co\//i,
+    handler: "NetworkOnly",
+  },
+  // Never cache authenticated or mutable API routes
+  {
+    urlPattern: /^\/api\//,
+    handler: "NetworkOnly",
+  },
+  // Never cache protected pages (avoid serving stale authenticated shells)
+  {
+    urlPattern: /^\/(dashboard|onboarding|profile|classes|attendance)(\/.*)?$/i,
+    handler: "NetworkOnly",
+  },
+  // Fonts
+  {
+    urlPattern: /^https:\/\/fonts\.(?:gstatic)\.com\/.*$/i,
+    handler: "CacheFirst",
+    options: {
+      cacheName: "google-fonts-webfonts",
+      expiration: { maxEntries: 4, maxAgeSeconds: 31536000 },
+    },
+  },
+  {
+    urlPattern: /^https:\/\/fonts\.(?:googleapis)\.com\/.*$/i,
+    handler: "StaleWhileRevalidate",
+    options: {
+      cacheName: "google-fonts-stylesheets",
+      expiration: { maxEntries: 4, maxAgeSeconds: 604800 },
+    },
+  },
+  // Static assets
+  {
+    urlPattern: ({ request }: { request: { destination: string } }) =>
+      request.destination === "style" ||
+      request.destination === "script" ||
+      request.destination === "worker",
+    handler: "StaleWhileRevalidate",
+    options: {
+      cacheName: "static-resources",
+      expiration: { maxEntries: 64, maxAgeSeconds: 86400 },
+    },
+  },
+  {
+    urlPattern: ({ request }: { request: { destination: string } }) =>
+      request.destination === "image",
+    handler: "StaleWhileRevalidate",
+    options: {
+      cacheName: "static-images",
+      expiration: { maxEntries: 64, maxAgeSeconds: 86400 },
+    },
+  },
+  // Documents (public pages only)
+  {
+    urlPattern: ({ request }: { request: { destination: string } }) =>
+      request.destination === "document",
+    handler: "NetworkFirst",
+    options: {
+      cacheName: "pages",
+      networkTimeoutSeconds: 10,
+      expiration: { maxEntries: 32, maxAgeSeconds: 86400 },
+    },
+  },
+];
 
 // 1. Configure PWA
 const withPWA = withPWAInit({
@@ -8,6 +76,7 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === "development",
   register: true,
   skipWaiting: true,
+  runtimeCaching,
 });
 
 // 2. Configure Bundle Analyzer
@@ -18,8 +87,6 @@ const withBundleAnalyzer = withBundleAnalyzerInit({
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
-  // Turbopack config (Next.js 16 default bundler)
-  turbopack: {},
 
   experimental: {
     optimizePackageImports: [

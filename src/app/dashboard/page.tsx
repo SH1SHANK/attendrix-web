@@ -6,12 +6,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CountdownCard } from "@/components/dashboard/CountdownCard";
 import { useAuth } from "@/context/AuthContext";
-import {
-  useTodaySchedule,
-  useUpcomingClasses,
-  getCurrentOrNextClass,
-  useNextEnrolledClass,
-} from "@/hooks/useDashboardData";
+import { useDashboardSchedule, getCurrentOrNextClass } from "@/hooks/useDashboardData";
 import { useAttendanceActions } from "@/hooks/useAttendanceActions";
 import { useCourseTotalsSync } from "@/hooks/useCourseTotalsSync";
 import { DEFAULT_BATCH_ID } from "@/lib/constants";
@@ -116,25 +111,20 @@ export default function DashboardPage() {
     fetchUserData();
   }, [user]);
 
-  // Fetch today's schedule with enrolled courses filter
+  // Fetch schedule data (single cached query + single realtime subscription)
   const {
-    data: todaySchedule,
+    data: scheduleData,
     loading: scheduleLoading,
     error: scheduleError,
     refetch: refreshSchedule,
-  } = useTodaySchedule(user?.uid || null, batchId, 75, enrolledCourses);
+  } = useDashboardSchedule(user?.uid || null, batchId, 75, enrolledCourses, {
+    subscribe: true,
+  });
 
-  // Fetch upcoming classes with enrolled courses filter
-  const {
-    data: upcomingClasses,
-    loading: upcomingLoading,
-    error: upcomingError,
-  } = useUpcomingClasses(user?.uid || null, batchId, enrolledCourses);
-  const {
-    data: nextEnrolledClass,
-    loading: nextClassLoading,
-    error: nextClassError,
-  } = useNextEnrolledClass(user?.uid || null, batchId, enrolledCourses);
+  const todaySchedule = scheduleData.todaySchedule;
+  const upcomingClasses = scheduleData.upcomingClasses;
+  const nextEnrolledClass = upcomingClasses[0] ?? null;
+  const upcomingLoading = scheduleLoading;
 
   const { refreshTotals } = useCourseTotalsSync(user?.uid || null);
   const { checkIn, markAbsent, pendingByClassId } = useAttendanceActions({
@@ -175,9 +165,7 @@ export default function DashboardPage() {
     displayType = "next";
   }
 
-  const cardLoading =
-    scheduleLoading ||
-    (classType === "none" && (nextClassLoading || upcomingLoading));
+  const cardLoading = scheduleLoading;
 
   console.log("[Dashboard] Render state:", {
     authLoading,
@@ -286,7 +274,7 @@ export default function DashboardPage() {
   }
 
   // Show error state
-  if (scheduleError || upcomingError) {
+  if (scheduleError) {
     return (
       <div className="min-h-screen bg-[#fffdf5] flex items-center justify-center p-4">
         <div className="border-2 border-black bg-white p-8 shadow-[8px_8px_0px_0px_#000] max-w-md">
@@ -294,7 +282,7 @@ export default function DashboardPage() {
             Error Loading Dashboard
           </h2>
           <p className="font-mono text-sm text-neutral-600">
-            {scheduleError?.message || upcomingError?.message}
+            {scheduleError?.message}
           </p>
         </div>
       </div>

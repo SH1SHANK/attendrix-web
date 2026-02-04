@@ -1,33 +1,10 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "sonner";
 import GlobalOverlays from "@/components/layout/GlobalOverlays";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { UserPreferencesProvider } from "@/context/UserPreferencesContext";
 import "./globals.css";
-
-// Display font: Space Grotesk - Bold, geometric, high visual weight
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-space-grotesk",
-  display: "swap",
-  weight: ["500", "600", "700"],
-});
-
-// Body font: Inter - Clean, readable, neutral
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-// Monospace: JetBrains Mono - For code, terminals, technical UI
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -99,12 +76,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}
-      suppressHydrationWarning
-    >
-      <body className="antialiased" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..800&family=Space+Grotesk:wght@500;600;700&display=swap"
+        />
+      </head>
+      <body className="antialiased font-sans" suppressHydrationWarning>
         <QueryProvider>
           <UserPreferencesProvider>
             <AuthProvider>

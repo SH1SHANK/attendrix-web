@@ -9,6 +9,10 @@
   /* Global Font Scaling - Bumps 1rem from 16px to 18px for bolder feel */
   font-size: 16px;
   scroll-behavior: smooth;
+  --font-space-grotesk: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-inter: "Inter", system-ui, sans-serif;
+  --font-jetbrains: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
 
   /* Shadcn Compat Vars - Mapped to our theme where possible */
   --background: #fafaf9;

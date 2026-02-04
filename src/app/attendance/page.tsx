@@ -32,6 +32,7 @@ type CourseSummaryLike = CourseAttendanceSummary & {
   attendedclasses?: number;
   attendancepercentage?: number;
   numbersofclassesneededtobeaboveattendancegoal?: number;
+  numbersOfClassesCanBeSkippedStillStayAboveAttendanceGoal?: number;
   numbersofclassescanbeskippedstillstayaboveattendancegoal?: number;
 };
 
@@ -112,7 +113,8 @@ export default function AttendancePage() {
               entry.numbersOfClassesNeededToBeAboveAttendanceGoal ??
               entry.numbersofclassesneededtobeaboveattendancegoal ??
               0,
-            numbersOfClassesCanBeSkippedStillStayAboveAttendanceGoal:
+            numbersOfClassesCanBeSkippedStillStayAboveGoal:
+              entry.numbersOfClassesCanBeSkippedStillStayAboveGoal ??
               entry.numbersOfClassesCanBeSkippedStillStayAboveAttendanceGoal ??
               entry.numbersofclassescanbeskippedstillstayaboveattendancegoal ??
               0,
