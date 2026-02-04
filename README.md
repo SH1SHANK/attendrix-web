@@ -1,205 +1,107 @@
-# Attendrix Landing Page
+# Attendrix Web
 
-A high-performance, Neo-Brutalist academic attendance tracking platform for NIT Calicut. Built with Next.js 15, Supabase, and a custom gamification engine.
+Attendrix Web is a Neo-Brutalist attendance, classes, and tasks companion for students, built with Next.js, Firebase, and Supabase. It provides fast attendance actions, course management, calendar sync, tasks, and a profile hub with support tooling.
 
----
+Last reviewed: 2026-02-05
 
-## 📖 Table of Contents
+## About
 
-- [Tech Stack](#-tech-stack)
-- [Key Features](#-key-features)
-- [Architecture](#-architecture)
-- [Prerequisites](#-prerequisites)
-- [Getting Started](#-getting-started)
-- [Available Scripts](#-available-scripts)
-- [Deployment](#-deployment)
-- [Troubleshooting](#-troubleshooting)
+Attendrix Web combines a modern Next.js app router frontend with Firebase-authenticated, server-verified APIs that talk to Supabase. The app focuses on correctness, speed, and a cohesive visual system while keeping data fresh through React Query caching, short-lived server responses, and a buffered Firestore write strategy.
 
----
+## Features
 
-## 🛠 Tech Stack
+- Attendance: check in, mark absent, bulk check-in, past classes, and summaries.
+- Classes: daily schedule, upcoming classes, and date-based views.
+- Tasks: read-only assignments and exams list with filters.
+- Profile: course editing, export (CSV/Markdown/PDF), calendar sync, resync tools, deactivation and deletion flows.
+- Support: bug and feature reporting with image attachments and GitHub issue creation.
+- PWA: installable experience with manifest and service worker.
+- Caching: React Query cache profiles with runtime overrides.
 
-### Frontend
+## Documentation
 
-- **Framework**: [Next.js 15+](https://nextjs.org/) (App Router)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **UI Library**: [React 19](https://react.dev/)
-- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-- **Design System**: [RetroUI](https://retroui.dev/) (Neo-Brutalist, High Contrast)
-- **Animations**: [GSAP](https://greensock.com/gsap/) + [framer-motion](https://www.framer.com/motion/) + [anime.js](https://animejs.com/)
-- **State Management**: [TanStack Query v5](https://tanstack.com/query/latest)
+- Architecture: `ARCHITECTURE.md`
+- API reference: `API_DOCUMENTATION.md`
+- Data models: `DATA_MODELS.md`
+- Design system: `DESIGN_SYSTEM.md`
+- Features: `FEATURES.md`
+- Routes: `ROUTES.md`
+- Caching strategy: `CACHE_STRATEGY.md`
+- Contributing: `CONTRIBUTING.md`
+- Security: `SECURITY.md`
+- Runbook: `RUNBOOK.md`
+- Changelog: `CHANGELOG.md`
 
-### Backend & Infrastructure
+## Requirements
 
-- **Database / Realtime**: [Supabase](https://supabase.com/) (PostgreSQL)
-- **Auth**: [Firebase Admin SDK](https://firebase.google.com/docs/admin) + [Supabase Auth](https://supabase.com/auth) (Hybrid Strategy)
-- **Deployment**: [Vercel](https://vercel.com/)
+- Node.js 20+
+- npm 10+
+- Firebase project with Admin SDK credentials
+- Supabase project with anon and service role keys
 
----
-
-## ✨ Key Features
-
-- **Neo-Brutalist RetroUI**: High-contrast, accessibility-first design with bold borders and vibrant accents.
-- **Precision Tracking**: Sub-minute latency for marking attendance.
-- **Gamification Engine**: "Mage Rank" system with XP, levels, and streaks for academic engagement.
-- **Subject Ledger**: Real-time aggregated analysis of subject-wise eligibility with "Safe Cuts" calculation.
-- **Lumen AI**: Terminal-style interface for academic queries and status checks.
-- **Interactive Timeline**: Visual vertical list of current and upcoming classes.
-
----
-
-## 🏗 Architecture
-
-### Directory Structure
-
-```text
-├── src/
-│   ├── app/                # Next.js App Router (pages and server actions)
-│   │   ├── (auth)/         # Authentication routes (signin, signup)
-│   │   ├── app/            # Main application dashboard
-│   │   ├── onboarding/     # Post-signup user configuration
-│   │   └── api/            # Backend API endpoints
-│   ├── components/
-│   │   ├── sections/       # Landing page sections (Hero, Features)
-│   │   ├── retroui/        # Base Neo-Brutalist components
-│   │   ├── dashboard/      # Dashboard-specific UI elements
-│   │   └── custom/         # Project-specific custom elements (Monitor, Terminal)
-│   ├── hooks/              # Custom React hooks (queries and mutations)
-│   ├── lib/                # Core logic, auth config, and utility wrappers
-│   ├── schemas/            # Zod validation schemas
-│   ├── types/              # TypeScript interfaces and types
-│   └── utils/              # Helper functions
-├── supabase/               # Supabase configuration and scripts
-├── public/                 # Static assets (images, icons)
-└── PRD.md                  # Product Requirements Document
-```
-
-### Authentication Flow
-
-1. **Gatekeeper**: `middleware.ts` checks for the presence of the `__session` cookie.
-2. **Hybrid Strategy**:
-   - **Firebase**: Used for session management and Admin SDK features.
-   - **Supabase**: Used for data persistence and Realtime updates.
-3. **Session**: Secure, `httpOnly` cookies with `Lax` SameSite policy.
-
-### Data Lifecycle
-
-```mermaid
-graph LR
-    User --> ServerAction[Next.js Server Action]
-    ServerAction --> Firebase[Firebase Admin Auth]
-    ServerAction --> Supabase[Supabase PostgreSQL]
-    Supabase --> Realtime[Supabase Realtime]
-    Realtime --> UI[React Dashboard]
-```
-
----
-
-## 📋 Prerequisites
-
-Before you begin, ensure you have the following installed:
-
-- **Node.js**: 20.x or higher
-- **npm**: 10.x or higher
-- **Git**
-
-You will also need:
-
-- A **Firebase** 프로젝트 (Admin SDK private key required)
-- A **Supabase** instance (URL and Anon key required)
-
----
-
-## 🚀 Getting Started
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/sh1shank/attendrix-web.git
-cd attendrix-web
-```
-
-### 2. Install dependencies
+## Quick Start
 
 ```bash
 npm install
-```
-
-### 3. Environment Setup
-
-Create a `.env.local` file in the root directory and populate it with your credentials:
-
-```bash
 cp .env.local.example .env.local
-```
-
-| Variable                          | Description                              |
-| --------------------------------- | ---------------------------------------- |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Your Firebase Project ID                 |
-| `FIREBASE_CLIENT_EMAIL`           | Firebase Admin SDK Service Account Email |
-| `FIREBASE_PRIVATE_KEY`            | Firebase Admin SDK Private Key           |
-| `NEXT_PUBLIC_SUPABASE_URL`        | Your Supabase Project URL                |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`   | Your Supabase Anon/Public Key            |
-
-### 4. Run Development Server
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the result.
+Open `http://localhost:3000`.
 
----
+## Environment Variables
 
-## 📜 Available Scripts
+Use `.env.local.example` as the source of truth. Key variables include:
 
-| Command         | Description                                |
-| --------------- | ------------------------------------------ |
-| `npm run dev`   | Starts the development server with Next.js |
-| `npm run build` | Compiles the production build              |
-| `npm run start` | Runs the compiled production build         |
-| `npm run lint`  | Runs ESLint for code quality checks        |
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_FIREBASE_*` (client)
+- `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` (admin)
+- `NEXT_PRIVATE_GITHUB_TOKEN` (issue creation)
+- `NEXT_PUBLIC_CACHE_PROFILE` (balanced | fresh | relaxed)
 
----
-
-## 🌐 Deployment
-
-### Vercel (Recommended)
-
-This project is optimized for Vercel.
-
-1. Push your code to a GitHub/GitLab/Bitbucket repository.
-2. Connect the repository to Vercel.
-3. Configure the Environment Variables in the Vercel Dashboard.
-4. Deploy!
-
-> [!IMPORTANT]
-> Ensure `FIREBASE_PRIVATE_KEY` is handled as a single string (using `\n`) in Vercel environment variables.
-
----
-
-## 🔍 Troubleshooting
-
-### Next.js 15/React 19 Compatibility
-
-This project uses the latest stable Next.js features. If you encounter dependency issues, try:
+## Scripts
 
 ```bash
-npm install --legacy-peer-deps
+npm run dev
+npm run build
+npm run start
+npm run lint
 ```
 
-### Supabase Connection Issues
+## Deployment
 
-If data isn't loading, check the `supabase/check-supabase.ts` utility to verify your connection:
+Vercel is the recommended host.
 
 ```bash
-npx ts-node supabase/check-supabase.ts
+vercel --prod
 ```
 
-### Middleware Redirect Loops
+Ensure all environment variables from `.env.local.example` are configured in the Vercel project.
 
-If you are stuck in a redirect loop, clear your site cookies and ensure `__session` isn't being blocked by browser extensions.
+## PWA Install
 
----
+- Manifest: `public/manifest.json`
+- Service worker: `public/sw.js`
+- Install prompt hook: `src/hooks/useInstallPrompt.ts`
 
-Built with ❤️ by NITC Students
+## Caching and Performance
+
+- Client caching profiles are defined in `src/lib/query/cache-config.ts`.
+- User-specific API responses are `Cache-Control: private, no-store`.
+- Firestore attendance writes are buffered and coalesced in `src/lib/attendance/firestore-write-buffer.ts`.
+
+## Support and Community
+
+- Bug reports: `/support/bug`
+- Feature requests: `/support/feature`
+- Contact support: `/support/contact`
+
+## Contributing
+
+See `CONTRIBUTING.md` for local setup, branch naming, and PR guidelines.
+
+## License
+
+No license is currently specified. Add a `LICENSE` file to make reuse explicit.
