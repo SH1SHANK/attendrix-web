@@ -12,45 +12,25 @@
  * - Use Supabase as single source of truth for timetable data
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { ClassesService } from "@/lib/services/classes-service";
-import {
+import { useEffect, useMemo, useState } from "react";
+import type {
   TodayScheduleClass,
-  UpcomingClass,
   ClassByDate,
 } from "@/types/supabase-academic";
+import { ClassesService } from "@/lib/services/classes-service";
 import { supabase } from "@/lib/supabase/client";
 import { parseTimestampAsIST } from "@/lib/time/ist";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-
-/**
- * Hook to fetch today's schedule
- * Uses get_today_schedule RPC
- *
- * @param userId - Firebase Auth UID
- * @param batchId - User's batch ID (defaults to ME0204)
- * @param attendanceGoalPercentage - User's attendance goal (default 75%)
- */
-type DashboardScheduleData = {
-  todaySchedule: TodayScheduleClass[];
-  upcomingClasses: UpcomingClass[];
-};
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import {
+  fetchClassesByDate,
+  fetchDashboardSchedule,
+  type DashboardScheduleData,
+} from "@/lib/query/fetchers";
+import { getCacheConfig } from "@/lib/query/cache-config";
+import { queryKeys } from "@/lib/query/keys";
 
 const buildEnrolledKey = (enrolledCourses?: string[]) =>
   (enrolledCourses ?? []).slice().sort().join("|");
-
-const buildDashboardScheduleKey = (params: {
-  userId: string | null;
-  batchId: string;
-  attendanceGoalPercentage: number;
-  enrolledKey: string;
-}) => [
-  "dashboard-schedule",
-  params.userId,
-  params.batchId,
-  params.attendanceGoalPercentage,
-  params.enrolledKey,
-] as const;
 
 export function useDashboardSchedule(
   userId: string | null,
@@ -60,6 +40,7 @@ export function useDashboardSchedule(
   options: { subscribe?: boolean } = {},
 ) {
   const queryClient = useQueryClient();
+  const cache = getCacheConfig("dashboardSchedule");
   const enrolledKey = useMemo(
     () => buildEnrolledKey(enrolledCourses),
     [enrolledCourses],
@@ -67,41 +48,60 @@ export function useDashboardSchedule(
 
   const queryKey = useMemo(
     () =>
-      buildDashboardScheduleKey({
+      queryKeys.dashboardSchedule(
         userId,
         batchId,
         attendanceGoalPercentage,
         enrolledKey,
-      }),
+      ),
     [userId, batchId, attendanceGoalPercentage, enrolledKey],
   );
 
   const query = useQuery<DashboardScheduleData, Error>({
     queryKey,
     enabled: Boolean(userId && batchId),
-    staleTime: 60 * 1000,
-    queryFn: async () => {
+    staleTime: cache.staleTimeMs,
+    gcTime: cache.gcTimeMs,
+    refetchOnWindowFocus: cache.refetchOnWindowFocus ?? false,
+    queryFn: async ({ signal }) => {
       if (!userId || !batchId) {
         return { todaySchedule: [], upcomingClasses: [] };
       }
 
-      const [todaySchedule, upcomingClasses] = await Promise.all([
-        ClassesService.getTodaySchedule(
-          userId,
-          batchId,
-          attendanceGoalPercentage,
-          undefined,
-          enrolledCourses,
-        ),
-        ClassesService.getUpcomingClasses(userId, batchId, enrolledCourses),
-      ]);
-
-      return { todaySchedule, upcomingClasses };
+      return fetchDashboardSchedule({
+        signal,
+        batchId,
+        attendanceGoal: attendanceGoalPercentage,
+      });
     },
   });
 
   useEffect(() => {
     if (!options.subscribe || !batchId) return;
+    const debounceState = { timer: 0 as number | undefined, lastInvoke: 0 };
+
+    const scheduleInvalidate = () => {
+      if (queryClient.isFetching({ queryKey }) > 0) return;
+
+      const now = Date.now();
+      const maxWait = 5_000;
+      const delay = 1_000;
+
+      if (now - debounceState.lastInvoke >= maxWait) {
+        debounceState.lastInvoke = now;
+        queryClient.invalidateQueries({ queryKey });
+        return;
+      }
+
+      if (debounceState.timer) return;
+      debounceState.timer = window.setTimeout(() => {
+        debounceState.timer = undefined;
+        if (queryClient.isFetching({ queryKey }) === 0) {
+          debounceState.lastInvoke = Date.now();
+          queryClient.invalidateQueries({ queryKey });
+        }
+      }, delay);
+    };
 
     const channel = supabase
       .channel(`dashboard-schedule-${batchId}`)
@@ -113,14 +113,15 @@ export function useDashboardSchedule(
           table: "timetableRecords",
           filter: `batchID=eq.${batchId}`,
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey });
-        },
+        scheduleInvalidate,
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      if (debounceState.timer) {
+        window.clearTimeout(debounceState.timer);
+      }
     };
   }, [batchId, options.subscribe, queryClient, queryKey]);
 
@@ -219,68 +220,39 @@ export function useClassesByDate(
   userId: string | null,
   batchId: string,
   targetDate: string | null,
+  enrolledCourses?: string[],
 ) {
-  const [data, setData] = useState<ClassByDate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const cache = getCacheConfig("classesByDate");
+  const enrolledKey = useMemo(
+    () => buildEnrolledKey(enrolledCourses),
+    [enrolledCourses],
+  );
 
-  useEffect(() => {
-    if (!userId || !targetDate || !batchId) {
-      setData([]);
-      setLoading(false);
-      return;
-    }
+  const queryKey = useMemo(
+    () => queryKeys.classesByDate(userId, batchId, targetDate, enrolledKey),
+    [userId, batchId, targetDate, enrolledKey],
+  );
 
-    async function fetchData() {
-      try {
-        setLoading(true);
-        setError(null);
+  const query = useQuery<ClassByDate[], Error>({
+    queryKey,
+    enabled: Boolean(userId && batchId && targetDate),
+    staleTime: cache.staleTimeMs,
+    gcTime: cache.gcTimeMs,
+    refetchOnWindowFocus: cache.refetchOnWindowFocus ?? false,
+    placeholderData: keepPreviousData,
+    queryFn: ({ signal }) => {
+      if (!userId || !batchId || !targetDate) return [];
+      return fetchClassesByDate({ signal, batchId, date: targetDate });
+    },
+  });
 
-        console.log("[useClassesByDate] Fetching classes for:", {
-          userId,
-          targetDate,
-        });
-
-        const classesData = await ClassesService.getClassesByDate(
-          userId as string,
-          batchId,
-          targetDate as string,
-        );
-        setData(classesData);
-      } catch (err) {
-        console.error("Error fetching classes by date:", err);
-        setError(err instanceof Error ? err : new Error("Unknown error"));
-        setData([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [userId, targetDate, batchId]);
-
-  const refetch = async () => {
-    if (!userId || !targetDate || !batchId) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const classesData = await ClassesService.getClassesByDate(
-        userId as string,
-        batchId,
-        targetDate as string,
-      );
-      setData(classesData);
-    } catch (err) {
-      console.error("Error refetching classes by date:", err);
-      setError(err instanceof Error ? err : new Error("Unknown error"));
-    } finally {
-      setLoading(false);
-    }
+  return {
+    data: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+    isFetching: query.isFetching,
   };
-
-  return { data, loading, error, refetch };
 }
 
 /**

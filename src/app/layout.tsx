@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import GlobalOverlays from "@/components/layout/GlobalOverlays";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { UserPreferencesProvider } from "@/context/UserPreferencesContext";
+import { ClientPerformanceObserver } from "@/components/metrics/ClientPerformanceObserver";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -63,6 +64,7 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  manifest: "/manifest.json",
 };
 
 export const viewport = {
@@ -84,6 +86,12 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..800&family=Space+Grotesk:wght@500;600;700&display=swap"
         />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="icon" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="mask-icon" href="/window.svg" color="#FFD700" />
+        <meta name="theme-color" content="#FFD700" />
       </head>
       <body className="antialiased font-sans" suppressHydrationWarning>
         <QueryProvider>
@@ -94,6 +102,7 @@ export default function RootLayout({
             </AuthProvider>
           </UserPreferencesProvider>
           <GlobalOverlays />
+          <ClientPerformanceObserver />
         </QueryProvider>
       </body>
     </html>

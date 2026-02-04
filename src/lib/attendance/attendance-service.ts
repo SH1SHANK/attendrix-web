@@ -1,17 +1,22 @@
-import { supabase } from "@/lib/supabase/client";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, runTransaction } from "firebase/firestore";
 import {
-  ClassCheckInParams,
   CourseAttendanceSummary,
   EvaluateChallengesResponse,
   FirebaseCourseEnrollment,
   FirebaseUserDocument,
   MarkClassAbsentRpcResponse,
-  MarkClassAbsentParams,
   ClassCheckInRpcResponse,
   UserCourseRecord,
 } from "@/types/types-defination";
+import {
+  fetchAttendanceSummary,
+  fetchUserCourseRecords,
+  postBulkCheckIn,
+  postClassCheckIn,
+  postEvaluateChallenges,
+  postMarkAbsent,
+} from "@/lib/query/fetchers";
 import {
   computeStreakUpdatesForAddition,
   dateToIntIST,
@@ -21,10 +26,9 @@ import {
 import { parseTimestampAsIST } from "@/lib/time/ist";
 
 interface EvaluateChallengesParams {
-  p_user_id: string;
-  p_progress_ids: string[];
-  p_current_streak: number | null;
-  p_course_ids: string[];
+  progressIds: string[];
+  currentStreak: number | null;
+  courseIds: string[];
 }
 
 function normalizeRpcData<T>(data: unknown): T | null {
@@ -35,11 +39,14 @@ function normalizeRpcData<T>(data: unknown): T | null {
   return data as T;
 }
 
-export async function classCheckInRpc(params: ClassCheckInParams) {
-  const { data, error } = await supabase.rpc("class_check_in", params);
-  if (error) {
-    throw new Error(error.message || "class_check_in failed");
-  }
+export async function classCheckInRpc(params: {
+  classID: string;
+  classStartTime: string;
+}) {
+  const data = await postClassCheckIn({
+    classID: params.classID,
+    classStartTime: params.classStartTime,
+  });
 
   const normalized = normalizeRpcData<ClassCheckInRpcResponse>(data);
   if (!normalized) {
@@ -49,30 +56,12 @@ export async function classCheckInRpc(params: ClassCheckInParams) {
   return normalized;
 }
 
-export async function bulkCheckInRpc(params: {
-  p_user_id: string;
-  p_class_ids?: string[];
-  p_class_id?: string;
-  p_class_start?: string;
-  p_enrolled_courses: string[];
-}) {
-  const classIds =
-    params.p_class_ids ??
-    (params.p_class_id ? [params.p_class_id] : undefined);
-
-  if (!classIds || classIds.length === 0) {
-    throw new Error("bulk_class_checkin requires p_class_ids");
+export async function bulkCheckInRpc(params: { classIds: string[] }) {
+  if (!params.classIds || params.classIds.length === 0) {
+    throw new Error("bulk_class_checkin requires classIds");
   }
 
-  const { data, error } = await supabase.rpc("bulk_class_checkin", {
-    p_user_id: params.p_user_id,
-    p_class_ids: classIds,
-    p_enrolled_courses: params.p_enrolled_courses,
-  });
-  if (error) {
-    throw new Error(error.message || "bulk_class_checkin failed");
-  }
-
+  const data = await postBulkCheckIn({ classIds: params.classIds });
   const normalized = normalizeRpcData<Record<string, unknown>>(data);
   if (!normalized) {
     throw new Error("bulk_class_checkin returned no data");
@@ -81,12 +70,10 @@ export async function bulkCheckInRpc(params: {
   return normalized;
 }
 
-export async function markClassAbsentRpc(params: MarkClassAbsentParams) {
-  const { data, error } = await supabase.rpc("mark_class_absent", params);
-  if (error) {
-    throw new Error(error.message || "mark_class_absent failed");
-  }
-
+export async function markClassAbsentRpc(params: {
+  classID: string;
+}) {
+  const data = await postMarkAbsent({ classID: params.classID });
   const normalized = normalizeRpcData<MarkClassAbsentRpcResponse>(data);
   if (!normalized) {
     throw new Error("mark_class_absent returned no data");
@@ -95,34 +82,21 @@ export async function markClassAbsentRpc(params: MarkClassAbsentParams) {
   return normalized;
 }
 
-export async function getCourseAttendanceSummaryRpc(uid: string) {
-  const { data, error } = await supabase.rpc(
-    "get_user_course_attendance_summary",
-    {
-      uid,
-    },
-  );
-
-  if (error) {
-    throw new Error(
-      error.message || "get_user_course_attendance_summary failed",
-    );
-  }
+export async function getCourseAttendanceSummaryRpc(
+  uid: string,
+  attendanceGoal?: number,
+) {
+  if (!uid) return [];
+  const data = await fetchAttendanceSummary({
+    attendanceGoal,
+  });
 
   return (data as CourseAttendanceSummary[]) || [];
 }
 
 export async function getUserCourseRecords(uid: string) {
-  const { data, error } = await supabase
-    .from("userCourseRecords")
-    .select("userID,batchID,semesterID,enrolledCourses,metadata,lastUpdated")
-    .eq("userID", uid)
-    .single();
-
-  if (error) {
-    throw new Error(error.message || "Failed to load userCourseRecords");
-  }
-
+  if (!uid) return null;
+  const data = await fetchUserCourseRecords();
   return (data as UserCourseRecord) || null;
 }
 
@@ -136,20 +110,14 @@ export async function getFirestoreUser(uid: string) {
 export async function evaluateUserChallengesRpc(
   params: EvaluateChallengesParams,
 ) {
-  const { data, error } = await supabase.rpc(
-    "evaluate_user_challenges",
-    params,
-  );
-  if (error) {
-    throw new Error(error.message || "evaluate_user_challenges failed");
-  }
-
+  const data = await postEvaluateChallenges({
+    progressIds: params.progressIds,
+    currentStreak: params.currentStreak,
+    courseIds: params.courseIds,
+  });
+  if (!data) return null;
   const normalized = normalizeRpcData<EvaluateChallengesResponse>(data);
-  if (!normalized) {
-    throw new Error("evaluate_user_challenges returned no data");
-  }
-
-  return normalized;
+  return normalized ?? null;
 }
 
 export function buildCourseTotalsMap(summary: CourseAttendanceSummary[]) {
@@ -235,9 +203,21 @@ export async function applyFirestoreAttendanceUpdates(params: {
 
     const updatedCourses = mergeCoursesWithSummary(courses, summaryMap);
 
-    const updates: Record<string, unknown> = {
-      coursesEnrolled: updatedCourses,
-    };
+    const hasSummaryChanges = courses.some((course) => {
+      const entry = summaryMap.get(course.courseID);
+      if (!entry) return false;
+      return (
+        Number(course.attendedClasses ?? 0) !==
+          Number(entry.attendedClasses ?? 0) ||
+        Number(course.totalClasses ?? 0) !== Number(entry.totalClasses ?? 0)
+      );
+    });
+
+    const updates: Record<string, unknown> = {};
+
+    if (hasSummaryChanges) {
+      updates.coursesEnrolled = updatedCourses;
+    }
 
     if (amplixDelta !== 0) {
       const currentAmplix = Number(data.amplix ?? 0);
@@ -247,16 +227,28 @@ export async function applyFirestoreAttendanceUpdates(params: {
     }
 
     if (streakUpdates) {
-      if (typeof streakUpdates.currentStreak === "number") {
+      if (
+        typeof streakUpdates.currentStreak === "number" &&
+        streakUpdates.currentStreak !== Number(data.currentStreak ?? 0)
+      ) {
         updates.currentStreak = streakUpdates.currentStreak;
       }
-      if (Array.isArray(streakUpdates.streakHistory)) {
+      if (
+        Array.isArray(streakUpdates.streakHistory) &&
+        JSON.stringify(streakUpdates.streakHistory) !==
+          JSON.stringify(data.streakHistory ?? [])
+      ) {
         updates.streakHistory = streakUpdates.streakHistory;
       }
-      if (typeof streakUpdates.longestStreak === "number") {
+      if (
+        typeof streakUpdates.longestStreak === "number" &&
+        streakUpdates.longestStreak !== Number(data.longestStreak ?? 0)
+      ) {
         updates.longestStreak = streakUpdates.longestStreak;
       }
     }
+
+    if (Object.keys(updates).length === 0) return;
 
     transaction.update(ref, updates);
   });

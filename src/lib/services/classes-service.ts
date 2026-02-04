@@ -193,7 +193,9 @@ export const ClassesService = {
       // Fetch next 5 classes for the specific batch
       let query = supabase
         .from("timetableRecords")
-        .select("*")
+        .select(
+          "classID,courseID,courseName,classStartTime,classEndTime,classVenue,classDate,courseType",
+        )
         .eq("batchID", batchId) // Use passed batchId
         .gt("classStartTime", now);
 
@@ -246,7 +248,9 @@ export const ClassesService = {
 
       let query = supabase
         .from("timetableRecords")
-        .select("*")
+        .select(
+          "classID,courseID,courseName,classStartTime,classEndTime,classVenue,classDate,courseType",
+        )
         .eq("batchID", batchId)
         .gte("classStartTime", windowStart);
 
@@ -299,7 +303,9 @@ export const ClassesService = {
     try {
       let query = supabase
         .from("timetableRecords")
-        .select("*")
+        .select(
+          "classID,courseID,courseName,classStartTime,classEndTime,classVenue,classDate,classStatus,courseType,isPlusSlot",
+        )
         .eq("batchID", batchId)
         .eq("classDate", targetDate);
 
@@ -348,7 +354,9 @@ export const ClassesService = {
 
       let query = supabase
         .from("timetableRecords")
-        .select("*")
+        .select(
+          "classID,courseID,courseName,classStartTime,classEndTime,classVenue,classStatus,courseType",
+        )
         .eq("batchID", batchId)
         .gt("classEndTime", now); // Show class if it hasn't ended yet (Current) OR is in future
 
@@ -365,6 +373,7 @@ export const ClassesService = {
       if (!classes || classes.length === 0) return null;
 
       const cls = classes[0];
+      if (!cls) return null;
 
       // Check attendance
       const { data: attendance } = await supabase

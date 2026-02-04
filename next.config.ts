@@ -87,6 +87,7 @@ const withBundleAnalyzer = withBundleAnalyzerInit({
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  turbopack: {},
 
   experimental: {
     optimizePackageImports: [

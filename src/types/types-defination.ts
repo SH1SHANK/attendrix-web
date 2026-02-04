@@ -140,6 +140,28 @@ export interface ClassStatusJSON {
 }
 
 /**
+ * taskRecords Table
+ * Read-only tasks and exams
+ */
+export type TaskType = "assignment" | "exam";
+
+export interface TaskRecord {
+  id: string;
+  created_at: string; // ISO timestamp
+  courseID: string;
+  taskType: TaskType;
+  taskName: string | null;
+  taskDescription: string | null;
+  taskDueDate: string | null;
+  taskStartTime: string | null;
+  taskEndTime: string | null;
+  taskAssets: string | null;
+  maxScore: number | null;
+  taskVenue: string | null;
+  additional_info: string | null;
+}
+
+/**
  * userCourseRecords Table
  * Per-user enrollment and academic context
  */
@@ -790,6 +812,11 @@ export interface Database {
         };
         Update: Partial<Omit<TimetableRecord, "classID">>;
       };
+      taskRecords: {
+        Row: TaskRecord;
+        Insert: TaskRecord;
+        Update: Partial<TaskRecord>;
+      };
       userCourseRecords: {
         Row: UserCourseRecord;
         Insert: Omit<UserCourseRecord, "lastUpdated"> & {
@@ -798,6 +825,7 @@ export interface Database {
         Update: Partial<Omit<UserCourseRecord, "userID">>;
       };
     };
+    Views: Record<string, never>;
     Functions: {
       get_current_or_next_class: {
         Args: GetCurrentOrNextClassParams;

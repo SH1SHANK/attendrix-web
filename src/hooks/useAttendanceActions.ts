@@ -3,7 +3,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  applyFirestoreAttendanceUpdates,
   classCheckInRpc,
   computeAmplixDelta,
   computeStreakUpdatesForCheckIn,
@@ -11,9 +10,12 @@ import {
   extractProgressIds,
   getCourseAttendanceSummaryRpc,
   getFirestoreUser,
-  getUserCourseRecords,
   markClassAbsentRpc,
 } from "@/lib/attendance/attendance-service";
+import {
+  enqueueFirestoreAttendanceUpdate,
+  flushNow,
+} from "@/lib/attendance/firestore-write-buffer";
 import {
   EvaluateChallengesResponse,
   FirebaseUserDocument,
@@ -91,20 +93,19 @@ export function useAttendanceActions(params: {
   const runChallengeEval = useCallback(
     async (args: {
       user: FirebaseUserDocument | null;
-      enrolledCourses: string[];
+      courseIds: string[];
       currentStreak: number | null;
     }) => {
       if (!userId) return null;
       const progressIds = extractProgressIds(args.user);
-      if (progressIds.length === 0 || args.enrolledCourses.length === 0) {
+      if (progressIds.length === 0 || args.courseIds.length === 0) {
         return null;
       }
 
       return evaluateUserChallengesRpc({
-        p_user_id: userId,
-        p_progress_ids: progressIds,
-        p_current_streak: args.currentStreak,
-        p_course_ids: args.enrolledCourses,
+        progressIds,
+        currentStreak: args.currentStreak,
+        courseIds: args.courseIds,
       });
     },
     [userId],
@@ -117,18 +118,9 @@ export function useAttendanceActions(params: {
           return { success: false, message: "Missing user" };
         }
 
-        const courseRecord = await getUserCourseRecords(userId);
-        const enrolledCourses = courseRecord?.enrolledCourses || [];
-        if (enrolledCourses.length === 0) {
-          toast.error("No enrolled courses found for attendance");
-          return { success: false, message: "Missing enrolled courses" };
-        }
-
         const checkInResponse = await classCheckInRpc({
-          p_user_id: userId,
-          p_class_id: classID,
-          p_class_start: classStartTime,
-          p_enrolled_courses: enrolledCourses,
+          classID,
+          classStartTime,
         });
 
         if (checkInResponse.status !== "success") {
@@ -157,10 +149,14 @@ export function useAttendanceActions(params: {
         let challengeResult: EvaluateChallengesResponse | null = null;
         let challengeError: Error | null = null;
 
+        const courseIds = Array.from(
+          new Set(summary.map((item) => item.courseID)),
+        );
+
         try {
           challengeResult = await runChallengeEval({
             user,
-            enrolledCourses,
+            courseIds,
             currentStreak: computedCurrentStreak,
           });
         } catch (err) {
@@ -173,12 +169,16 @@ export function useAttendanceActions(params: {
           points_to_deduct: challengeResult?.points_to_deduct ?? 0,
         });
 
-        await applyFirestoreAttendanceUpdates({
-          uid: userId,
-          summary,
-          amplixDelta: totalDelta,
-          streakUpdates: fullDayCompleted ? streakPayload.updates : undefined,
-        });
+        enqueueFirestoreAttendanceUpdate(
+          {
+            uid: userId,
+            summary,
+            amplixDelta: totalDelta,
+            streakUpdates: fullDayCompleted ? streakPayload.updates : undefined,
+          },
+          { urgent: true },
+        );
+        await flushNow();
 
         if (challengeError || challengeResult?.status === "error") {
           toast.warning(
@@ -209,18 +209,7 @@ export function useAttendanceActions(params: {
           return { success: false, message: "Missing user" };
         }
 
-        const courseRecord = await getUserCourseRecords(userId);
-        const enrolledCourses = courseRecord?.enrolledCourses || [];
-        if (enrolledCourses.length === 0) {
-          toast.error("No enrolled courses found for attendance");
-          return { success: false, message: "Missing enrolled courses" };
-        }
-
-        const absentResponse = await markClassAbsentRpc({
-          p_user_id: userId,
-          p_class_id: classID,
-          p_enrolled_courses: enrolledCourses,
-        });
+        const absentResponse = await markClassAbsentRpc({ classID });
 
         if (absentResponse.status !== "success") {
           toast.error(absentResponse.message || "Mark absent failed");
@@ -235,10 +224,14 @@ export function useAttendanceActions(params: {
         let challengeResult: EvaluateChallengesResponse | null = null;
         let challengeError: Error | null = null;
 
+        const courseIds = Array.from(
+          new Set(summary.map((item) => item.courseID)),
+        );
+
         try {
           challengeResult = await runChallengeEval({
             user,
-            enrolledCourses,
+            courseIds,
             currentStreak: user?.currentStreak ?? 0,
           });
         } catch (err) {
@@ -251,11 +244,15 @@ export function useAttendanceActions(params: {
           points_to_deduct: challengeResult?.points_to_deduct ?? 0,
         });
 
-        await applyFirestoreAttendanceUpdates({
-          uid: userId,
-          summary,
-          amplixDelta: totalDelta,
-        });
+        enqueueFirestoreAttendanceUpdate(
+          {
+            uid: userId,
+            summary,
+            amplixDelta: totalDelta,
+          },
+          { urgent: true },
+        );
+        await flushNow();
 
         if (challengeError || challengeResult?.status === "error") {
           toast.warning(

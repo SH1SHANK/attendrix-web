@@ -6,15 +6,20 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
+import { getCacheProfileDefaults } from "@/lib/query/cache-config";
+import { initFirestoreWriteBuffer } from "@/lib/attendance/firestore-write-buffer";
 
 function makeQueryClient() {
+  const defaults = getCacheProfileDefaults();
   return new QueryClient({
     defaultOptions: {
       queries: {
         // With SSR, we usually want to set some default staleTime
         // above 0 to avoid refetching immediately on the client
-        staleTime: 5 * 60 * 1000,
+        staleTime: defaults.dashboardSchedule.staleTimeMs,
+        gcTime: defaults.dashboardSchedule.gcTimeMs,
+        refetchOnWindowFocus: false,
       },
     },
   });
@@ -42,6 +47,10 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   //       suspend because React will throw away the client on the initial
   //       render if it suspends and there is no boundary
   const queryClient = getQueryClient();
+
+  useEffect(() => {
+    initFirestoreWriteBuffer();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

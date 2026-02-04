@@ -1,25 +1,29 @@
 "use client";
 
-import dynamic from "next/dynamic";
+export const dynamic = "force-dynamic";
+
+import nextDynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CountdownCard } from "@/components/dashboard/CountdownCard";
 import { useAuth } from "@/context/AuthContext";
+import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { useDashboardSchedule, getCurrentOrNextClass } from "@/hooks/useDashboardData";
 import { useAttendanceActions } from "@/hooks/useAttendanceActions";
 import { useCourseTotalsSync } from "@/hooks/useCourseTotalsSync";
+import { useUserCourseRecords } from "@/hooks/useUserCourseRecords";
 import { DEFAULT_BATCH_ID } from "@/lib/constants";
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import { useEffect, useMemo } from "react";
 import { TodayScheduleClass, UpcomingClass } from "@/types/supabase-academic";
 import { getISTParts, parseTimestampAsIST } from "@/lib/time/ist";
 import DotPatternBackground from "@/components/ui/DotPatternBackground";
 import { RetroSkeleton } from "@/components/ui/skeleton";
 import { SmoothSection } from "@/components/ui/SmoothSection";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 
 // Lazy load heavy components for code splitting
-const TodayClasses = dynamic(
+const TodayClasses = nextDynamic(
   () =>
     import("@/components/dashboard/TodayClasses").then((mod) => ({
       default: mod.TodayClasses,
@@ -30,7 +34,7 @@ const TodayClasses = dynamic(
   },
 );
 
-const UpcomingClasses = dynamic(
+const UpcomingClasses = nextDynamic(
   () =>
     import("@/components/dashboard/UpcomingClasses").then((mod) => ({
       default: mod.UpcomingClasses,
@@ -46,12 +50,16 @@ export default function DashboardPage() {
   // Get Firebase user and routing
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { attendanceGoal } = useUserPreferences();
 
-  // State for user data
-  const [batchId, setBatchId] = useState<string>(DEFAULT_BATCH_ID);
-  const [displayName, setDisplayName] = useState<string>("Student");
-  const [userLoading, setUserLoading] = useState(true);
-  const [enrolledCourses, setEnrolledCourses] = useState<string[]>([]);
+  const courseRecordQuery = useUserCourseRecords(user?.uid ?? null);
+  const courseRecord = courseRecordQuery.data;
+  const userLoading = courseRecordQuery.isLoading;
+  const batchId = courseRecord?.batchID || DEFAULT_BATCH_ID;
+  const enrolledCourses = Array.isArray(courseRecord?.enrolledCourses)
+    ? courseRecord?.enrolledCourses
+    : [];
+  const displayName = user?.displayName || "Student";
 
   // Verify authentication on mount and redirect if needed
   useEffect(() => {
@@ -63,53 +71,10 @@ export default function DashboardPage() {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    async function fetchUserData() {
-      if (!user?.uid) {
-        setUserLoading(false);
-        return;
-      }
-
-      try {
-        console.log("[Dashboard] Fetching user data for:", user.uid);
-
-        // Fetch from Supabase 'userCourseRecords'
-        const { data: userRecord, error } = await supabase
-          .from("userCourseRecords")
-          .select("*")
-          .eq("userID", user.uid)
-          .single();
-
-        if (error) {
-          console.error("Error fetching user data from Supabase:", error);
-          // Fallback to default if error (or not found)
-          setBatchId(DEFAULT_BATCH_ID);
-        } else if (userRecord) {
-          console.log("[Dashboard] Found user record:", userRecord);
-          setBatchId(userRecord.batchID || DEFAULT_BATCH_ID);
-          setEnrolledCourses(userRecord.enrolledCourses || []);
-          // userCourseRecords doesn't strictly have display_name in schema provided
-          // but we can try to get it if it exists or fallback to Auth
-          // Schema: userID, batchID, semesterID, enrolledCourses, lastUpdated, metadata
-          // No display_name column in Schema provided.
-          // Stick to Auth display name or "Student"
-        } else {
-          setBatchId(DEFAULT_BATCH_ID);
-          setEnrolledCourses([]);
-        }
-
-        // Always set display name from Auth if available
-        setDisplayName(user.displayName || "Student");
-      } catch (error) {
-        console.error("Error in fetchUserData:", error);
-        setBatchId(DEFAULT_BATCH_ID);
-        setEnrolledCourses([]);
-      } finally {
-        setUserLoading(false);
-      }
+    if (courseRecordQuery.error) {
+      console.error("Error fetching user data:", courseRecordQuery.error);
     }
-
-    fetchUserData();
-  }, [user]);
+  }, [courseRecordQuery.error]);
 
   // Fetch schedule data (single cached query + single realtime subscription)
   const {
@@ -117,9 +82,15 @@ export default function DashboardPage() {
     loading: scheduleLoading,
     error: scheduleError,
     refetch: refreshSchedule,
-  } = useDashboardSchedule(user?.uid || null, batchId, 75, enrolledCourses, {
+  } = useDashboardSchedule(
+    user?.uid || null,
+    batchId,
+    attendanceGoal,
+    enrolledCourses,
+    {
     subscribe: true,
-  });
+    },
+  );
 
   const todaySchedule = scheduleData.todaySchedule;
   const upcomingClasses = scheduleData.upcomingClasses;
@@ -342,6 +313,8 @@ export default function DashboardPage() {
             </p>
           </div>
         </header>
+
+        <InstallPrompt variant="banner" className="mb-6" />
 
         {/* Vertical Stack Layout */}
         <div className="flex flex-col gap-6 sm:gap-8 md:gap-10 lg:gap-12">

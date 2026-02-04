@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import DotPatternBackground from "@/components/ui/DotPatternBackground";
 import { useAuth } from "@/context/AuthContext";
 import { useUserPreferences } from "@/context/UserPreferencesContext";
-import { getCourseAttendanceSummaryRpc } from "@/lib/attendance/attendance-service";
+import { useAttendanceSummary } from "@/hooks/useAttendanceSummary";
 import type { CourseAttendanceSummary } from "@/types/types-defination";
 
 const VIEW_ACTIONS = [
@@ -77,11 +77,16 @@ function getAttendanceInsight(
 
 export default function AttendancePage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { attendanceGoal } = useUserPreferences();
-  const [summary, setSummary] = useState<CourseAttendanceSummary[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const attendanceQuery = useAttendanceSummary(user?.uid ?? null, attendanceGoal);
+  const summary = attendanceQuery.data ?? [];
+  const loading = attendanceQuery.isLoading;
+  const isRefreshing =
+    attendanceQuery.isFetching && !attendanceQuery.isLoading;
+  const error = attendanceQuery.error
+    ? "Unable to load attendance summary."
+    : null;
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [calculatorCourse, setCalculatorCourse] =
@@ -89,49 +94,36 @@ export default function AttendancePage() {
   const [plannedAttend, setPlannedAttend] = useState(0);
   const [plannedMiss, setPlannedMiss] = useState(0);
 
+  const normalizedSummary = useMemo(() => {
+    return (summary ?? []).map((item) => {
+      const entry = item as CourseSummaryLike;
+      return {
+        courseID: entry.courseID ?? entry.courseid ?? "",
+        courseName: entry.courseName ?? entry.coursename ?? "Untitled Course",
+        courseType: entry.courseType ?? entry.coursetype ?? "core",
+        credits: entry.credits ?? 0,
+        isLab: entry.isLab ?? entry.islab ?? false,
+        totalClasses: entry.totalClasses ?? entry.totalclasses ?? 0,
+        attendedClasses: entry.attendedClasses ?? entry.attendedclasses ?? 0,
+        attendancePercentage:
+          entry.attendancePercentage ?? entry.attendancepercentage ?? 0,
+        numbersOfClassesNeededToBeAboveAttendanceGoal:
+          entry.numbersOfClassesNeededToBeAboveAttendanceGoal ??
+          entry.numbersofclassesneededtobeaboveattendancegoal ??
+          0,
+        numbersOfClassesCanBeSkippedStillStayAboveGoal:
+          entry.numbersOfClassesCanBeSkippedStillStayAboveGoal ??
+          entry.numbersOfClassesCanBeSkippedStillStayAboveAttendanceGoal ??
+          entry.numbersofclassescanbeskippedstillstayaboveattendancegoal ??
+          0,
+      };
+    });
+  }, [summary]);
+
   useEffect(() => {
-    if (!user?.uid || authLoading) return;
-
-    const loadSummary = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await getCourseAttendanceSummaryRpc(user.uid);
-        const normalized = (data ?? []).map((item) => {
-          const entry = item as CourseSummaryLike;
-          return {
-            courseID: entry.courseID ?? entry.courseid ?? "",
-            courseName: entry.courseName ?? entry.coursename ?? "Untitled Course",
-            courseType: entry.courseType ?? entry.coursetype ?? "core",
-            credits: entry.credits ?? 0,
-            isLab: entry.isLab ?? entry.islab ?? false,
-            totalClasses: entry.totalClasses ?? entry.totalclasses ?? 0,
-            attendedClasses: entry.attendedClasses ?? entry.attendedclasses ?? 0,
-            attendancePercentage:
-              entry.attendancePercentage ?? entry.attendancepercentage ?? 0,
-            numbersOfClassesNeededToBeAboveAttendanceGoal:
-              entry.numbersOfClassesNeededToBeAboveAttendanceGoal ??
-              entry.numbersofclassesneededtobeaboveattendancegoal ??
-              0,
-            numbersOfClassesCanBeSkippedStillStayAboveGoal:
-              entry.numbersOfClassesCanBeSkippedStillStayAboveGoal ??
-              entry.numbersOfClassesCanBeSkippedStillStayAboveAttendanceGoal ??
-              entry.numbersofclassescanbeskippedstillstayaboveattendancegoal ??
-              0,
-          };
-        });
-        setSummary(normalized);
-      } catch (err) {
-        console.error("Failed to load attendance summary", err);
-        setError("Unable to load attendance summary.");
-        toast.error("Unable to load attendance summary.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void loadSummary();
-  }, [authLoading, user?.uid]);
+    if (!attendanceQuery.error) return;
+    toast.error("Unable to load attendance summary.");
+  }, [attendanceQuery.error]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -161,13 +153,13 @@ export default function AttendancePage() {
   }, [calculatorCourse]);
 
   const sortedSummary = useMemo(() => {
-    const items = [...summary];
+    const items = [...normalizedSummary];
     return items.sort((a, b) => {
       const nameA = a.courseName ?? "";
       const nameB = b.courseName ?? "";
       return nameA.localeCompare(nameB);
     });
-  }, [summary]);
+  }, [normalizedSummary]);
 
   const calculatorStats = useMemo(() => {
     if (!calculatorCourse) return null;
@@ -293,6 +285,11 @@ export default function AttendancePage() {
               <p className="text-xs sm:text-sm font-bold uppercase tracking-wide text-stone-500">
                 Course-wise overview
               </p>
+              {isRefreshing && (
+                <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-stone-400">
+                  Syncing latest updates…
+                </p>
+              )}
             </div>
           </div>
         </header>

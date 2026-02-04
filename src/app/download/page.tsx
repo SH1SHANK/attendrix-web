@@ -12,6 +12,8 @@ import { AlertCircle } from "lucide-react";
 import { DownloadProvider } from "@/context/DownloadContext";
 import { DynamicProgressModal } from "@/components/releases/DynamicProgressModal";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Release Hub | Attendrix",
   description:

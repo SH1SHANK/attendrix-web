@@ -26,16 +26,20 @@ import DotPatternBackground from "@/components/ui/DotPatternBackground";
 import { useAuth } from "@/context/AuthContext";
 import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { useAttendanceActions } from "@/hooks/useAttendanceActions";
+import { usePastClasses } from "@/hooks/usePastClasses";
 import {
-  applyFirestoreAttendanceUpdates,
   bulkCheckInRpc,
   computeAmplixDelta,
   getCourseAttendanceSummaryRpc,
-  getUserCourseRecords,
   markClassAbsentRpc,
 } from "@/lib/attendance/attendance-service";
-import { ClassesService } from "@/lib/services/classes-service";
+import {
+  enqueueFirestoreAttendanceUpdate,
+  flushNow,
+} from "@/lib/attendance/firestore-write-buffer";
+import { queryKeys } from "@/lib/query/keys";
 import { getISTDateString, parseTimestampAsIST } from "@/lib/time/ist";
+import { useQueryClient } from "@tanstack/react-query";
 import type {
   AttendanceStatus,
   FilterPeriod,
@@ -110,10 +114,7 @@ export default function ClassesPage() {
 
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [activeFilter, setActiveFilter] = useState<FilterPeriod>("7d");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [classesByDate, setClassesByDate] = useState<ClassesByDate>({});
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
   const [dialogClassId, setDialogClassId] = useState<string | null>(null);
   const [isControlsMenuOpen, setIsControlsMenuOpen] = useState(false);
   const controlsMenuWrapperRef = useRef<HTMLDivElement>(null);
@@ -157,6 +158,21 @@ export default function ClassesPage() {
   const [dateMenuStyle, setDateMenuStyle] = useState<CSSProperties | null>(
     null,
   );
+
+  const pastClassesQuery = usePastClasses(userId, activeFilter);
+  const pastClasses = pastClassesQuery.data ?? [];
+  const loading = authLoading || pastClassesQuery.isLoading;
+  const isRefreshing =
+    pastClassesQuery.isFetching && !pastClassesQuery.isLoading;
+  const error = pastClassesQuery.error
+    ? "Unable to load past classes. Please try again."
+    : null;
+
+  useEffect(() => {
+    if (pastClassesQuery.error) {
+      toast.error("Unable to load past classes. Please try again.");
+    }
+  }, [pastClassesQuery.error]);
 
   const markRecentlyUpdated = useCallback((classId: string) => {
     setRecentlyUpdated((prev) => {
@@ -206,56 +222,17 @@ export default function ClassesPage() {
     });
   }, []);
 
-  const fetchPastClasses = useCallback(
-    async (options?: {
-      reason?: "init" | "filter" | "refresh";
-      filterOverride?: FilterPeriod;
-    }) => {
-      if (!userId) {
-        setClassesByDate({});
-        setLoading(false);
-        setError(null);
-        return;
-      }
-
-      if (options?.reason === "refresh") {
-        setIsRefreshing(true);
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        const filterToUse = options?.filterOverride ?? activeFilter;
-        const data = await ClassesService.getUserPastClasses(
-          userId,
-          filterToUse,
-        );
-        const grouped = buildClassesByDate(data);
-        setClassesByDate(grouped);
-      } catch (err) {
-        console.error("Failed to load past classes:", err);
-        setError("Unable to load past classes. Please try again.");
-        toast.error("Unable to load past classes. Please try again.");
-      } finally {
-        setLoading(false);
-        setIsRefreshing(false);
-      }
-    },
-    [activeFilter, userId],
-  );
-
   const { checkIn, markAbsent, pendingByClassId } = useAttendanceActions({
     userId,
     onAfterSuccess: async () => {
-      await fetchPastClasses({ reason: "refresh" });
+      await pastClassesQuery.refetch();
     },
   });
 
-  useEffect(() => {
-    if (authLoading) return;
-    void fetchPastClasses({ reason: "filter" });
-  }, [authLoading, fetchPastClasses]);
+  const classesByDate = useMemo(
+    () => buildClassesByDate(pastClasses),
+    [pastClasses],
+  );
 
   const sortedGroupKeys = useMemo(
     () => Object.keys(classesByDate).sort((a, b) => (a < b ? 1 : -1)),
@@ -529,19 +506,18 @@ export default function ClassesPage() {
 
   const updateClassAttendance = useCallback(
     (classIds: Set<string>, status: AttendanceStatus) => {
-      setClassesByDate((prev) => {
-        const next: ClassesByDate = {};
-        Object.entries(prev).forEach(([dateKey, items]) => {
-          next[dateKey] = items.map((item) =>
+      if (!userId) return;
+      queryClient.setQueryData<PastClass[]>(
+        queryKeys.pastClasses(userId, activeFilter),
+        (prev = []) =>
+          prev.map((item) =>
             classIds.has(item.classID)
               ? { ...item, attendanceStatus: status }
               : item,
-          );
-        });
-        return next;
-      });
+          ),
+      );
     },
-    [],
+    [activeFilter, queryClient, userId],
   );
 
   const handleDialogCheckIn = useCallback(async () => {
@@ -607,22 +583,9 @@ export default function ClassesPage() {
     setDateActionPending(true);
 
     try {
-      const courseRecord = await getUserCourseRecords(userId);
-      const enrolledCourses = courseRecord?.enrolledCourses || [];
-
-      if (enrolledCourses.length === 0) {
-        toast.error("No enrolled courses found for attendance");
-        setDateActionPending(false);
-        return;
-      }
-
       if (action === "present") {
         const classIds = targets.map((item) => item.classID);
-        const response = await bulkCheckInRpc({
-          p_user_id: userId,
-          p_class_ids: classIds,
-          p_enrolled_courses: enrolledCourses,
-        });
+        const response = await bulkCheckInRpc({ classIds });
 
         const status = String(response.status ?? "").toLowerCase();
         if (status !== "success") {
@@ -678,9 +641,7 @@ export default function ClassesPage() {
           targets.map(async (item) => {
             try {
               const response = await markClassAbsentRpc({
-                p_user_id: userId,
-                p_class_id: item.classID,
-                p_enrolled_courses: enrolledCourses,
+                classID: item.classID,
               });
               return {
                 classID: item.classID,
@@ -733,7 +694,7 @@ export default function ClassesPage() {
         }
       }
 
-      await fetchPastClasses({ reason: "refresh" });
+      await pastClassesQuery.refetch();
       setDateActionDialog(null);
     } finally {
       setDateActionPending(false);
@@ -750,7 +711,7 @@ export default function ClassesPage() {
 
   const handleRefresh = () => {
     if (isRefreshing) return;
-    void fetchPastClasses({ reason: "refresh" });
+    void pastClassesQuery.refetch();
   };
 
   const syncAttendanceTotals = useCallback(
@@ -758,11 +719,15 @@ export default function ClassesPage() {
       if (!userId) return;
       try {
         const summary = await getCourseAttendanceSummaryRpc(userId);
-        await applyFirestoreAttendanceUpdates({
-          uid: userId,
-          summary,
-          amplixDelta,
-        });
+        enqueueFirestoreAttendanceUpdate(
+          {
+            uid: userId,
+            summary,
+            amplixDelta,
+          },
+          { urgent: true },
+        );
+        await flushNow();
       } catch {
         toast.error("Unable to sync attendance totals.");
       }
@@ -833,20 +798,8 @@ export default function ClassesPage() {
     setIsBulkPending(true);
 
     try {
-      const courseRecord = await getUserCourseRecords(userId);
-      const enrolledCourses = courseRecord?.enrolledCourses || [];
-
-      if (enrolledCourses.length === 0) {
-        toast.error("No enrolled courses found for attendance");
-        return;
-      }
-
       const classIds = targets.map((item) => item.classID);
-      const response = await bulkCheckInRpc({
-        p_user_id: userId,
-        p_class_ids: classIds,
-        p_enrolled_courses: enrolledCourses,
-      });
+      const response = await bulkCheckInRpc({ classIds });
 
       const status = String(response.status ?? "").toLowerCase();
       if (status !== "success") {
@@ -902,7 +855,7 @@ export default function ClassesPage() {
 
       setSelectedClasses(new Set());
       setIsMultiSelectMode(false);
-      await fetchPastClasses({ reason: "refresh" });
+      await pastClassesQuery.refetch();
     } catch (error) {
       console.error("Bulk check-in failed:", error);
       toast.error("Bulk check-in failed. Please try again.");
@@ -925,20 +878,8 @@ export default function ClassesPage() {
     let didSucceed = false;
 
     try {
-      const courseRecord = await getUserCourseRecords(userId);
-      const enrolledCourses = courseRecord?.enrolledCourses || [];
-
-      if (enrolledCourses.length === 0) {
-        toast.error("No enrolled courses found for attendance");
-        return;
-      }
-
       const classIds = missedGroupTargets.map((item) => item.classID);
-      const response = await bulkCheckInRpc({
-        p_user_id: userId,
-        p_class_ids: classIds,
-        p_enrolled_courses: enrolledCourses,
-      });
+      const response = await bulkCheckInRpc({ classIds });
 
       const status = String(response.status ?? "").toLowerCase();
       if (status !== "success") {
@@ -993,7 +934,7 @@ export default function ClassesPage() {
       );
 
       didSucceed = true;
-      await fetchPastClasses({ reason: "refresh" });
+      await pastClassesQuery.refetch();
     } catch (error) {
       console.error("Bulk check-in failed:", error);
       toast.error("Bulk check-in failed. Please try again.");
@@ -2140,10 +2081,6 @@ export default function ClassesPage() {
                   onClick={() => {
                     setActiveFilter(option.value);
                     setIsControlsMenuOpen(false);
-                    void fetchPastClasses({
-                      reason: "filter",
-                      filterOverride: option.value,
-                    });
                   }}
                   className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-xs font-black uppercase tracking-wide transition-all duration-150 border-b border-stone-700 last:border-b-0 ${
                     activeFilter === option.value

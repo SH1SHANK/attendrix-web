@@ -7,11 +7,23 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   BadgeCheck,
+  Bug,
+  ChevronRight,
+  Code2,
+  Cookie,
+  Lightbulb,
+  LifeBuoy,
+  LogOut,
+  Scale,
+  Shield,
+  Info,
   KeyRound,
   Mail,
   Pencil,
   Save,
   ShieldCheck,
+  Users,
+  UserPlus,
   User,
   X,
 } from "lucide-react";
@@ -28,8 +40,22 @@ import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { useAuth } from "@/context/AuthContext";
 import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { useUserOnboardingProfile } from "@/hooks/useOnboardingData";
-import { getUserCourseRecords } from "@/lib/attendance/attendance-service";
+import { useUserCourseRecords } from "@/hooks/useUserCourseRecords";
+import { useUserCalendars } from "@/hooks/useUserCalendars";
+import { useResyncUserRecords } from "@/hooks/useResyncUserRecords";
+import { useAttendanceSummary } from "@/hooks/useAttendanceSummary";
+import { usePastClasses } from "@/hooks/usePastClasses";
 import { db } from "@/lib/firebase";
+import { recordMetric } from "@/lib/metrics/client-metrics";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/Dialog";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchJson } from "@/lib/api/fetch-json";
 import type {
   FirebaseCourseEnrollment,
   UserCourseRecord,
@@ -87,17 +113,25 @@ function parseSupabaseCourses(
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const { is24Hour, toggleTimeFormat, attendanceGoal, setAttendanceGoal } =
     useUserPreferences();
   const { data: firebaseData, isLoading: firebaseLoading } =
     useUserOnboardingProfile(user?.uid ?? null);
-
-  const [courseRecord, setCourseRecord] = useState<UserCourseRecord | null>(
-    null,
+  const {
+    data: courseRecord,
+    isLoading: courseLoading,
+    error: courseErrorRaw,
+  } = useUserCourseRecords(user?.uid ?? null);
+  const calendarsQuery = useUserCalendars(courseRecord?.batchID ?? null);
+  const courseError = courseErrorRaw ? "Unable to load academic info." : null;
+  const queryClient = useQueryClient();
+  const resyncMutation = useResyncUserRecords();
+  const attendanceSummaryQuery = useAttendanceSummary(
+    user?.uid ?? null,
+    attendanceGoal,
   );
-  const [courseLoading, setCourseLoading] = useState(false);
-  const [courseError, setCourseError] = useState<string | null>(null);
+  const pastClassesQuery = usePastClasses(user?.uid ?? null, "all");
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [displayNameInput, setDisplayNameInput] = useState("");
@@ -107,6 +141,53 @@ export default function ProfilePage() {
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [passwordPending, setPasswordPending] = useState(false);
+  const [isCalendarHelpOpen, setIsCalendarHelpOpen] = useState(false);
+  const [isResyncConfirmOpen, setIsResyncConfirmOpen] = useState(false);
+  const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isSignOutOpen, setIsSignOutOpen] = useState(false);
+  const [deactivateConfirm, setDeactivateConfirm] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [resyncSummary, setResyncSummary] = useState<{
+    missingInSupabase: string[];
+    extraInSupabase: string[];
+    totalsMismatched: Array<{
+      courseID: string;
+      firebase: { attended: number; total: number };
+      supabase: { attended: number; total: number };
+    }>;
+    updated: boolean;
+  } | null>(null);
+
+  const deactivateMutation = useMutation({
+    mutationFn: () =>
+      fetchJson("/api/profile/deactivate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "DEACTIVATE" }),
+      }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      fetchJson("/api/profile/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "DELETE" }),
+      }),
+  });
+
+  useEffect(() => {
+    if (!isDeactivateOpen) {
+      setDeactivateConfirm("");
+    }
+  }, [isDeactivateOpen]);
+
+  useEffect(() => {
+    if (!isDeleteOpen) {
+      setDeleteConfirm("");
+    }
+  }, [isDeleteOpen]);
 
   const [goalInput, setGoalInput] = useState(attendanceGoal.toString());
   const [settingsMounted, setSettingsMounted] = useState(false);
@@ -120,30 +201,10 @@ export default function ProfilePage() {
   }, [attendanceGoal]);
 
   useEffect(() => {
-    if (!user?.uid) return;
-    let active = true;
-    setCourseLoading(true);
-    setCourseError(null);
-
-    getUserCourseRecords(user.uid)
-      .then((record) => {
-        if (!active) return;
-        setCourseRecord(record);
-      })
-      .catch((error) => {
-        console.error("Failed to load userCourseRecords:", error);
-        if (!active) return;
-        setCourseError("Unable to load academic info.");
-      })
-      .finally(() => {
-        if (!active) return;
-        setCourseLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [user?.uid]);
+    if (courseErrorRaw) {
+      console.error("Failed to load userCourseRecords:", courseErrorRaw);
+    }
+  }, [courseErrorRaw]);
 
   const displayName =
     firebaseData?.display_name || user?.displayName || "Student";
@@ -171,6 +232,501 @@ export default function ProfilePage() {
     () => parseSupabaseCourses(courseRecord?.enrolledCourses),
     [courseRecord?.enrolledCourses],
   );
+
+  const buildIcalUrl = (calendarId: string) => {
+    const encoded = encodeURIComponent(calendarId);
+    return `https://calendar.google.com/calendar/ical/${encoded}/public/basic.ics`;
+  };
+
+  const downloadBlob = (content: string, filename: string, type: string) => {
+    if (typeof window === "undefined") return;
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.rel = "noopener noreferrer";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const buildCsvRow = (values: Array<string | number | null | undefined>) =>
+    values
+      .map((value) => {
+        const cell = value == null ? "" : String(value);
+        const escaped = cell.replace(/"/g, '""');
+        return `"${escaped}"`;
+      })
+      .join(",");
+
+  const exportAttendanceCsv = () => {
+    const summary = attendanceSummaryQuery.data ?? [];
+    if (summary.length === 0) {
+      toast.error("Attendance summary not available yet.");
+      return;
+    }
+    const rows = [
+      buildCsvRow([
+        "Course ID",
+        "Course Name",
+        "Course Type",
+        "Credits",
+        "Attended",
+        "Total",
+        "Attendance %",
+      ]),
+      ...summary.map((item) =>
+        buildCsvRow([
+          item.courseID,
+          item.courseName,
+          item.courseType,
+          item.credits,
+          item.attendedClasses,
+          item.totalClasses,
+          item.attendancePercentage,
+        ]),
+      ),
+    ];
+    recordMetric("profile.export.csv.attendance", 1);
+    downloadBlob(rows.join("\n"), "attendrix-attendance.csv", "text/csv");
+  };
+
+  const exportCoursesCsv = () => {
+    const courses = firebaseData?.coursesEnrolled ?? [];
+    if (courses.length === 0) {
+      toast.error("No enrolled courses available.");
+      return;
+    }
+    const rows = [
+      buildCsvRow([
+        "Course ID",
+        "Course Name",
+        "Course Type",
+        "Credits",
+        "Attended",
+        "Total",
+      ]),
+      ...courses.map((course) =>
+        buildCsvRow([
+          course.courseID,
+          course.courseName,
+          course.courseType?.courseType ?? "",
+          course.credits,
+          course.attendedClasses,
+          course.totalClasses,
+        ]),
+      ),
+    ];
+    recordMetric("profile.export.csv.courses", 1);
+    downloadBlob(rows.join("\n"), "attendrix-courses.csv", "text/csv");
+  };
+
+  const exportMarkdown = () => {
+    const summary = attendanceSummaryQuery.data ?? [];
+    const createdAt = new Date().toLocaleString();
+    const header = `# Attendrix Attendance Export\n\nGenerated: ${createdAt}\n\nUser: ${
+      user?.displayName || user?.email || "Student"
+    }\n\nBatch: ${batchInfo.label}\n\n`;
+    const tableHeader =
+      "| Course ID | Course Name | Type | Credits | Attended | Total | % |\n|---|---|---|---|---|---|---|\n";
+    const tableRows = summary
+      .map(
+        (item) =>
+          `| ${item.courseID} | ${item.courseName} | ${item.courseType} | ${item.credits} | ${item.attendedClasses} | ${item.totalClasses} | ${item.attendancePercentage} |`,
+      )
+      .join("\n");
+    const markdown = header + tableHeader + tableRows + "\n";
+    recordMetric("profile.export.markdown", 1);
+    downloadBlob(markdown, "attendrix-attendance.md", "text/markdown");
+  };
+
+  const exportPdf = () => {
+    if (typeof window === "undefined") return;
+    const summary = attendanceSummaryQuery.data ?? [];
+    const pastClasses = pastClassesQuery.data ?? [];
+    const createdAt = new Date();
+
+    const escapeHtml = (
+      value: string | number | null | undefined,
+    ): string => {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    };
+
+    const formatPercent = (value: number | null | undefined) => {
+      const num = typeof value === "number" ? value : Number(value ?? NaN);
+      return Number.isFinite(num) ? `${Math.round(num)}%` : "—";
+    };
+
+    const formatDateTime = (value: string | null | undefined) => {
+      if (!value) return "—";
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return "—";
+      return parsed.toLocaleString([], {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    };
+
+    const totalClasses = summary.reduce(
+      (sum, item) => sum + (Number(item.totalClasses) || 0),
+      0,
+    );
+    const attendedClasses = summary.reduce(
+      (sum, item) => sum + (Number(item.attendedClasses) || 0),
+      0,
+    );
+    const overallPercentage = totalClasses
+      ? Math.round((attendedClasses / totalClasses) * 100)
+      : 0;
+
+    const summaryRows = [...summary]
+      .sort((a, b) => (a.courseID ?? "").localeCompare(b.courseID ?? ""))
+      .map(
+        (item) => `
+          <tr>
+            <td>${escapeHtml(item.courseID)}</td>
+            <td>${escapeHtml(item.courseName)}</td>
+            <td>${escapeHtml(item.courseType)}</td>
+            <td>${escapeHtml(item.credits)}</td>
+            <td>${escapeHtml(item.attendedClasses)}</td>
+            <td>${escapeHtml(item.totalClasses)}</td>
+            <td>${escapeHtml(formatPercent(item.attendancePercentage))}</td>
+          </tr>`,
+      )
+      .join("");
+
+    const classRows = [...pastClasses]
+      .sort(
+        (a, b) => {
+          const aTime = Date.parse(a.classStartTime ?? "");
+          const bTime = Date.parse(b.classStartTime ?? "");
+          const safeATime = Number.isNaN(aTime) ? 0 : aTime;
+          const safeBTime = Number.isNaN(bTime) ? 0 : bTime;
+          return safeATime - safeBTime;
+        },
+      )
+      .map(
+        (item) => `
+          <tr>
+            <td>${escapeHtml(item.courseID)}</td>
+            <td>${escapeHtml(item.courseName)}</td>
+            <td>${escapeHtml(item.attendanceStatus)}</td>
+            <td>${escapeHtml(formatDateTime(item.classStartTime))}</td>
+            <td>${escapeHtml(formatDateTime(item.classEndTime))}</td>
+            <td>${escapeHtml(item.classVenue ?? "—")}</td>
+          </tr>`,
+      )
+      .join("");
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Attendrix Attendance Export</title>
+  <style>
+    :root {
+      color-scheme: light;
+    }
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      margin: 28px;
+      color: #000;
+      background: #fff;
+    }
+    h1 {
+      font-size: 30px;
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    h2 {
+      font-size: 18px;
+      margin: 24px 0 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .brand {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border: 3px solid #000;
+      padding: 16px;
+      background: #fff2a8;
+    }
+    .brand-meta {
+      font-size: 12px;
+      text-align: right;
+      line-height: 1.4;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .summary-card {
+      border: 2px solid #000;
+      padding: 12px;
+      background: #fff;
+      font-size: 12px;
+    }
+    .summary-card .value {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      table-layout: fixed;
+    }
+    th, td {
+      border: 2px solid #000;
+      padding: 8px;
+      font-size: 12px;
+      text-align: left;
+      word-wrap: break-word;
+    }
+    th {
+      background: #ffd23f;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .muted {
+      font-size: 11px;
+      color: #333;
+    }
+    .section {
+      margin-top: 20px;
+    }
+    .empty-row {
+      text-align: center;
+      padding: 16px;
+      font-style: italic;
+    }
+    @media print {
+      body {
+        margin: 18px;
+      }
+      .summary-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      tr {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="brand">
+    <div>
+      <h1>Attendrix</h1>
+      <div class="muted">Attendance Export</div>
+    </div>
+    <div class="brand-meta">
+      <div>Generated: ${escapeHtml(createdAt.toLocaleString())}</div>
+      <div>User: ${escapeHtml(user?.displayName || user?.email || "Student")}</div>
+      <div>Batch: ${escapeHtml(batchInfo.label)}</div>
+    </div>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div>Total Courses</div>
+      <div class="value">${escapeHtml(summary.length)}</div>
+    </div>
+    <div class="summary-card">
+      <div>Classes Attended</div>
+      <div class="value">${escapeHtml(attendedClasses)}</div>
+    </div>
+    <div class="summary-card">
+      <div>Overall Attendance</div>
+      <div class="value">${escapeHtml(overallPercentage)}%</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Course Summary</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Course ID</th>
+          <th>Course Name</th>
+          <th>Type</th>
+          <th>Credits</th>
+          <th>Attended</th>
+          <th>Total</th>
+          <th>%</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${
+          summaryRows ||
+          `<tr><td class="empty-row" colspan="7">No course summary available.</td></tr>`
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Class Details</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Course ID</th>
+          <th>Course Name</th>
+          <th>Status</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Venue</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${
+          classRows ||
+          `<tr><td class="empty-row" colspan="6">No class details available.</td></tr>`
+        }
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>`;
+
+    const pdfWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (!pdfWindow) return;
+    pdfWindow.document.write(html);
+    pdfWindow.document.close();
+    pdfWindow.focus();
+    recordMetric("profile.export.pdf", 1);
+    setTimeout(() => {
+      pdfWindow.print();
+    }, 250);
+  };
+
+  const handleResync = async () => {
+    try {
+      const result = await resyncMutation.mutateAsync();
+      recordMetric("profile.resync.count", 1);
+      setResyncSummary({
+        missingInSupabase: result.missingInSupabase,
+        extraInSupabase: result.extraInSupabase,
+        totalsMismatched: result.totalsMismatched,
+        updated: result.updated,
+      });
+      queryClient.invalidateQueries({ queryKey: ["user-course-records", user?.uid ?? null] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-summary", user?.uid ?? null] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-schedule", user?.uid ?? null] });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Resync failed";
+      toast.error(message);
+    } finally {
+      setIsResyncConfirmOpen(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    try {
+      await deactivateMutation.mutateAsync();
+      recordMetric("profile.account.deactivate", 1);
+      await fetchJson("/api/auth/logout", { method: "POST" });
+      window.location.href = "/auth/signin";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Deactivate failed";
+      toast.error(message);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync();
+      recordMetric("profile.account.delete", 1);
+      await fetchJson("/api/auth/logout", { method: "POST" });
+      window.location.href = "/auth/signin";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Delete failed";
+      toast.error(message);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      recordMetric("profile.signout", 1);
+      queryClient.clear();
+      await logout();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Sign out failed";
+      toast.error(message);
+    }
+  };
+
+  const aboutLinks = [
+    {
+      label: "View Source Code",
+      href: "https://github.com/SH1SHANK/attendrix-web",
+      external: true,
+      icon: <Code2 className="h-4 w-4" />,
+    },
+    {
+      label: "Terms of Service",
+      href: "/docs/terms",
+      icon: <Scale className="h-4 w-4" />,
+    },
+    {
+      label: "Privacy Policy",
+      href: "/docs/privacy",
+      icon: <Shield className="h-4 w-4" />,
+    },
+    {
+      label: "Cookie Policy",
+      href: "/docs/cookies",
+      icon: <Cookie className="h-4 w-4" />,
+    },
+    {
+      label: "Licence",
+      href: "/docs/licence",
+      icon: <BadgeCheck className="h-4 w-4" />,
+    },
+  ];
+
+  const supportLinks = [
+    {
+      label: "Report a Bug",
+      href: "/support/bug",
+      icon: <Bug className="h-4 w-4" />,
+    },
+    {
+      label: "Suggest / Request Feature",
+      href: "/support/feature",
+      icon: <Lightbulb className="h-4 w-4" />,
+    },
+    {
+      label: "Contact Support",
+      href:
+        "mailto:support@attendrix.app?subject=" +
+        encodeURIComponent("[Attendrix Web Support] Contact Support"),
+      icon: <LifeBuoy className="h-4 w-4" />,
+      external: true,
+    },
+    {
+      label: "Join Attendrix Moderation",
+      href: "/support/moderation",
+      icon: <Users className="h-4 w-4" />,
+    },
+    {
+      label: "Request Batch Access",
+      href: "/support/batch-access",
+      icon: <UserPlus className="h-4 w-4" />,
+    },
+  ];
 
   const coursesById = useMemo(() => {
     const map = new Map<string, FirebaseCourseEnrollment>();
@@ -308,6 +864,20 @@ export default function ProfilePage() {
     setAttendanceGoal(parsed);
     toast.success("Attendance goal updated.");
   }, [attendanceGoal, goalInput, setAttendanceGoal]);
+
+  const handleClearLocalCache = useCallback(() => {
+    try {
+      if (typeof window === "undefined") return;
+      window.localStorage.removeItem("attendrix.cacheOverrides");
+      window.localStorage.removeItem("attendrix.metrics");
+      window.localStorage.removeItem("attendrix.installPrompt.dismissed");
+      window.sessionStorage.removeItem("attendrix.edits");
+      toast.success("Local cache cleared.");
+    } catch (error) {
+      console.error("Cache clear failed:", error);
+      toast.error("Unable to clear cache.");
+    }
+  }, []);
 
   if (authLoading) {
     return <div className="min-h-screen bg-[#f5f5f5]" />;
@@ -595,9 +1165,18 @@ export default function ProfilePage() {
 
         {/* Enrolled Courses List */}
         <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
-          <h3 className="text-xl font-black uppercase tracking-tight mb-6">
-            ENROLLED COURSES
-          </h3>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <h3 className="text-xl font-black uppercase tracking-tight">
+              ENROLLED COURSES
+            </h3>
+            <button
+              type="button"
+              onClick={() => router.push("/profile/edit-courses")}
+              className="inline-flex items-center gap-2 border-[3px] border-black bg-[#FFD700] px-4 py-2 text-xs font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000] active:translate-y-0 active:shadow-[2px_2px_0px_0px_#000]"
+            >
+              Edit
+            </button>
+          </div>
           {firebaseLoading ? (
             <p className="text-base font-bold text-neutral-600">
               Loading courses...
@@ -642,6 +1221,89 @@ export default function ProfilePage() {
               })}
             </div>
           )}
+        </section>
+
+        {/* Sync Calendar */}
+        <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div className="flex items-center gap-3">
+              <h3 className="text-xl font-black uppercase tracking-tight">
+                SYNC YOUR CALENDAR
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsCalendarHelpOpen(true)}
+                aria-label="How to sync calendar"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border-[3px] border-black bg-white text-black shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+              >
+                <Info className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {calendarsQuery.isLoading ? (
+            <p className="text-base font-bold text-neutral-600">
+              Loading calendars...
+            </p>
+          ) : calendarsQuery.isError ? (
+            <p className="text-base font-bold text-red-600">
+              Unable to load calendars. Please try again.
+            </p>
+          ) : (calendarsQuery.data ?? []).length === 0 ? (
+            <p className="text-base font-bold text-neutral-600">
+              No calendars available for your batch yet.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {(calendarsQuery.data ?? []).map((calendar) => (
+                <div
+                  key={calendar.calendarID}
+                  className="border-[3px] border-black bg-white px-5 py-4 shadow-[5px_5px_0px_0px_#000] flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="text-base font-black uppercase text-black mb-1">
+                      {calendar.calendar_name}
+                    </p>
+                    <p className="text-xs font-black uppercase text-black/70">
+                      Batch {calendar.batchID}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        window.open(calendar.calendarUrl, "_blank", "noopener,noreferrer")
+                      }
+                      aria-label={`Sync ${calendar.calendar_name} to Google Calendar`}
+                      className="inline-flex items-center gap-2 border-[3px] border-black bg-black px-4 py-2 text-xs font-black uppercase text-white shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                    >
+                      Sync to Google
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const link = document.createElement("a");
+                        link.href = buildIcalUrl(calendar.calendarID);
+                        link.download = `${calendar.calendar_name}.ics`;
+                        link.rel = "noopener noreferrer";
+                        link.target = "_blank";
+                        link.click();
+                      }}
+                      aria-label={`Download ${calendar.calendar_name} iCal`}
+                      className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-4 py-2 text-xs font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                    >
+                      Download iCal
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="mt-4 text-xs font-black uppercase text-neutral-600">
+            Note: Google Calendar does not currently support electives or custom
+            classes. This feature is work-in-progress and will be added soon!
+          </p>
         </section>
 
         {/* Settings */}
@@ -691,8 +1353,347 @@ export default function ProfilePage() {
                 </button>
               </div>
             </div>
+            <div className="border-[3px] border-black bg-white px-5 py-4 shadow-[5px_5px_0px_0px_#000]">
+              <p className="text-xs font-black uppercase text-neutral-600 mb-3">
+                USER RECORDS
+              </p>
+              <p className="text-sm font-bold text-neutral-600 mb-3">
+                Re-evaluate Supabase records to match your Firebase data.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsResyncConfirmOpen(true)}
+                disabled={resyncMutation.isPending}
+                aria-label="Resync user records"
+                className="inline-flex items-center gap-2 border-[3px] border-black bg-[#FFD700] px-4 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_#000] disabled:opacity-60"
+              >
+                {resyncMutation.isPending ? "Resyncing..." : "Resync User Records"}
+              </button>
+            </div>
           </div>
         </section>
+
+        {resyncSummary && (
+          <section className="mb-6 border-[3px] border-black bg-white px-6 py-5 shadow-[5px_5px_0px_0px_#000]">
+            <h3 className="text-lg font-black uppercase tracking-tight mb-4">
+              Resync Summary
+            </h3>
+            <div className="grid gap-3 sm:grid-cols-3 text-sm font-bold uppercase text-neutral-700">
+              <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000]">
+                <p className="text-xs font-black uppercase text-neutral-600 mb-1">
+                  Missing in Supabase
+                </p>
+                <p className="text-black">
+                  {resyncSummary.missingInSupabase.length}
+                </p>
+              </div>
+              <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000]">
+                <p className="text-xs font-black uppercase text-neutral-600 mb-1">
+                  Extra in Supabase
+                </p>
+                <p className="text-black">
+                  {resyncSummary.extraInSupabase.length}
+                </p>
+              </div>
+              <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000]">
+                <p className="text-xs font-black uppercase text-neutral-600 mb-1">
+                  Totals Mismatched
+                </p>
+                <p className="text-black">
+                  {resyncSummary.totalsMismatched.length}
+                </p>
+              </div>
+            </div>
+            <p className="mt-3 text-xs font-black uppercase text-neutral-600">
+              {resyncSummary.updated
+                ? "Supabase enrollment updated to match Firebase."
+                : "No enrollment updates were required."}
+            </p>
+          </section>
+        )}
+
+        <details className="mb-6 border-[3px] border-black bg-white px-6 py-5 shadow-[5px_5px_0px_0px_#000]">
+          <summary className="cursor-pointer text-lg font-black uppercase tracking-tight">
+            Additional Settings
+          </summary>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000] opacity-60">
+              <p className="text-xs font-black uppercase text-neutral-600 mb-2">
+                Notification Preferences
+              </p>
+              <p className="text-sm font-bold text-neutral-600">
+                Email and push reminders (coming soon)
+              </p>
+            </div>
+            <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000]">
+              <p className="text-xs font-black uppercase text-neutral-600 mb-2">
+                Data Export
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={exportAttendanceCsv}
+                  className="inline-flex items-center gap-2 border-[3px] border-black bg-[#FFD700] px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                >
+                  Attendance CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={exportCoursesCsv}
+                  className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                >
+                  Courses CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={exportMarkdown}
+                  className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                >
+                  Markdown
+                </button>
+                <button
+                  type="button"
+                  onClick={exportPdf}
+                  className="inline-flex items-center gap-2 border-[3px] border-black bg-black px-3 py-2 text-[10px] font-black uppercase text-white shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                >
+                  PDF
+                </button>
+              </div>
+              <p className="mt-2 text-[10px] font-bold text-neutral-500">
+                PDF export opens a print dialog for Save as PDF.
+              </p>
+            </div>
+            <InstallPrompt variant="card" />
+            <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000] opacity-60">
+              <p className="text-xs font-black uppercase text-neutral-600 mb-2">
+                Theme Preferences
+              </p>
+              <p className="text-sm font-bold text-neutral-600">
+                Reduced motion & dark mode (coming soon)
+              </p>
+            </div>
+            <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000] opacity-60">
+              <p className="text-xs font-black uppercase text-neutral-600 mb-2">
+                Sync Frequency
+              </p>
+              <p className="text-sm font-bold text-neutral-600">
+                Auto-sync interval (coming soon)
+              </p>
+            </div>
+            <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000]">
+              <p className="text-xs font-black uppercase text-neutral-600 mb-2">
+                Account Controls
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsDeactivateOpen(true)}
+                  className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                >
+                  Deactivate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteOpen(true)}
+                  className="inline-flex items-center gap-2 border-[3px] border-black bg-red-500 px-3 py-2 text-[10px] font-black uppercase text-white shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                >
+                  Delete
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearLocalCache}
+                className="mt-3 inline-flex items-center gap-2 border-[3px] border-black bg-white px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+              >
+                Clear Local Cache
+              </button>
+            </div>
+            <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000]">
+              <p className="text-xs font-black uppercase text-neutral-600 mb-2">
+                Help & Feedback
+              </p>
+              <p className="text-sm font-bold text-neutral-600">
+                support@attendrix.app
+              </p>
+            </div>
+          </div>
+        </details>
+
+        <Dialog open={isCalendarHelpOpen} onOpenChange={setIsCalendarHelpOpen}>
+          <DialogContent className="max-w-xl border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_#000]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black uppercase tracking-tight">
+                How to Sync Your Calendar
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 text-sm font-bold text-neutral-700">
+              <p>
+                Step 1: Tap <span className="font-black text-black">Sync to Google</span>.
+              </p>
+              <p>Step 2: Sign in to your Google account if prompted.</p>
+              <p>
+                Step 3: In the Google Calendar page, click{" "}
+                <span className="font-black text-black">Add to calendar</span>.
+              </p>
+              <p>Step 4: Verify events appear in your Calendar app.</p>
+              <p>
+                Step 5: For iCal, choose{" "}
+                <span className="font-black text-black">Download iCal</span> and
+                import the .ics file into Apple or Outlook Calendar.
+              </p>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsCalendarHelpOpen(false)}
+                className="inline-flex items-center gap-2 border-[3px] border-black bg-black px-5 py-2 text-sm font-black uppercase text-white shadow-[4px_4px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_#000]"
+              >
+                Got it
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={isResyncConfirmOpen}
+          onOpenChange={setIsResyncConfirmOpen}
+        >
+          <DialogContent className="max-w-xl border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_#000]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black uppercase tracking-tight">
+                Resync User Records
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm font-bold text-neutral-700">
+              This will re-evaluate your course records and fix any data sync
+              issues between Firebase and Supabase. Continue?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsResyncConfirmOpen(false)}
+                className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-4 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_#000]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleResync}
+                disabled={resyncMutation.isPending}
+                className="inline-flex items-center gap-2 border-[3px] border-black bg-black px-4 py-2 text-sm font-black uppercase text-white shadow-[4px_4px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_#000] disabled:opacity-60"
+              >
+                {resyncMutation.isPending ? "Resyncing..." : "Continue"}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isDeactivateOpen} onOpenChange={setIsDeactivateOpen}>
+          <DialogContent className="max-w-xl border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_#000]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black uppercase tracking-tight">
+                Deactivate Account
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm font-bold text-neutral-700 mb-4">
+              Deactivation disables sign-in until reactivated by support. Type
+              <span className="font-black text-black"> DEACTIVATE </span>
+              to confirm.
+            </p>
+            <input
+              value={deactivateConfirm}
+              onChange={(event) => setDeactivateConfirm(event.target.value)}
+              className="w-full border-[3px] border-black px-4 py-2 text-sm font-black uppercase shadow-[3px_3px_0px_0px_#000] focus:outline-none"
+              placeholder="Type DEACTIVATE"
+            />
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsDeactivateOpen(false)}
+                className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-4 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_#000]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeactivate}
+                disabled={
+                  deactivateMutation.isPending || deactivateConfirm !== "DEACTIVATE"
+                }
+                className="inline-flex items-center gap-2 border-[3px] border-black bg-black px-4 py-2 text-sm font-black uppercase text-white shadow-[4px_4px_0px_0px_#000] disabled:opacity-60"
+              >
+                {deactivateMutation.isPending ? "Deactivating..." : "Deactivate"}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+          <DialogContent className="max-w-xl border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_#000]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black uppercase tracking-tight text-red-600">
+                Delete Account
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm font-bold text-neutral-700 mb-4">
+              This permanently deletes your account and attendance history.
+              Type <span className="font-black text-black">DELETE</span> to
+              confirm.
+            </p>
+            <input
+              value={deleteConfirm}
+              onChange={(event) => setDeleteConfirm(event.target.value)}
+              className="w-full border-[3px] border-black px-4 py-2 text-sm font-black uppercase shadow-[3px_3px_0px_0px_#000] focus:outline-none"
+              placeholder="Type DELETE"
+            />
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsDeleteOpen(false)}
+                className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-4 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_#000]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleteMutation.isPending || deleteConfirm !== "DELETE"}
+                className="inline-flex items-center gap-2 border-[3px] border-black bg-red-500 px-4 py-2 text-sm font-black uppercase text-white shadow-[4px_4px_0px_0px_#000] disabled:opacity-60"
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isSignOutOpen} onOpenChange={setIsSignOutOpen}>
+          <DialogContent className="max-w-xl border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_#000]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black uppercase tracking-tight">
+                Sign Out
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm font-bold text-neutral-700">
+              Are you sure you want to sign out of Attendrix Web?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsSignOutOpen(false)}
+                className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-4 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_#000]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="inline-flex items-center gap-2 border-[3px] border-black bg-black px-4 py-2 text-sm font-black uppercase text-white shadow-[4px_4px_0px_0px_#000]"
+              >
+                Sign Out
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* System Info */}
         <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
@@ -721,6 +1722,119 @@ export default function ProfilePage() {
               <p className="text-black text-xs">{accountCreatedAt}</p>
             </div>
           </div>
+        </section>
+
+        {/* About Attendrix Web */}
+        <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+          <h3 className="text-xl font-black uppercase tracking-tight mb-4">
+            ABOUT ATTENDRIX WEB
+          </h3>
+          <div className="grid gap-3">
+            {aboutLinks.map((item) => {
+              const row = (
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center border-[3px] border-black bg-white shadow-[3px_3px_0px_0px_#000]">
+                      {item.icon}
+                    </span>
+                    <span className="text-sm font-black uppercase text-black">
+                      {item.label}
+                    </span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-black" />
+                </div>
+              );
+
+              return item.external ? (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={item.label}
+                  className="block border-[3px] border-black bg-white px-4 py-3 shadow-[4px_4px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_#000]"
+                >
+                  {row}
+                </a>
+              ) : (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  aria-label={item.label}
+                  className="block border-[3px] border-black bg-white px-4 py-3 shadow-[4px_4px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_#000]"
+                >
+                  {row}
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Support */}
+        <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+          <h3 className="text-xl font-black uppercase tracking-tight mb-2">
+            SUPPORT
+          </h3>
+          <p className="text-sm font-bold text-neutral-600 mb-4">
+            New here? Start with a quick report or request and we will help you
+            get set up.
+          </p>
+          <div className="grid gap-3">
+            {supportLinks.map((item) => {
+              const row = (
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center border-[3px] border-black bg-white shadow-[3px_3px_0px_0px_#000]">
+                      {item.icon}
+                    </span>
+                    <span className="text-sm font-black uppercase text-black">
+                      {item.label}
+                    </span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-black" />
+                </div>
+              );
+
+              return item.external ? (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  aria-label={item.label}
+                  className="block border-[3px] border-black bg-white px-4 py-3 shadow-[4px_4px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_#000]"
+                >
+                  {row}
+                </a>
+              ) : (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  aria-label={item.label}
+                  className="block border-[3px] border-black bg-white px-4 py-3 shadow-[4px_4px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_#000]"
+                >
+                  {row}
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Sign Out */}
+        <section className="mb-10 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+          <h3 className="text-xl font-black uppercase tracking-tight mb-2">
+            SIGN OUT
+          </h3>
+          <p className="text-sm font-bold text-neutral-600 mb-4">
+            Sign out of Attendrix Web on this device.
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsSignOutOpen(true)}
+            aria-label="Sign Out"
+            className="inline-flex items-center gap-2 border-[3px] border-black bg-[#FFD700] px-5 py-3 text-sm font-black uppercase shadow-[5px_5px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_#000]"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </button>
         </section>
       </div>
 

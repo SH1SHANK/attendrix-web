@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { unstable_cache } from "next/cache";
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/auth-guard";
 import { getAdminFirestore } from "@/lib/firebase-admin";
@@ -19,10 +20,7 @@ import {
   ElectiveSlot,
 } from "../../types/supabase-academic";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // For Admin RPC & Bypass RLS
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = () => getSupabaseAdmin();
 
 /**
  * Robustly parses JSON that might be a string, an array, or already an object.
@@ -60,10 +58,10 @@ export type BatchOnboardingData = {
   electiveCourses: CourseRecord[];
 };
 
-export async function getAvailableBatches() {
+async function getAvailableBatchesImpl() {
   // Use Admin Client to bypass RLS for this public-facing onboarding data
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin()
       .from("batchRecords")
       .select("batchID, batchCode, semester, semester_name, department_id");
 
@@ -79,6 +77,16 @@ export async function getAvailableBatches() {
   }
 }
 
+const getAvailableBatchesCached = unstable_cache(getAvailableBatchesImpl, [
+  "available-batches",
+], {
+  revalidate: 60 * 60 * 12,
+});
+
+export async function getAvailableBatches() {
+  return getAvailableBatchesCached();
+}
+
 export async function getBatchCurriculum(
   batchID: string,
 ): Promise<CurriculumState | null> {
@@ -86,7 +94,7 @@ export async function getBatchCurriculum(
     console.log(`Fetching curriculum for batch: ${batchID}`);
 
     // 1. Fetch the Batch Record (Bypass RLS)
-    const { data: batch, error: batchError } = await supabaseAdmin
+    const { data: batch, error: batchError } = await supabaseAdmin()
       .from("batchRecords")
       .select("courseCatalog, electiveCatalog")
       .eq("batchID", batchID)
@@ -113,7 +121,7 @@ export async function getBatchCurriculum(
     // 2. Fetch Core Courses
     let coreCourses: CourseRecord[] = [];
     if (coreIds.length > 0) {
-      const { data: coreData, error: coreError } = await supabaseAdmin
+      const { data: coreData, error: coreError } = await supabaseAdmin()
         .from("courseRecords")
         .select("*")
         .in("courseID", coreIds);
@@ -136,7 +144,7 @@ export async function getBatchCurriculum(
     if (electiveCategories.length > 0) {
       // Attempt optimized fetch
       const { data: validElectives, error: electivesError } =
-        await supabaseAdmin
+        await supabaseAdmin()
           .from("courseRecords")
           .select("*")
           .eq("isElective", true)
@@ -178,11 +186,11 @@ export async function getBatchCurriculum(
   }
 }
 
-export async function getBatchOnboardingData(
+async function getBatchOnboardingDataImpl(
   batchID: string,
 ): Promise<BatchOnboardingData | null> {
   try {
-    const { data: batch, error: batchError } = await supabaseAdmin
+    const { data: batch, error: batchError } = await supabaseAdmin()
       .from("batchRecords")
       .select(
         "batchID, batchCode, semester, semester_name, department_id, courseCatalog, electiveCatalog",
@@ -204,13 +212,13 @@ export async function getBatchOnboardingData(
 
     const [coreResult, electiveResult] = await Promise.all([
       coreIds.length > 0
-        ? supabaseAdmin
+        ? supabaseAdmin()
             .from("courseRecords")
             .select("*")
             .in("courseID", coreIds)
         : Promise.resolve({ data: [] as CourseRecord[], error: null }),
       electiveCategories.length > 0
-        ? supabaseAdmin
+        ? supabaseAdmin()
             .from("courseRecords")
             .select("*")
             .eq("isElective", true)
@@ -226,7 +234,7 @@ export async function getBatchOnboardingData(
         electiveResult.error,
       );
       const { data: fallbackElectives, error: fallbackError } =
-        await supabaseAdmin
+        await supabaseAdmin()
           .from("courseRecords")
           .select("*")
           .eq("isElective", true);
@@ -256,6 +264,18 @@ export async function getBatchOnboardingData(
     console.error("Unexpected error in getBatchOnboardingData:", error);
     return null;
   }
+}
+
+const getBatchOnboardingDataCached = unstable_cache(
+  async (batchID: string) => getBatchOnboardingDataImpl(batchID),
+  ["batch-onboarding"],
+  { revalidate: 60 * 60 * 12 },
+);
+
+export async function getBatchOnboardingData(
+  batchID: string,
+): Promise<BatchOnboardingData | null> {
+  return getBatchOnboardingDataCached(batchID);
 }
 
 // ============================================================================
@@ -307,7 +327,7 @@ export async function completeOnboarding(token: string, data: OnboardingData) {
 
     // Step B: Fetch Authoritative Data from Supabase
     // Using supabaseAdmin to ensure we can read courseRecords regardless of RLS (though usually public)
-    const { data: fetchedCourses, error: fetchError } = await supabaseAdmin
+    const { data: fetchedCourses, error: fetchError } = await supabaseAdmin()
       .from("courseRecords")
       .select("*")
       .in("courseID", allCourseIDs);
@@ -369,7 +389,7 @@ export async function completeOnboarding(token: string, data: OnboardingData) {
     // 1. Set User Courses
     const finalCourseIDs = coursesEnrolled.map((c) => c.courseID);
 
-    const { error: setCoursesError } = await supabaseAdmin.rpc(
+    const { error: setCoursesError } = await supabaseAdmin().rpc(
       "set_user_courses",
       {
         p_user_id: uid,
@@ -385,7 +405,7 @@ export async function completeOnboarding(token: string, data: OnboardingData) {
     }
 
     // 2. Generate Challenges
-    const { data: challengesData, error: rpcError } = await supabaseAdmin.rpc(
+    const { data: challengesData, error: rpcError } = await supabaseAdmin().rpc(
       "generate_user_challenges_v2",
       {
         // Using v2 as per instruction
@@ -529,7 +549,7 @@ export async function finalizeOnboarding(input: FinalizeOnboardingInput) {
       throw new Error("Core courses are required");
     }
 
-    const { data: fetchedCourses, error: fetchError } = await supabaseAdmin
+    const { data: fetchedCourses, error: fetchError } = await supabaseAdmin()
       .from("courseRecords")
       .select("*")
       .in("courseID", uniqueCourseIDs);
@@ -600,14 +620,14 @@ export async function finalizeOnboarding(input: FinalizeOnboardingInput) {
       .filter((id): id is string => typeof id === "string" && id.length > 0);
 
     const [setCoursesResult, challengeResult] = await Promise.all([
-      supabaseAdmin.rpc("set_user_courses", {
+      supabaseAdmin().rpc("set_user_courses", {
         p_user_id: uid,
         p_course_ids: uniqueCourseIDs,
         p_is_admin: false,
         p_batch_id: input.batchID,
         p_semester_id: Number(input.semesterID || 0),
       }),
-      supabaseAdmin.rpc("generate_user_challenges_v2", {
+      supabaseAdmin().rpc("generate_user_challenges_v2", {
         p_user_id: uid,
         p_current_challenges: existingChallengeIds,
         p_weekly_amplix_limit: 300,

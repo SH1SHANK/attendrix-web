@@ -6,6 +6,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/sections/Hero";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 const Preloader = dynamic(() => import("@/components/sections/Preloader"), {
   ssr: false,
 });
@@ -96,6 +97,10 @@ export default function Home() {
       >
         {/* Hero is critical - triggered after preloader */}
         <Hero isVisible={heroReady} />
+
+        <div className="mx-auto w-full max-w-6xl px-6 pb-8 sm:px-8 lg:px-12">
+          <InstallPrompt variant="banner" />
+        </div>
 
         {/* Lazy load the rest */}
         <Navbar />
