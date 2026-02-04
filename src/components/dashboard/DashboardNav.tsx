@@ -4,7 +4,7 @@ import { memo, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Home, Calendar, User } from "lucide-react";
+import { Home, Calendar, User, ClipboardCheck } from "lucide-react";
 import { motion, useScroll, useMotionValueEvent } from "framer-motion";
 
 interface NavItem {
@@ -15,6 +15,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
   { href: "/classes", label: "Classes", icon: Calendar },
   { href: "/profile", label: "Profile", icon: User },
 ];

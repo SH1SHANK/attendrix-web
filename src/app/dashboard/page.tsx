@@ -10,6 +10,7 @@ import {
   useTodaySchedule,
   useUpcomingClasses,
   getCurrentOrNextClass,
+  useNextEnrolledClass,
 } from "@/hooks/useDashboardData";
 import { useAttendanceActions } from "@/hooks/useAttendanceActions";
 import { useCourseTotalsSync } from "@/hooks/useCourseTotalsSync";
@@ -129,6 +130,11 @@ export default function DashboardPage() {
     loading: upcomingLoading,
     error: upcomingError,
   } = useUpcomingClasses(user?.uid || null, batchId, enrolledCourses);
+  const {
+    data: nextEnrolledClass,
+    loading: nextClassLoading,
+    error: nextClassError,
+  } = useNextEnrolledClass(user?.uid || null, batchId, enrolledCourses);
 
   const { refreshTotals } = useCourseTotalsSync(user?.uid || null);
   const { checkIn, markAbsent, pendingByClassId } = useAttendanceActions({
@@ -160,15 +166,18 @@ export default function DashboardPage() {
     currentOrNextClass;
   let displayType: "current" | "next" | "none" = classType;
 
-  // If no class today, show next upcoming class
-  // Check for length > 0 to be safe
-  if (displayType === "none" && upcomingClasses.length > 0) {
+  // If no class today, show next upcoming class from enrolled courses
+  if (displayType === "none" && nextEnrolledClass) {
+    displayClass = nextEnrolledClass;
+    displayType = "next";
+  } else if (displayType === "none" && upcomingClasses.length > 0) {
     displayClass = upcomingClasses[0] || null;
     displayType = "next";
   }
 
   const cardLoading =
-    scheduleLoading || (classType === "none" && upcomingLoading);
+    scheduleLoading ||
+    (classType === "none" && (nextClassLoading || upcomingLoading));
 
   console.log("[Dashboard] Render state:", {
     authLoading,

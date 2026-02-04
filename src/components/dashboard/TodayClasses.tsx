@@ -165,15 +165,13 @@ function ClassRow({
     ? "Cancelled"
     : isPending
       ? "Updating…"
-      : hasEnded
-        ? "Class has ended"
-        : !hasStarted
-          ? "Class hasn't started yet"
-          : !isCheckedIn && !onCheckIn
-            ? "Check-in unavailable"
-            : isCheckedIn && !onMarkAbsent
-              ? "Mark absent unavailable"
-              : null;
+      : !hasStarted
+        ? "Class hasn't started yet"
+        : !isCheckedIn && !onCheckIn
+          ? "Check-in unavailable"
+          : isCheckedIn && !onMarkAbsent
+            ? "Mark absent unavailable"
+            : null;
 
   const tileTitle =
     tileDisabledReason ?? (isCheckedIn ? "Mark absent" : "Mark attendance");

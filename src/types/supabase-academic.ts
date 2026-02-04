@@ -59,6 +59,11 @@ export interface TodayScheduleClass {
   classStartTime: string; // TIMESTAMP as ISO string
   classEndTime: string; // TIMESTAMP as ISO string
   classVenue: string | null;
+  courseType?: {
+    isLab: boolean;
+    courseType: string; // "core" | "elective" | "audit"
+    electiveCategory?: string;
+  } | null;
   isCancelled: boolean;
   userAttended: boolean;
   userCheckinTime: string | null; // TIMESTAMP as ISO string
@@ -81,6 +86,11 @@ export interface UpcomingClass {
   classEndTime: string; // TIMESTAMP as ISO string
   classVenue: string | null;
   classDate: string; // Display format: "D/M/YYYY"
+  courseType?: {
+    isLab: boolean;
+    courseType: string; // "core" | "elective" | "audit"
+    electiveCategory?: string;
+  } | null;
 }
 
 /**

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Search, Filter } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Search, Filter, Menu } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +27,9 @@ export function FilterBar({
   searchQuery,
 }: FilterBarProps) {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  const filterMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const filterMenuRef = useRef<HTMLDivElement>(null);
 
   const filters: { type: FilterType; label: string; count: number }[] = [
     { type: "all", label: "All Releases", count: totalCount },
@@ -42,6 +45,75 @@ export function FilterBar({
     }
   };
 
+  const handleFilterMenuKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
+    if (!filterMenuRef.current) return;
+    const items = Array.from(
+      filterMenuRef.current.querySelectorAll<HTMLButtonElement>(
+        "[role='menuitemradio']",
+      ),
+    );
+    if (items.length === 0) return;
+    const currentIndex = items.findIndex(
+      (item) => item === document.activeElement,
+    );
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setIsFilterMenuOpen(false);
+      filterMenuButtonRef.current?.focus();
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+      items[nextIndex]?.focus();
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const nextIndex =
+        currentIndex < 0
+          ? items.length - 1
+          : (currentIndex - 1 + items.length) % items.length;
+      items[nextIndex]?.focus();
+    }
+  };
+
+  const handleFilterMenuButtonKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+  ) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setIsFilterMenuOpen(true);
+      window.setTimeout(() => {
+        const firstItem = filterMenuRef.current?.querySelector<
+          HTMLButtonElement
+        >("[role='menuitemradio']");
+        firstItem?.focus();
+      }, 0);
+    }
+  };
+
+  useEffect(() => {
+    if (!isFilterMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const inButton =
+        filterMenuButtonRef.current &&
+        filterMenuButtonRef.current.contains(target);
+      const inMenu =
+        filterMenuRef.current && filterMenuRef.current.contains(target);
+      if (!inButton && !inMenu) {
+        setIsFilterMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isFilterMenuOpen]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -52,7 +124,7 @@ export function FilterBar({
       <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
         {/* Filter Tabs - Simplified */}
         <div
-          className="flex gap-2 overflow-x-auto scrollbar-hide"
+          className="hidden sm:flex gap-2 overflow-x-auto scrollbar-hide"
           role="tablist"
           aria-label="Release filters"
         >
@@ -89,6 +161,56 @@ export function FilterBar({
               </span>
             </motion.button>
           ))}
+        </div>
+
+        {/* Mobile Filter Menu */}
+        <div className="relative sm:hidden">
+          <button
+            ref={filterMenuButtonRef}
+            type="button"
+            onClick={() => setIsFilterMenuOpen((prev) => !prev)}
+            onKeyDown={handleFilterMenuButtonKeyDown}
+            aria-expanded={isFilterMenuOpen}
+            aria-haspopup="menu"
+            className="inline-flex items-center gap-2 border-2 border-black bg-white px-3 py-2.5 text-xs font-black uppercase shadow-[3px_3px_0_#000] transition-all duration-150 hover:shadow-[4px_4px_0_#000] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[2px_2px_0_#000]"
+          >
+            <Menu className="w-4 h-4" />
+            Filters
+          </button>
+
+          {isFilterMenuOpen && (
+            <div
+              ref={filterMenuRef}
+              role="menu"
+              aria-label="Release filters"
+              onKeyDown={handleFilterMenuKeyDown}
+              className="absolute left-0 mt-2 w-56 border-2 border-black bg-white shadow-[4px_4px_0_#000] z-20"
+            >
+              {filters.map((filter) => (
+                <button
+                  key={filter.type}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={currentFilter === filter.type}
+                  onClick={() => {
+                    onFilterChange(filter.type);
+                    setIsFilterMenuOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center justify-between gap-3 px-4 py-3 text-xs font-black uppercase tracking-wide border-b border-black/10 transition-colors",
+                    currentFilter === filter.type
+                      ? "bg-black text-white"
+                      : "bg-white text-black hover:bg-neutral-50",
+                  )}
+                >
+                  <span>{filter.label}</span>
+                  <span className="text-[10px] font-mono border border-current rounded-sm px-1.5 py-0.5">
+                    {filter.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Search Bar - Simplified */}

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import { DAY_MS, parseTimestampAsIST } from "@/lib/time/ist";
 import {
   ClassByDate,
   TodayScheduleClass,
@@ -220,10 +221,67 @@ export const ClassesService = {
         classEndTime: cls.classEndTime,
         classVenue: cls.classVenue,
         classDate: cls.classDate,
+        courseType: cls.courseType ?? null,
       }));
     } catch (err) {
       console.error("[getUpcomingClasses] Failed:", err);
       return [];
+    }
+  },
+
+  /**
+   * Fetch the next upcoming class for enrolled courses
+   * Direct query on timetableRecords (single nearest upcoming class)
+   */
+  async getNextEnrolledClass(
+    userId: string,
+    batchId: string,
+    enrolledCourses?: string[],
+  ): Promise<UpcomingClass | null> {
+    if (!userId || !batchId) return null;
+
+    try {
+      const now = Date.now();
+      const windowStart = new Date(now - DAY_MS).toISOString();
+
+      let query = supabase
+        .from("timetableRecords")
+        .select("*")
+        .eq("batchID", batchId)
+        .gte("classStartTime", windowStart);
+
+      if (enrolledCourses && enrolledCourses.length > 0) {
+        query = query.in("courseID", enrolledCourses);
+      }
+
+      const { data: classes, error } = await query
+        .order("classStartTime", { ascending: true })
+        .limit(25);
+
+      if (error) throw error;
+      if (!classes || classes.length === 0) return null;
+
+      const nextClass = classes.find((cls) => {
+        const startMs = parseTimestampAsIST(cls.classStartTime).getTime();
+        return Number.isFinite(startMs) && startMs > now;
+      });
+
+      if (!nextClass) return null;
+
+      const cls = nextClass;
+      return {
+        classID: cls.classID,
+        courseID: cls.courseID,
+        courseName: cls.courseName || "Upcoming Class",
+        classStartTime: cls.classStartTime,
+        classEndTime: cls.classEndTime,
+        classVenue: cls.classVenue,
+        classDate: cls.classDate,
+        courseType: cls.courseType ?? null,
+      };
+    } catch (err) {
+      console.error("[getNextEnrolledClass] Failed:", err);
+      return null;
     }
   },
 

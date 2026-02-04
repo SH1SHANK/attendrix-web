@@ -11,12 +11,14 @@ import {
 import { createPortal } from "react-dom";
 import {
   ArrowLeft,
+  ArrowUpDown,
   Calendar,
   Check,
+  ListChecks,
   RefreshCw,
   X,
-  Filter,
   ChevronDown,
+  Menu,
   MoreVertical,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -43,6 +45,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type TabType = "all" | "missed";
+type MissedViewMode = "list" | "date" | "class";
+type SortDirection = "asc" | "desc";
+type MissedGroupAction = { mode: "date" | "class"; key: string };
 
 type DateRangeOption = {
   value: FilterPeriod;
@@ -51,6 +56,7 @@ type DateRangeOption = {
 };
 
 type ClassesByDate = Record<string, PastClass[]>;
+type ClassesByCourse = Record<string, { name: string; classes: PastClass[] }>;
 
 const DATE_RANGES: DateRangeOption[] = [
   { value: "7d", label: "Past 7 days", displayLabel: "Last 7 Days" },
@@ -70,6 +76,9 @@ const formatDateLabel = (dateString: string) => {
 };
 
 const formatDateHeader = (dateString: string) => formatDateLabel(dateString);
+
+const getClassStartMs = (item: PastClass) =>
+  parseTimestampAsIST(item.classStartTime).getTime();
 
 function buildClassesByDate(classes: PastClass[]): ClassesByDate {
   const grouped: ClassesByDate = {};
@@ -106,11 +115,16 @@ export default function ClassesPage() {
   const [classesByDate, setClassesByDate] = useState<ClassesByDate>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dialogClassId, setDialogClassId] = useState<string | null>(null);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const dropdownButtonRef = useRef<HTMLButtonElement>(null);
-  const dropdownMenuRef = useRef<HTMLDivElement>(null);
-  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties | null>(
+  const [isControlsMenuOpen, setIsControlsMenuOpen] = useState(false);
+  const controlsMenuWrapperRef = useRef<HTMLDivElement>(null);
+  const controlsMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const controlsMenuRef = useRef<HTMLDivElement>(null);
+  const [controlsMenuStyle, setControlsMenuStyle] =
+    useState<CSSProperties | null>(null);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const sortMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+  const [sortMenuStyle, setSortMenuStyle] = useState<CSSProperties | null>(
     null,
   );
   const [isMounted, setIsMounted] = useState(false);
@@ -119,6 +133,13 @@ export default function ClassesPage() {
   );
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [isBulkPending, setIsBulkPending] = useState(false);
+  const [missedViewMode, setMissedViewMode] =
+    useState<MissedViewMode>("list");
+  const [missedSortDirection, setMissedSortDirection] =
+    useState<SortDirection>("desc");
+  const [missedGroupDialog, setMissedGroupDialog] =
+    useState<MissedGroupAction | null>(null);
+  const [missedGroupPending, setMissedGroupPending] = useState(false);
   const [recentlyUpdated, setRecentlyUpdated] = useState<Set<string>>(
     new Set(),
   );
@@ -329,9 +350,82 @@ export default function ClassesPage() {
     [allClasses, fadeOutState],
   );
 
+  const missedClassesSorted = useMemo(() => {
+    const items = [...missedClasses];
+    items.sort((a, b) =>
+      missedSortDirection === "asc"
+        ? getClassStartMs(a) - getClassStartMs(b)
+        : getClassStartMs(b) - getClassStartMs(a),
+    );
+    return items;
+  }, [missedClasses, missedSortDirection]);
+
   const isEligibleForBulk = useCallback((item: PastClass) => {
     return item.attendanceStatus === "ABSENT";
   }, []);
+
+  const missedClassesByDate = useMemo(() => {
+    const grouped: ClassesByDate = {};
+
+    missedClassesSorted.forEach((item) => {
+      const dateKey = getISTDateString(parseTimestampAsIST(item.classStartTime));
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey]?.push(item);
+    });
+
+    Object.values(grouped).forEach((items) => {
+      items.sort((a, b) =>
+        missedSortDirection === "asc"
+          ? getClassStartMs(a) - getClassStartMs(b)
+          : getClassStartMs(b) - getClassStartMs(a),
+      );
+    });
+
+    return grouped;
+  }, [missedClassesSorted, missedSortDirection]);
+
+  const missedDateKeys = useMemo(() => {
+    const keys = Object.keys(missedClassesByDate);
+    return keys.sort((a, b) => {
+      if (a === b) return 0;
+      if (missedSortDirection === "asc") {
+        return a > b ? 1 : -1;
+      }
+      return a < b ? 1 : -1;
+    });
+  }, [missedClassesByDate, missedSortDirection]);
+
+  const missedClassesByCourse = useMemo(() => {
+    const grouped: ClassesByCourse = {};
+
+    missedClassesSorted.forEach((item) => {
+      if (!grouped[item.courseID]) {
+        grouped[item.courseID] = { name: item.courseName, classes: [] };
+      }
+      grouped[item.courseID]?.classes.push(item);
+    });
+
+    Object.values(grouped).forEach((group) => {
+      group.classes.sort((a, b) =>
+        missedSortDirection === "asc"
+          ? getClassStartMs(a) - getClassStartMs(b)
+          : getClassStartMs(b) - getClassStartMs(a),
+      );
+    });
+
+    return grouped;
+  }, [missedClassesSorted, missedSortDirection]);
+
+  const missedCourseKeys = useMemo(() => {
+    const keys = Object.keys(missedClassesByCourse);
+    return keys.sort((a, b) => {
+      const nameA = missedClassesByCourse[a]?.name ?? "";
+      const nameB = missedClassesByCourse[b]?.name ?? "";
+      return nameA.localeCompare(nameB);
+    });
+  }, [missedClassesByCourse]);
 
   const eligibleMissedClasses = useMemo(
     () => missedClasses.filter(isEligibleForBulk),
@@ -361,6 +455,20 @@ export default function ClassesPage() {
     });
   }, [activeTab, eligibleMissedIds, selectedClasses.size]);
 
+  useEffect(() => {
+    if (activeTab !== "missed") return;
+    if (missedViewMode === "list") return;
+    setIsMultiSelectMode(false);
+    setSelectedClasses(new Set());
+  }, [activeTab, missedViewMode]);
+
+  useEffect(() => {
+    if (activeTab !== "missed" || missedClasses.length === 0) {
+      setIsControlsMenuOpen(false);
+      setIsSortMenuOpen(false);
+    }
+  }, [activeTab, missedClasses.length]);
+
   const activeDialogClass = useMemo(
     () => allClasses.find((item) => item.classID === dialogClassId) ?? null,
     [allClasses, dialogClassId],
@@ -384,6 +492,40 @@ export default function ClassesPage() {
       count: dateActionTargets.length,
     };
   }, [dateActionTargets]);
+
+  const missedGroupTargets = useMemo(() => {
+    if (!missedGroupDialog) return [];
+    if (missedGroupDialog.mode === "date") {
+      return (missedClassesByDate[missedGroupDialog.key] ?? []).filter(
+        isEligibleForBulk,
+      );
+    }
+    return (
+      missedClassesByCourse[missedGroupDialog.key]?.classes ?? []
+    ).filter(isEligibleForBulk);
+  }, [
+    missedGroupDialog,
+    missedClassesByDate,
+    missedClassesByCourse,
+    isEligibleForBulk,
+  ]);
+
+  const missedGroupLabel = useMemo(() => {
+    if (!missedGroupDialog) return "";
+    if (missedGroupDialog.mode === "date") {
+      return formatDateHeader(missedGroupDialog.key);
+    }
+    return missedClassesByCourse[missedGroupDialog.key]?.name ?? "Class";
+  }, [missedGroupDialog, missedClassesByCourse]);
+
+  const missedGroupPreview = useMemo(() => {
+    const previewItems = missedGroupTargets.slice(0, 2);
+    return {
+      items: previewItems,
+      remaining: Math.max(0, missedGroupTargets.length - previewItems.length),
+      count: missedGroupTargets.length,
+    };
+  }, [missedGroupTargets]);
 
   const updateClassAttendance = useCallback(
     (classIds: Set<string>, status: AttendanceStatus) => {
@@ -769,6 +911,100 @@ export default function ClassesPage() {
     }
   };
 
+  const handleConfirmMissedGroupCheckIn = async () => {
+    if (missedGroupPending) return;
+    if (!missedGroupDialog || !userId) return;
+
+    if (missedGroupTargets.length === 0) {
+      toast.error("No eligible classes to check in.");
+      setMissedGroupDialog(null);
+      return;
+    }
+
+    setMissedGroupPending(true);
+    let didSucceed = false;
+
+    try {
+      const courseRecord = await getUserCourseRecords(userId);
+      const enrolledCourses = courseRecord?.enrolledCourses || [];
+
+      if (enrolledCourses.length === 0) {
+        toast.error("No enrolled courses found for attendance");
+        return;
+      }
+
+      const classIds = missedGroupTargets.map((item) => item.classID);
+      const response = await bulkCheckInRpc({
+        p_user_id: userId,
+        p_class_ids: classIds,
+        p_enrolled_courses: enrolledCourses,
+      });
+
+      const status = String(response.status ?? "").toLowerCase();
+      if (status !== "success") {
+        toast.error(String(response.message ?? "Bulk check-in failed"));
+        return;
+      }
+
+      const successIds = new Set<string>();
+      const successfulResults = response.successful_results as
+        | Array<{ class_id?: string }>
+        | undefined;
+      const alreadyRecorded = response.already_recorded_results as
+        | Array<{ class_id?: string }>
+        | undefined;
+
+      successfulResults?.forEach((item) => {
+        if (item?.class_id) successIds.add(item.class_id);
+      });
+      alreadyRecorded?.forEach((item) => {
+        if (item?.class_id) successIds.add(item.class_id);
+      });
+
+      if (successIds.size > 0) {
+        updateClassAttendance(successIds, "PRESENT");
+        successIds.forEach((id) => markRecentlyUpdated(id));
+        startFadeOut(successIds);
+      }
+
+      const failedCount = Number(response.failed_checkins ?? 0);
+      if (failedCount > 0) {
+        toast.error(
+          `Failed to check in ${failedCount} ${failedCount === 1 ? "class" : "classes"}.`,
+        );
+      }
+      notifyBulkErrors(
+        "Bulk check-in",
+        response.error_results as
+          | Array<{ class_id?: string; error?: string }>
+          | undefined,
+      );
+
+      const totalAmplix = Number(response.total_amplix_gained ?? 0);
+      if (successIds.size > 0 || totalAmplix !== 0) {
+        await syncAttendanceTotals(totalAmplix);
+      }
+
+      toast.success(
+        String(
+          response.message ??
+            `Checked in ${successIds.size} ${successIds.size === 1 ? "class" : "classes"}.`,
+        ),
+      );
+
+      didSucceed = true;
+      await fetchPastClasses({ reason: "refresh" });
+    } catch (error) {
+      console.error("Bulk check-in failed:", error);
+      toast.error("Bulk check-in failed. Please try again.");
+    } finally {
+      setMissedGroupPending(false);
+      if (didSucceed) {
+        setMissedGroupDialog(null);
+      }
+    }
+  };
+
   const handleToggleMultiSelect = () => {
     setIsMultiSelectMode((prev) => {
       const next = !prev;
@@ -779,6 +1015,127 @@ export default function ClassesPage() {
     });
   };
 
+  const handleSetMissedViewMode = (mode: MissedViewMode) => {
+    setMissedViewMode(mode);
+  };
+
+  const handleControlsMenuKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
+    if (!controlsMenuRef.current) return;
+    const items = Array.from(
+      controlsMenuRef.current.querySelectorAll<HTMLButtonElement>(
+        "[role^='menuitem']",
+      ),
+    );
+    if (items.length === 0) return;
+
+    const currentIndex = items.findIndex(
+      (item) => item === document.activeElement,
+    );
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setIsControlsMenuOpen(false);
+      controlsMenuButtonRef.current?.focus();
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+      items[nextIndex]?.focus();
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const nextIndex =
+        currentIndex < 0
+          ? items.length - 1
+          : (currentIndex - 1 + items.length) % items.length;
+      items[nextIndex]?.focus();
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault();
+      items[0]?.focus();
+    }
+
+    if (event.key === "End") {
+      event.preventDefault();
+      items[items.length - 1]?.focus();
+    }
+  };
+
+  const handleControlsMenuButtonKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+  ) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setIsControlsMenuOpen(true);
+      setIsSortMenuOpen(false);
+      window.setTimeout(() => {
+        const firstItem = controlsMenuRef.current?.querySelector<
+          HTMLButtonElement
+        >("[role^='menuitem']");
+        firstItem?.focus();
+      }, 0);
+    }
+  };
+
+  const handleSortMenuKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
+    if (!sortMenuRef.current) return;
+    const items = Array.from(
+      sortMenuRef.current.querySelectorAll<HTMLButtonElement>(
+        "[role^='menuitem']",
+      ),
+    );
+    if (items.length === 0) return;
+    const currentIndex = items.findIndex(
+      (item) => item === document.activeElement,
+    );
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setIsSortMenuOpen(false);
+      sortMenuButtonRef.current?.focus();
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+      items[nextIndex]?.focus();
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const nextIndex =
+        currentIndex < 0
+          ? items.length - 1
+          : (currentIndex - 1 + items.length) % items.length;
+      items[nextIndex]?.focus();
+    }
+  };
+
+  const handleSortMenuButtonKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+  ) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setIsSortMenuOpen(true);
+      setIsControlsMenuOpen(false);
+      window.setTimeout(() => {
+        const firstItem = sortMenuRef.current?.querySelector<HTMLButtonElement>(
+          "[role^='menuitem']",
+        );
+        firstItem?.focus();
+      }, 0);
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -787,17 +1144,34 @@ export default function ClassesPage() {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
       const inButton =
-        dropdownRef.current && dropdownRef.current.contains(target);
+        controlsMenuWrapperRef.current &&
+        controlsMenuWrapperRef.current.contains(target);
       const inMenu =
-        dropdownMenuRef.current && dropdownMenuRef.current.contains(target);
+        controlsMenuRef.current && controlsMenuRef.current.contains(target);
 
       if (!inButton && !inMenu) {
-        setIsDropdownOpen(false);
+        setIsControlsMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isSortMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const inButton =
+        sortMenuButtonRef.current &&
+        sortMenuButtonRef.current.contains(target);
+      const inMenu = sortMenuRef.current && sortMenuRef.current.contains(target);
+      if (!inButton && !inMenu) {
+        setIsSortMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isSortMenuOpen]);
 
   useEffect(() => {
     if (!openDateMenu) return;
@@ -839,13 +1213,13 @@ export default function ClassesPage() {
   }, [openDateMenu]);
 
   useEffect(() => {
-    if (!isDropdownOpen) return;
+    if (!isControlsMenuOpen) return;
 
     const updatePosition = () => {
-      const button = dropdownButtonRef.current;
+      const button = controlsMenuButtonRef.current;
       if (!button) return;
       const rect = button.getBoundingClientRect();
-      setDropdownStyle({
+      setControlsMenuStyle({
         position: "absolute",
         left: rect.left + window.scrollX,
         top: rect.bottom + window.scrollY + 8,
@@ -861,12 +1235,124 @@ export default function ClassesPage() {
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [isDropdownOpen]);
+  }, [isControlsMenuOpen]);
+
+  useEffect(() => {
+    if (!isSortMenuOpen) return;
+    const updatePosition = () => {
+      const button = sortMenuButtonRef.current;
+      if (!button) return;
+      const rect = button.getBoundingClientRect();
+      setSortMenuStyle({
+        position: "absolute",
+        left: rect.left + window.scrollX,
+        top: rect.bottom + window.scrollY + 8,
+        minWidth: 200,
+        zIndex: 205,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isSortMenuOpen]);
 
   const showEmptyState =
     activeTab === "missed"
       ? missedClasses.length === 0
       : allClasses.length === 0;
+
+  const renderMissedClassCard = (
+    item: PastClass,
+    index: number,
+    options?: {
+      showSelection?: boolean;
+      showDateLabel?: boolean;
+      animationDelayMs?: number;
+    },
+  ) => {
+    const showSelection = options?.showSelection ?? isMultiSelectMode;
+    const isSelected = showSelection && selectedClasses.has(item.classID);
+    const isMissed = item.attendanceStatus === "ABSENT";
+    const fadePhase = fadeOutState[item.classID];
+    const isFadingOut = !!fadePhase;
+    const dateKey = getISTDateString(
+      parseTimestampAsIST(item.classStartTime),
+    );
+    const timeRange = `${formatTime(item.classStartTime)} – ${formatTime(
+      item.classEndTime,
+    )}`;
+    const canSelect = eligibleMissedIds.has(item.classID);
+    const isPending = pendingByClassId?.has(item.classID) ?? false;
+    const isRecentlyUpdated = recentlyUpdated.has(item.classID);
+    const cardKey = `${item.classID}-${item.classStartTime}`;
+    const showDateLabel = options?.showDateLabel ?? true;
+
+    return (
+      <div
+        key={cardKey}
+        className={`group relative px-4 py-4 border-2 border-black transition-all duration-300 ease-out transform animate-in fade-in slide-in-from-bottom-2 motion-reduce:animate-none motion-reduce:opacity-100 motion-reduce:transform-none ${
+          isSelected
+            ? "bg-yellow-400 shadow-[5px_5px_0_#0a0a0a] scale-[1.01]"
+            : isMissed && !isFadingOut
+              ? "bg-red-500 shadow-[5px_5px_0_#0a0a0a] hover:shadow-[7px_7px_0_#0a0a0a] hover:-translate-y-1 hover:brightness-105"
+              : "bg-green-400 shadow-[5px_5px_0_#0a0a0a] hover:shadow-[7px_7px_0_#0a0a0a] hover:-translate-y-1 hover:brightness-105"
+        } ${isPending ? "opacity-70 animate-pulse" : ""} ${
+          isRecentlyUpdated ? "ring-4 ring-yellow-300" : ""
+        } ${
+          fadePhase === "fade"
+            ? "opacity-0 -translate-y-2 scale-[0.98] pointer-events-none"
+            : ""
+        }`}
+        style={{
+          animationDelay: `${options?.animationDelayMs ?? index * 20}ms`,
+        }}
+      >
+        <div className="flex items-start gap-3">
+          {showSelection && (
+            <button
+              type="button"
+              onClick={() => handleToggleClass(item.classID)}
+              disabled={!canSelect}
+              className="shrink-0 mt-0.5 h-5 w-5 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSelected && (
+                <Check className="h-3.5 w-3.5 text-stone-900 font-black" />
+              )}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => !showSelection && setDialogClassId(item.classID)}
+            disabled={showSelection}
+            className="flex-1 text-left min-w-0 disabled:cursor-default"
+          >
+            <div className="space-y-2">
+              <h3 className="font-black text-base sm:text-lg uppercase tracking-wide truncate text-stone-900 transition-all duration-300 group-hover:tracking-wider leading-tight">
+                {item.courseName}
+              </h3>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5 text-sm font-bold text-stone-800">
+                <span className="font-mono text-sm">{timeRange}</span>
+                {showDateLabel && (
+                  <>
+                    <span className="hidden sm:inline text-xs">•</span>
+                    <span className="text-xs opacity-90">
+                      {formatDateLabel(dateKey)}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-24 transition-colors duration-300 relative isolate">
@@ -910,175 +1396,216 @@ export default function ClassesPage() {
             </h1>
           </div>
 
-          <div className="flex gap-2.5">
+          <div
+            role="tablist"
+            aria-label="View mode"
+            className="flex items-center border-2 border-black bg-white shadow-[4px_4px_0_#0a0a0a] overflow-hidden"
+          >
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === "all"}
+              tabIndex={activeTab === "all" ? 0 : -1}
               onClick={() => setActiveTab("all")}
-              className={`group relative flex-1 px-5 py-3 font-black text-sm uppercase tracking-wide border-2 border-black transition-all duration-300 overflow-hidden ${
+              className={`flex-1 px-4 py-2.5 text-xs font-black uppercase tracking-wide transition-all duration-200 ${
                 activeTab === "all"
-                  ? "bg-stone-900 text-white shadow-[5px_5px_0_#0a0a0a] -translate-y-0.5"
-                  : "bg-white text-stone-600 shadow-[4px_4px_0_#0a0a0a] hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 hover:text-stone-900 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
+                  ? "bg-stone-900 text-white"
+                  : "bg-white text-stone-700 hover:bg-yellow-100"
               }`}
             >
-              <span className="relative z-10 transition-transform duration-300 group-hover:scale-105">
-                All Classes
-              </span>
-              {activeTab !== "all" && (
-                <span className="absolute inset-0 bg-yellow-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left -z-0" />
-              )}
+              All Classes
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === "missed"}
+              tabIndex={activeTab === "missed" ? 0 : -1}
               onClick={() => setActiveTab("missed")}
-              className={`group relative flex-1 px-5 py-3 font-black text-sm uppercase tracking-wide border-2 border-black transition-all duration-300 overflow-hidden ${
+              className={`flex-1 px-4 py-2.5 text-xs font-black uppercase tracking-wide transition-all duration-200 border-l-2 border-black ${
                 activeTab === "missed"
-                  ? "bg-stone-900 text-white shadow-[5px_5px_0_#0a0a0a] -translate-y-0.5"
-                  : "bg-white text-stone-600 shadow-[4px_4px_0_#0a0a0a] hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 hover:text-stone-900 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
+                  ? "bg-stone-900 text-white"
+                  : "bg-white text-stone-700 hover:bg-red-100"
               }`}
             >
-              <span className="relative z-10 transition-transform duration-300 group-hover:scale-105">
-                Missed
-              </span>
-              {activeTab !== "missed" && (
-                <span className="absolute inset-0 bg-red-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left -z-0" />
-              )}
+              Missed
             </button>
           </div>
 
           {isMounted && (
-            <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] sm:text-xs font-black uppercase tracking-wide">
-              <div className="flex items-center gap-2 border-2 border-black bg-white px-2.5 py-1 shadow-[2px_2px_0_#0a0a0a]">
-                <span className="h-2 w-2 rounded-full bg-stone-900" />
-                <span>Range: {activeFilterLabel}</span>
+            <div
+              role="group"
+              aria-label="Status summary"
+              className="mt-4 flex flex-wrap items-center gap-2 border-2 border-black bg-white px-3 py-2 shadow-[3px_3px_0_#0a0a0a]"
+            >
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wide text-stone-600">
+                <span>Status Summary</span>
+                <span className="h-4 w-px bg-black/40" />
               </div>
-              <div className="flex items-center gap-2 border-2 border-black bg-yellow-100 px-2.5 py-1 shadow-[2px_2px_0_#0a0a0a]">
-                <span className="h-2 w-2 rounded-full bg-yellow-500" />
-                <span>Total: {totalCount}</span>
-              </div>
-              <div className="flex items-center gap-2 border-2 border-black bg-red-100 px-2.5 py-1 shadow-[2px_2px_0_#0a0a0a]">
-                <span className="h-2 w-2 rounded-full bg-red-500" />
-                <span>Missed: {missedCount}</span>
-              </div>
-              {activeTab === "missed" && isMultiSelectMode && (
-                <div className="flex items-center gap-2 border-2 border-black bg-green-100 px-2.5 py-1 shadow-[2px_2px_0_#0a0a0a]">
-                  <span className="h-2 w-2 rounded-full bg-green-600" />
-                  <span>Selected: {selectedClasses.size}</span>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs font-black uppercase tracking-wide">
+                <div className="flex items-center gap-2 border-2 border-black bg-white px-2.5 py-1 shadow-[2px_2px_0_#0a0a0a]">
+                  <span className="h-2 w-2 rounded-full bg-stone-900" />
+                  <span>Range: {activeFilterLabel}</span>
                 </div>
-              )}
+                <div className="flex items-center gap-2 border-2 border-black bg-yellow-100 px-2.5 py-1 shadow-[2px_2px_0_#0a0a0a]">
+                  <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                  <span>Total: {totalCount}</span>
+                </div>
+                <div className="flex items-center gap-2 border-2 border-black bg-red-100 px-2.5 py-1 shadow-[2px_2px_0_#0a0a0a]">
+                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                  <span>Missed: {missedCount}</span>
+                </div>
+                {activeTab === "missed" && isMultiSelectMode && (
+                  <div className="flex items-center gap-2 border-2 border-black bg-green-100 px-2.5 py-1 shadow-[2px_2px_0_#0a0a0a]">
+                    <span className="h-2 w-2 rounded-full bg-green-600" />
+                    <span>Selected: {selectedClasses.size}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </header>
 
         <section className="bg-white border-b-4 border-black px-4 py-3 sm:px-6 sticky top-0 z-10 shadow-[0_6px_0_#0a0a0a] backdrop-blur-sm bg-white/95">
-          <div className="flex items-center gap-2.5 overflow-x-auto overflow-y-visible scrollbar-hide">
-            <div ref={dropdownRef} className="relative">
-              <button
-                ref={dropdownButtonRef}
-                type="button"
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 h-11 px-3.5 py-2.5 bg-stone-900 text-white border-2 border-black text-xs font-black uppercase whitespace-nowrap shadow-[4px_4px_0_#0a0a0a] transition-all duration-200 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-1 active:translate-y-1 active:shadow-[2px_2px_0_#0a0a0a]"
-              >
-                <Filter className="h-4 w-4" />
-                <span>
-                  {
-                    DATE_RANGES.find((r) => r.value === activeFilter)
-                      ?.displayLabel
-                  }
-                </span>
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              {isMounted &&
-                isDropdownOpen &&
-                dropdownStyle &&
-                createPortal(
-                  <div
-                    ref={dropdownMenuRef}
-                    className="bg-stone-800 border-2 border-black shadow-[6px_6px_0_#0a0a0a] animate-in slide-in-from-top-2 duration-200"
-                    style={dropdownStyle}
-                  >
-                    {DATE_RANGES.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => {
-                          setActiveFilter(option.value);
-                          setIsDropdownOpen(false);
-                          void fetchPastClasses({
-                            reason: "filter",
-                            filterOverride: option.value,
-                          });
-                        }}
-                        className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-xs font-black uppercase tracking-wide transition-all duration-150 border-b border-stone-700 last:border-b-0 ${
-                          activeFilter === option.value
-                            ? "bg-blue-600 text-white"
-                            : "bg-stone-800 text-stone-300 hover:bg-stone-700 hover:text-white"
-                        }`}
-                      >
-                        <span>{option.displayLabel}</span>
-                        {activeFilter === option.value && (
-                          <Check className="h-4 w-4" />
-                        )}
-                      </button>
-                    ))}
-                  </div>,
-                  document.body,
-                )}
-            </div>
-
-            {activeTab === "missed" && missedClasses.length > 0 && (
+          <div
+            role="menubar"
+            aria-label="Classes controls"
+            className="flex flex-wrap items-center gap-2.5"
+          >
+            <div
+              role="tablist"
+              aria-label="View mode"
+              className="hidden sm:inline-flex items-center border-2 border-black bg-white shadow-[4px_4px_0_#0a0a0a] overflow-hidden"
+            >
               <button
                 type="button"
-                onClick={handleToggleMultiSelect}
-                className={`flex items-center gap-2 h-11 px-3.5 py-2.5 border-2 border-black text-xs font-black uppercase whitespace-nowrap transition-all duration-300 ${
-                  isMultiSelectMode
-                    ? "bg-yellow-400 text-stone-900 shadow-[4px_4px_0_#0a0a0a] -translate-y-0.5"
-                    : "bg-white text-stone-900 shadow-[4px_4px_0_#0a0a0a] hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
+                role="tab"
+                aria-selected={activeTab === "all"}
+                tabIndex={activeTab === "all" ? 0 : -1}
+                onClick={() => setActiveTab("all")}
+                className={`px-4 py-2.5 text-xs font-black uppercase tracking-wide transition-all duration-200 ${
+                  activeTab === "all"
+                    ? "bg-stone-900 text-white"
+                    : "bg-white text-stone-700 hover:bg-yellow-100"
                 }`}
               >
-                {isMultiSelectMode ? (
-                  <>
-                    <X className="h-4 w-4" />
-                    <span>Exit Multi-Select</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4" />
-                    <span>Multi-Select</span>
-                  </>
-                )}
+                All Classes
               </button>
-            )}
-
-            {canJumpToToday && (
               <button
                 type="button"
-                onClick={handleJumpToToday}
-                className="ml-auto flex items-center gap-2 h-11 px-3.5 py-2.5 border-2 border-black text-xs font-black uppercase whitespace-nowrap bg-white text-stone-900 shadow-[4px_4px_0_#0a0a0a] transition-all duration-300 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
+                role="tab"
+                aria-selected={activeTab === "missed"}
+                tabIndex={activeTab === "missed" ? 0 : -1}
+                onClick={() => setActiveTab("missed")}
+                className={`px-4 py-2.5 text-xs font-black uppercase tracking-wide transition-all duration-200 border-l-2 border-black ${
+                  activeTab === "missed"
+                    ? "bg-stone-900 text-white"
+                    : "bg-white text-stone-700 hover:bg-red-100"
+                }`}
               >
-                <Calendar className="h-4 w-4" />
-                <span>Jump to Today</span>
+                Missed
               </button>
-            )}
+            </div>
 
-            <button
-              type="button"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              aria-label="Refresh classes"
-              aria-busy={isRefreshing}
-              className={`group ${canJumpToToday ? "" : "ml-auto"} flex items-center justify-center h-11 w-11 border-2 border-black text-xs font-black uppercase whitespace-nowrap transition-all duration-300 ${
-                isRefreshing
-                  ? "bg-yellow-400 text-stone-900 shadow-[3px_3px_0_#0a0a0a] scale-95"
-                  : "bg-white text-stone-900 shadow-[4px_4px_0_#0a0a0a] hover:shadow-[6px_6px_0_#0a0a0a] hover:-translate-y-1 hover:bg-yellow-50 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
-              } disabled:cursor-not-allowed`}
-            >
-              <RefreshCw
-                className={`h-4 w-4 transition-transform duration-700 ${isRefreshing ? "animate-spin" : "group-hover:rotate-180"}`}
-              />
-            </button>
+            <div ref={controlsMenuWrapperRef} className="relative">
+              <button
+                ref={controlsMenuButtonRef}
+                type="button"
+                onClick={() => {
+                  setIsControlsMenuOpen((prev) => !prev);
+                  setIsSortMenuOpen(false);
+                }}
+                onKeyDown={handleControlsMenuButtonKeyDown}
+                aria-expanded={isControlsMenuOpen}
+                aria-haspopup="menu"
+                className="flex items-center gap-2 h-11 px-3.5 py-2.5 bg-stone-900 text-white border-2 border-black text-xs font-black uppercase whitespace-nowrap shadow-[4px_4px_0_#0a0a0a] transition-all duration-200 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-1 active:translate-y-1 active:shadow-[2px_2px_0_#0a0a0a]"
+              >
+                <Menu className="h-4 w-4" />
+                <span className="hidden sm:inline">Filters</span>
+                <span className="sm:hidden">Filters</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-200 ${isControlsMenuOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              {activeTab === "missed" && missedClasses.length > 0 && (
+                <>
+                  <div className="relative">
+                    <button
+                      ref={sortMenuButtonRef}
+                      type="button"
+                      onClick={() => {
+                        setIsSortMenuOpen((prev) => !prev);
+                        setIsControlsMenuOpen(false);
+                      }}
+                      onKeyDown={handleSortMenuButtonKeyDown}
+                      aria-expanded={isSortMenuOpen}
+                      aria-haspopup="menu"
+                      className="flex items-center gap-2 h-11 px-3.5 py-2.5 border-2 border-black text-xs font-black uppercase whitespace-nowrap bg-white text-stone-900 shadow-[4px_4px_0_#0a0a0a] transition-all duration-300 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
+                    >
+                      <ArrowUpDown className="h-4 w-4" />
+                      <span className="hidden sm:inline">Sort & Group</span>
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform duration-200 ${isSortMenuOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                  </div>
+
+                  {missedViewMode === "list" && (
+                    <button
+                      type="button"
+                      onClick={handleToggleMultiSelect}
+                      aria-pressed={isMultiSelectMode}
+                      className={`flex items-center justify-center h-11 w-11 border-2 border-black text-xs font-black uppercase whitespace-nowrap transition-all duration-300 ${
+                        isMultiSelectMode
+                          ? "bg-yellow-400 text-stone-900 shadow-[4px_4px_0_#0a0a0a] -translate-y-0.5"
+                          : "bg-white text-stone-900 shadow-[4px_4px_0_#0a0a0a] hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
+                      }`}
+                      aria-label={
+                        isMultiSelectMode
+                          ? "Exit multi-select"
+                          : "Enable multi-select"
+                      }
+                    >
+                      {isMultiSelectMode ? (
+                        <X className="h-4 w-4" />
+                      ) : (
+                        <ListChecks className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
+                </>
+              )}
+
+              {canJumpToToday && (
+                <button
+                  type="button"
+                  onClick={handleJumpToToday}
+                  className="flex items-center gap-2 h-11 px-3.5 py-2.5 border-2 border-black text-xs font-black uppercase whitespace-nowrap bg-white text-stone-900 shadow-[4px_4px_0_#0a0a0a] transition-all duration-300 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span className="hidden sm:inline">Jump to Today</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                aria-label="Refresh classes"
+                aria-busy={isRefreshing}
+                className={`group flex items-center justify-center h-11 w-11 border-2 border-black text-xs font-black uppercase whitespace-nowrap transition-all duration-300 ${
+                  isRefreshing
+                    ? "bg-yellow-400 text-stone-900 shadow-[3px_3px_0_#0a0a0a] scale-95"
+                    : "bg-white text-stone-900 shadow-[4px_4px_0_#0a0a0a] hover:shadow-[6px_6px_0_#0a0a0a] hover:-translate-y-1 hover:bg-yellow-50 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
+                } disabled:cursor-not-allowed`}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 transition-transform duration-700 ${isRefreshing ? "animate-spin" : "group-hover:rotate-180"}`}
+                />
+              </button>
+            </div>
           </div>
         </section>
 
@@ -1115,139 +1642,190 @@ export default function ClassesPage() {
               </div>
             </div>
           ) : activeTab === "missed" ? (
-            <div className="space-y-3">
-              {isMultiSelectMode && missedClasses.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <div className="text-xs font-black uppercase text-stone-600">
-                    {selectedClasses.size} selected
-                  </div>
-                  <div className="flex gap-2 ml-auto">
-                    <button
-                      type="button"
-                      onClick={handleSelectAll}
-                      className="px-2.5 py-1.5 bg-white border-2 border-black text-xs font-black uppercase shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a]"
-                    >
-                      Select All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleInvertSelection}
-                      className="px-2.5 py-1.5 bg-white border-2 border-black text-xs font-black uppercase shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a]"
-                    >
-                      Invert
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleClearSelection}
-                      className="px-2.5 py-1.5 bg-white border-2 border-black text-xs font-black uppercase shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a]"
-                    >
-                      Clear
-                    </button>
-                    {selectedClasses.size > 0 && (
+            missedViewMode === "list" ? (
+              <div className="space-y-3">
+                {isMultiSelectMode && missedClasses.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <div className="text-xs font-black uppercase text-stone-600">
+                      {selectedClasses.size} selected
+                    </div>
+                    <div className="flex gap-2 ml-auto">
                       <button
                         type="button"
-                        onClick={handleBulkCheckIn}
-                        disabled={isBulkPending}
-                        aria-busy={isBulkPending}
-                        className="px-3 py-1.5 bg-stone-900 text-white border-2 border-black text-xs font-black uppercase shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a] disabled:opacity-60 disabled:cursor-not-allowed"
+                        onClick={handleSelectAll}
+                        className="px-2.5 py-1.5 bg-white border-2 border-black text-xs font-black uppercase shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a]"
                       >
-                        {isBulkPending ? (
-                          <RefreshCw className="h-3 w-3 inline mr-1 animate-spin" />
-                        ) : (
-                          <Check className="h-3 w-3 inline mr-1" />
-                        )}
-                        {isBulkPending
-                          ? "Checking In..."
-                          : `Check In (${selectedClasses.size})`}
+                        Select All
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        onClick={handleInvertSelection}
+                        className="px-2.5 py-1.5 bg-white border-2 border-black text-xs font-black uppercase shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a]"
+                      >
+                        Invert
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleClearSelection}
+                        className="px-2.5 py-1.5 bg-white border-2 border-black text-xs font-black uppercase shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a]"
+                      >
+                        Clear
+                      </button>
+                      {selectedClasses.size > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleBulkCheckIn}
+                          disabled={isBulkPending}
+                          aria-busy={isBulkPending}
+                          className="px-3 py-1.5 bg-stone-900 text-white border-2 border-black text-xs font-black uppercase shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a] disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {isBulkPending ? (
+                            <RefreshCw className="h-3 w-3 inline mr-1 animate-spin" />
+                          ) : (
+                            <Check className="h-3 w-3 inline mr-1" />
+                          )}
+                          {isBulkPending
+                            ? "Checking In..."
+                            : `Check In (${selectedClasses.size})`}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div className="space-y-2.5" style={listPerfStyle}>
-                {missedClasses.map((item, index) => {
-                  const isSelected = selectedClasses.has(item.classID);
-                  const isMissed = item.attendanceStatus === "ABSENT";
-                  const fadePhase = fadeOutState[item.classID];
-                  const isFadingOut = !!fadePhase;
-                  const dateKey = getISTDateString(
-                    parseTimestampAsIST(item.classStartTime),
-                  );
-                  const timeRange = `${formatTime(
-                    item.classStartTime,
-                  )} – ${formatTime(item.classEndTime)}`;
-                  const canSelect = eligibleMissedIds.has(item.classID);
-                  const isPending =
-                    pendingByClassId?.has(item.classID) ?? false;
-                  const isRecentlyUpdated = recentlyUpdated.has(item.classID);
-                  const cardKey = `${item.classID}-${item.classStartTime}`;
+                <div className="space-y-2.5" style={listPerfStyle}>
+                  {missedClassesSorted.map((item, index) =>
+                    renderMissedClassCard(item, index, {
+                      showSelection: isMultiSelectMode,
+                      showDateLabel: true,
+                    }),
+                  )}
+                </div>
+              </div>
+            ) : missedViewMode === "date" ? (
+              <div className="space-y-4" style={listPerfStyle}>
+                {missedDateKeys.map((dateKey, dateIndex) => {
+                  const dayClasses = missedClassesByDate[dateKey] ?? [];
+                  const eligibleCount = dayClasses.filter(isEligibleForBulk)
+                    .length;
 
                   return (
                     <div
-                      key={cardKey}
-                      className={`group relative px-4 py-4 border-2 border-black transition-all duration-300 ease-out transform animate-in fade-in slide-in-from-bottom-2 motion-reduce:animate-none motion-reduce:opacity-100 motion-reduce:transform-none ${
-                        isSelected
-                          ? "bg-yellow-400 shadow-[5px_5px_0_#0a0a0a] scale-[1.01]"
-                          : isMissed && !isFadingOut
-                            ? "bg-red-500 shadow-[5px_5px_0_#0a0a0a] hover:shadow-[7px_7px_0_#0a0a0a] hover:-translate-y-1 hover:brightness-105"
-                            : "bg-green-400 shadow-[5px_5px_0_#0a0a0a] hover:shadow-[7px_7px_0_#0a0a0a] hover:-translate-y-1 hover:brightness-105"
-                      } ${isPending ? "opacity-70 animate-pulse" : ""} ${
-                        isRecentlyUpdated ? "ring-4 ring-yellow-300" : ""
-                      } ${
-                        fadePhase === "fade"
-                          ? "opacity-0 -translate-y-2 scale-[0.98] pointer-events-none"
-                          : ""
-                      }`}
-                      style={{
-                        animationDelay: `${index * 20}ms`,
-                      }}
+                      key={dateKey}
+                      className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 motion-reduce:animate-none motion-reduce:opacity-100"
+                      style={
+                        {
+                          animationDelay: `${dateIndex * 80}ms`,
+                          contentVisibility: "auto",
+                          containIntrinsicSize: "1px 320px",
+                        } as CSSProperties
+                      }
                     >
-                      <div className="flex items-start gap-3">
-                        {isMultiSelectMode && (
-                          <button
-                            type="button"
-                            onClick={() => handleToggleClass(item.classID)}
-                            disabled={!canSelect}
-                            className="shrink-0 mt-0.5 h-5 w-5 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isSelected && (
-                              <Check className="h-3.5 w-3.5 text-stone-900 font-black" />
-                            )}
-                          </button>
-                        )}
-
+                      <div className="border-2 border-black bg-yellow-300 px-4 py-2.5 shadow-[4px_4px_0_#0a0a0a] transition-all duration-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-1 active:shadow-[2px_2px_0_#0a0a0a]">
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
+                          <h2 className="text-xs font-black uppercase tracking-wider text-stone-900">
+                            {formatDateHeader(dateKey)}
+                          </h2>
+                          <span className="text-[10px] font-black uppercase tracking-wide text-stone-700 border-2 border-black bg-white px-2 py-0.5 shadow-[2px_2px_0_#0a0a0a]">
+                            {dayClasses.length}{" "}
+                            {dayClasses.length === 1 ? "class" : "classes"}
+                          </span>
+                        </div>
                         <button
                           type="button"
                           onClick={() =>
-                            !isMultiSelectMode && setDialogClassId(item.classID)
+                            setMissedGroupDialog({
+                              mode: "date",
+                              key: dateKey,
+                            })
                           }
-                          disabled={isMultiSelectMode}
-                          className="flex-1 text-left min-w-0 disabled:cursor-default"
+                          disabled={missedGroupPending || eligibleCount === 0}
+                          aria-busy={missedGroupPending}
+                          className="flex items-center justify-center gap-2 h-8 w-full sm:w-auto px-2.5 border-2 border-black bg-white text-[10px] font-black uppercase shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <div className="space-y-2">
-                            <h3 className="font-black text-base sm:text-lg uppercase tracking-wide truncate text-stone-900 transition-all duration-300 group-hover:tracking-wider leading-tight">
-                              {item.courseName}
-                            </h3>
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5 text-sm font-bold text-stone-800">
-                              <span className="font-mono text-sm">
-                                {timeRange}
-                              </span>
-                              <span className="hidden sm:inline text-xs">
-                                •
-                              </span>
-                              <span className="text-xs opacity-90">
-                                {formatDateLabel(dateKey)}
-                              </span>
-                            </div>
-                          </div>
+                          <span className="h-4 w-4 border-2 border-black bg-white flex items-center justify-center">
+                            <Check className="h-3 w-3 text-stone-900" />
+                          </span>
+                          <span>Check In All</span>
                         </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {dayClasses.map((item, itemIndex) =>
+                          renderMissedClassCard(item, itemIndex, {
+                            showSelection: false,
+                            showDateLabel: false,
+                            animationDelayMs: dateIndex * 80 + itemIndex * 25,
+                          }),
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            ) : (
+              <div className="space-y-4" style={listPerfStyle}>
+                {missedCourseKeys.map((courseId, courseIndex) => {
+                  const group = missedClassesByCourse[courseId];
+                  const classItems = group?.classes ?? [];
+                  const eligibleCount = classItems.filter(isEligibleForBulk)
+                    .length;
+
+                  return (
+                    <div
+                      key={courseId}
+                      className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 motion-reduce:animate-none motion-reduce:opacity-100"
+                      style={
+                        {
+                          animationDelay: `${courseIndex * 80}ms`,
+                          contentVisibility: "auto",
+                          containIntrinsicSize: "1px 320px",
+                        } as CSSProperties
+                      }
+                    >
+                      <div className="border-2 border-black bg-blue-200 px-4 py-2.5 shadow-[4px_4px_0_#0a0a0a] transition-all duration-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-1 active:shadow-[2px_2px_0_#0a0a0a]">
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
+                          <h2 className="text-xs font-black uppercase tracking-wider text-stone-900 break-words sm:truncate">
+                            {group?.name ?? "Class"}
+                          </h2>
+                          <span className="text-[10px] font-black uppercase tracking-wide text-stone-700 border-2 border-black bg-white px-2 py-0.5 shadow-[2px_2px_0_#0a0a0a]">
+                            {classItems.length}{" "}
+                            {classItems.length === 1 ? "class" : "classes"}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setMissedGroupDialog({
+                              mode: "class",
+                              key: courseId,
+                            })
+                          }
+                          disabled={missedGroupPending || eligibleCount === 0}
+                          aria-busy={missedGroupPending}
+                          className="flex items-center justify-center gap-2 h-8 w-full sm:w-auto px-2.5 border-2 border-black bg-white text-[10px] font-black uppercase shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="h-4 w-4 border-2 border-black bg-white flex items-center justify-center">
+                            <Check className="h-3 w-3 text-stone-900" />
+                          </span>
+                          <span>Check In All</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {classItems.map((item, itemIndex) =>
+                          renderMissedClassCard(item, itemIndex, {
+                            showSelection: false,
+                            showDateLabel: true,
+                            animationDelayMs: courseIndex * 80 + itemIndex * 25,
+                          }),
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
           ) : (
             <div className="space-y-4" style={listPerfStyle}>
               {sortedGroupKeys.map((dateKey, dateIndex) => {
@@ -1537,6 +2115,160 @@ export default function ClassesPage() {
           );
         })()}
 
+      {isMounted &&
+        isControlsMenuOpen &&
+        controlsMenuStyle &&
+        createPortal(
+          <div
+            ref={controlsMenuRef}
+            role="menu"
+            aria-label="Range filters"
+            onKeyDown={handleControlsMenuKeyDown}
+            className="bg-stone-800 border-2 border-black shadow-[6px_6px_0_#0a0a0a] animate-in slide-in-from-top-2 duration-200"
+            style={controlsMenuStyle}
+          >
+            <div className="border-b border-stone-700">
+              <div className="px-4 py-2 text-[10px] font-black uppercase tracking-wider text-stone-300">
+                Range
+              </div>
+              {DATE_RANGES.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={activeFilter === option.value}
+                  onClick={() => {
+                    setActiveFilter(option.value);
+                    setIsControlsMenuOpen(false);
+                    void fetchPastClasses({
+                      reason: "filter",
+                      filterOverride: option.value,
+                    });
+                  }}
+                  className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-xs font-black uppercase tracking-wide transition-all duration-150 border-b border-stone-700 last:border-b-0 ${
+                    activeFilter === option.value
+                      ? "bg-blue-600 text-white"
+                      : "bg-stone-800 text-stone-200 hover:bg-stone-700 hover:text-white"
+                  }`}
+                >
+                  <span>{option.displayLabel}</span>
+                  {activeFilter === option.value && (
+                    <Check className="h-4 w-4" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+          </div>,
+          document.body,
+        )}
+
+      {isMounted &&
+        isSortMenuOpen &&
+        sortMenuStyle &&
+        createPortal(
+          <div
+            ref={sortMenuRef}
+            role="menu"
+            aria-label="Sort options"
+            onKeyDown={handleSortMenuKeyDown}
+            className="bg-stone-800 border-2 border-black shadow-[6px_6px_0_#0a0a0a] animate-in slide-in-from-top-2 duration-200"
+            style={sortMenuStyle}
+          >
+            <div className="border-b border-stone-700">
+              <div className="px-4 py-2 text-[10px] font-black uppercase tracking-wider text-stone-300">
+                View Mode
+              </div>
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={missedViewMode === "list"}
+                onClick={() => {
+                  handleSetMissedViewMode("list");
+                  setIsSortMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-xs font-black uppercase tracking-wide transition-all duration-150 border-b border-stone-700 ${
+                  missedViewMode === "list"
+                    ? "bg-blue-600 text-white"
+                    : "bg-stone-800 text-stone-200 hover:bg-stone-700 hover:text-white"
+                }`}
+              >
+                <span>List View</span>
+                {missedViewMode === "list" && <Check className="h-4 w-4" />}
+              </button>
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={missedViewMode === "date"}
+                onClick={() => {
+                  handleSetMissedViewMode("date");
+                  setIsSortMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-xs font-black uppercase tracking-wide transition-all duration-150 border-b border-stone-700 ${
+                  missedViewMode === "date"
+                    ? "bg-blue-600 text-white"
+                    : "bg-stone-800 text-stone-200 hover:bg-stone-700 hover:text-white"
+                }`}
+              >
+                <span>Group by Date</span>
+                {missedViewMode === "date" && <Check className="h-4 w-4" />}
+              </button>
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={missedViewMode === "class"}
+                onClick={() => {
+                  handleSetMissedViewMode("class");
+                  setIsSortMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-xs font-black uppercase tracking-wide transition-all duration-150 ${
+                  missedViewMode === "class"
+                    ? "bg-blue-600 text-white"
+                    : "bg-stone-800 text-stone-200 hover:bg-stone-700 hover:text-white"
+                }`}
+              >
+                <span>Group by Class</span>
+                {missedViewMode === "class" && <Check className="h-4 w-4" />}
+              </button>
+            </div>
+            <button
+              type="button"
+              role="menuitemradio"
+              aria-checked={missedSortDirection === "desc"}
+              onClick={() => {
+                setMissedSortDirection("desc");
+                setIsSortMenuOpen(false);
+              }}
+              className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-xs font-black uppercase tracking-wide transition-all duration-150 border-b border-stone-700 ${
+                missedSortDirection === "desc"
+                  ? "bg-blue-600 text-white"
+                  : "bg-stone-800 text-stone-200 hover:bg-stone-700 hover:text-white"
+              }`}
+            >
+              <span>Newest First</span>
+              {missedSortDirection === "desc" && <Check className="h-4 w-4" />}
+            </button>
+            <button
+              type="button"
+              role="menuitemradio"
+              aria-checked={missedSortDirection === "asc"}
+              onClick={() => {
+                setMissedSortDirection("asc");
+                setIsSortMenuOpen(false);
+              }}
+              className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-xs font-black uppercase tracking-wide transition-all duration-150 ${
+                missedSortDirection === "asc"
+                  ? "bg-blue-600 text-white"
+                  : "bg-stone-800 text-stone-200 hover:bg-stone-700 hover:text-white"
+              }`}
+            >
+              <span>Oldest First</span>
+              {missedSortDirection === "asc" && <Check className="h-4 w-4" />}
+            </button>
+          </div>,
+          document.body,
+        )}
+
       {dateActionDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md border-3 border-black bg-white shadow-[8px_8px_0_#0a0a0a] animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
@@ -1622,6 +2354,95 @@ export default function ClassesPage() {
                 <button
                   type="button"
                   onClick={() => setDateActionDialog(null)}
+                  className="w-full flex items-center justify-center gap-2 h-11 border-2 border-black bg-white px-4 text-sm font-black uppercase tracking-wide text-stone-900 shadow-[4px_4px_0_#0a0a0a] transition-all duration-300 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {missedGroupDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md border-3 border-black bg-white shadow-[8px_8px_0_#0a0a0a] animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+            <div className="bg-yellow-400 border-b-3 border-black px-6 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg font-black uppercase text-stone-900 leading-tight tracking-tight truncate">
+                    Check In Group
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMissedGroupDialog(null)}
+                  className="h-9 w-9 border-2 border-black bg-white flex items-center justify-center font-black text-xl shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a]"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="bg-white px-6 py-6">
+              <div className="mb-6 pb-5 border-b-2 border-stone-200">
+                <p className="text-xs font-bold text-stone-500 uppercase tracking-wide mb-2">
+                  {missedGroupDialog.mode === "date" ? "Date" : "Class"}
+                </p>
+                <p className="text-sm font-bold text-stone-700 mb-2">
+                  {missedGroupLabel}
+                </p>
+                <p className="text-sm font-bold text-stone-700">
+                  This will check in{" "}
+                  <span className="font-black text-stone-900">
+                    {missedGroupPreview.count}
+                  </span>{" "}
+                  {missedGroupPreview.count === 1 ? "class" : "classes"} for
+                  this group.
+                </p>
+                {missedGroupPreview.count > 0 && (
+                  <div className="mt-3 text-xs font-bold uppercase tracking-wide text-stone-500">
+                    Preview:{" "}
+                    <span className="text-stone-900">
+                      {missedGroupPreview.items
+                        .map((item) => item.courseName)
+                        .join(" • ")}
+                    </span>
+                    {missedGroupPreview.remaining > 0 && (
+                      <span className="text-stone-500">
+                        {" "}
+                        +{missedGroupPreview.remaining} more
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleConfirmMissedGroupCheckIn}
+                  disabled={missedGroupPending}
+                  aria-busy={missedGroupPending}
+                  className={`w-full flex items-center justify-center gap-2 h-12 border-2 border-black px-4 text-sm font-black uppercase tracking-wide text-white shadow-[4px_4px_0_#0a0a0a] transition-all duration-300 ${
+                    missedGroupPending
+                      ? "bg-stone-700 animate-pulse scale-[0.99]"
+                      : "bg-stone-900 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
+                  } disabled:opacity-60 disabled:cursor-not-allowed`}
+                >
+                  {missedGroupPending ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Confirm Check In
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMissedGroupDialog(null)}
                   className="w-full flex items-center justify-center gap-2 h-11 border-2 border-black bg-white px-4 text-sm font-black uppercase tracking-wide text-stone-900 shadow-[4px_4px_0_#0a0a0a] transition-all duration-300 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
                 >
                   Cancel

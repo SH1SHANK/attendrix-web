@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "sonner";
-import CookieConsent from "@/components/legal/CookieConsent";
-import ScrollToTop from "@/components/ui/ScrollToTop";
+import GlobalOverlays from "@/components/layout/GlobalOverlays";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { UserPreferencesProvider } from "@/context/UserPreferencesContext";
 import "./globals.css";
@@ -113,8 +112,7 @@ export default function RootLayout({
               <Toaster />
             </AuthProvider>
           </UserPreferencesProvider>
-          <CookieConsent />
-          <ScrollToTop />
+          <GlobalOverlays />
         </QueryProvider>
       </body>
     </html>

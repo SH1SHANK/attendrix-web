@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, memo } from "react";
 import { cn } from "@/lib/utils";
 import { TodayScheduleClass, UpcomingClass } from "@/types/supabase-academic";
 import { parseTimestampAsIST } from "@/lib/time/ist";
+import { useUserPreferences } from "@/context/UserPreferencesContext";
 
 interface CountdownCardProps {
   classData: TodayScheduleClass | UpcomingClass | null;
@@ -100,7 +101,59 @@ function CountdownCardEmpty({ className }: { className?: string }) {
   );
 }
 
-import { useUserPreferences } from "@/context/UserPreferencesContext";
+type CourseTypeMeta = {
+  isLab?: boolean;
+  courseType?: string | null;
+} | null;
+
+const TIME_ONLY_REGEX = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i;
+
+const isValidDate = (value: Date) =>
+  value instanceof Date && !Number.isNaN(value.getTime());
+
+function parseClassDateString(value?: string | null): Date | null {
+  if (!value) return null;
+  const parts = value.split("/");
+  if (parts.length !== 3) return null;
+  const day = Number(parts[0]);
+  const month = Number(parts[1]);
+  const year = Number(parts[2]);
+  if (!day || !month || !year) return null;
+  const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
+    2,
+    "0",
+  )}T00:00:00+05:30`;
+  const parsed = new Date(iso);
+  return isValidDate(parsed) ? parsed : null;
+}
+
+function parseTimeOnDate(
+  value: string | null | undefined,
+  baseDate: Date,
+): Date | null {
+  if (!value) return null;
+  const match = value.trim().match(TIME_ONLY_REGEX);
+  if (!match) return null;
+  let hour = Number(match[1]);
+  const minute = Number(match[2] || 0);
+  const second = Number(match[3] || 0);
+  const meridiem = match[4]?.toUpperCase();
+  if (Number.isNaN(hour) || Number.isNaN(minute) || Number.isNaN(second)) {
+    return null;
+  }
+  if (meridiem === "PM" && hour < 12) hour += 12;
+  if (meridiem === "AM" && hour === 12) hour = 0;
+  const date = new Date(baseDate.getTime());
+  date.setHours(hour, minute, second, 0);
+  return isValidDate(date) ? date : null;
+}
+
+function getCourseTypeLabel(courseType?: CourseTypeMeta): string | null {
+  if (!courseType) return null;
+  if (courseType.isLab) return "LAB";
+  if (courseType.courseType) return courseType.courseType.toUpperCase();
+  return null;
+}
 
 interface CountdownCardViewProps {
   classData: TodayScheduleClass | UpcomingClass;
@@ -119,108 +172,172 @@ function CountdownCardView({
   onMarkAbsent,
   pendingByClassId,
 }: CountdownCardViewProps) {
-  const { formatTime } = useUserPreferences();
+  const { formatTime, attendanceGoal } = useUserPreferences();
   const [timeLeft, setTimeLeft] = useState({
     hours: 0,
     minutes: 0,
     seconds: 0,
   });
   const [progress, setProgress] = useState(0);
-  const now = new Date();
-  const startTime = parseTimestampAsIST(classData.classStartTime);
-  const endTime = parseTimestampAsIST(classData.classEndTime);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const isTodayClass = "userAttended" in classData;
   const isCheckedIn = isTodayClass ? classData.userAttended : false;
-  const hasStarted = now >= startTime;
-  const isUpcoming = now < startTime;
   const isPending = pendingByClassId?.has(classData.classID) ?? false;
+
+  const {
+    startMs,
+    endMs,
+    timeRange,
+    dateLabel,
+    courseTypeLabel,
+    attendanceSummary,
+    attendanceHint,
+  } = useMemo(() => {
+    const classDateValue =
+      "classDate" in classData ? classData.classDate : null;
+    const courseTypeValue = classData.courseType ?? null;
+
+    let start = parseTimestampAsIST(classData.classStartTime);
+    let end = parseTimestampAsIST(classData.classEndTime);
+    let validTimes = isValidDate(start) && isValidDate(end);
+
+    if (!validTimes) {
+      const baseDate = parseClassDateString(classDateValue) ?? new Date();
+      const startFallback = parseTimeOnDate(
+        classData.classStartTime,
+        baseDate,
+      );
+      const endFallback = parseTimeOnDate(classData.classEndTime, baseDate);
+      if (startFallback) start = startFallback;
+      if (endFallback) end = endFallback;
+      validTimes = isValidDate(start) && isValidDate(end);
+    }
+
+    if (!isValidDate(start)) start = new Date();
+    if (!isValidDate(end)) end = new Date(start.getTime() + 60 * 60 * 1000);
+
+    const displayTimeRange = validTimes
+      ? `${formatTime(start)} - ${formatTime(end)}`
+      : "Time N/A";
+
+    const baseDate =
+      isValidDate(start) ? start : parseClassDateString(classDateValue);
+    const displayDate = baseDate
+      ? baseDate.toLocaleDateString("en-US", {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "Asia/Kolkata",
+        })
+      : null;
+
+    let summary: {
+      attended: number;
+      total: number;
+      percent: number;
+      needed: number;
+      canSkip: number;
+    } | null = null;
+    let hint: string | null = null;
+
+    if ("userAttended" in classData) {
+      const attended = classData.attendedClasses ?? 0;
+      const total = classData.totalClasses ?? 0;
+      const percent = Number.isFinite(classData.currentAttendancePercentage)
+        ? classData.currentAttendancePercentage
+        : 0;
+      const needed = classData.classesRequiredToReachGoal ?? 0;
+      const canSkip = classData.classesCanSkipAndStayAboveGoal ?? 0;
+
+      summary = { attended, total, percent, needed, canSkip };
+
+      if (total === 0) {
+        hint = "No attendance recorded yet.";
+      } else if (needed > 0) {
+        hint = `Attend ${needed} more ${
+          needed === 1 ? "class" : "classes"
+        } to reach ${attendanceGoal}%.`;
+      } else if (canSkip > 0) {
+        hint = `You can skip ${canSkip} ${
+          canSkip === 1 ? "class" : "classes"
+        } and stay above ${attendanceGoal}%.`;
+      } else {
+        hint = `On track for ${attendanceGoal}%.`;
+      }
+    } else {
+      hint = "Attendance details will update after class.";
+    }
+
+    return {
+      startMs: start.getTime(),
+      endMs: end.getTime(),
+      timeRange: displayTimeRange,
+      dateLabel: displayDate,
+      courseTypeLabel: getCourseTypeLabel(courseTypeValue),
+      attendanceSummary: summary,
+      attendanceHint: hint,
+    };
+  }, [classData, formatTime, attendanceGoal]);
+
+  const targetMs = type === "current" ? endMs : startMs;
+  const hasStarted = nowMs >= startMs;
+  const isUpcoming = nowMs < startMs;
   const canCheckIn = hasStarted && !isCheckedIn;
   const canMarkAbsent = hasStarted && isCheckedIn;
 
-  /* Safe Date Handling */
-  const isValidDate = (d: Date) => d instanceof Date && !isNaN(d.getTime());
-
-  const { targetTime, timeRange } = useMemo(() => {
-    let start = parseTimestampAsIST(classData.classStartTime);
-    let end = parseTimestampAsIST(classData.classEndTime);
-
-    if (!isValidDate(start)) start = new Date();
-    if (!isValidDate(end)) end = new Date(start.getTime() + 1000 * 60 * 60);
-
-    return {
-      targetTime: type === "current" ? end : start,
-      timeRange: isValidDate(parseTimestampAsIST(classData.classStartTime))
-        ? `${formatTime(start)} - ${formatTime(end)}`
-        : "Time N/A",
-    };
-  }, [classData, formatTime]);
-
   useEffect(() => {
-    let animationFrameId: number;
-    let lastUpdate = Date.now();
+    let intervalId: ReturnType<typeof setInterval>;
 
-    const updateCountdown = () => {
+    const tick = () => {
       const now = Date.now();
-      const nowTime = new Date();
+      setNowMs(now);
 
-      const startTime = parseTimestampAsIST(classData.classStartTime);
-      const endTime = parseTimestampAsIST(classData.classEndTime);
-
-      if (!isValidDate(startTime) || !isValidDate(endTime)) {
+      if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
         setProgress(0);
         setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
         return;
       }
 
-      // Progress Calculation
+      const totalDuration = endMs - startMs;
       let newProgress = 0;
-      if (nowTime > endTime) {
+
+      if (now >= endMs) {
         newProgress = 100;
-      } else if (startTime > nowTime && type === "next") {
+      } else if (type === "next" && now < startMs) {
         newProgress = 0;
+      } else if (totalDuration <= 0) {
+        newProgress = 100;
       } else {
-        const totalDuration = endTime.getTime() - startTime.getTime();
-        const elapsed = nowTime.getTime() - startTime.getTime();
-
-        if (totalDuration <= 0) {
-          newProgress = 100;
-        } else {
-          newProgress = Math.min(
-            100,
-            Math.max(0, (elapsed / totalDuration) * 100),
-          );
-        }
+        newProgress = Math.min(
+          100,
+          Math.max(0, ((now - startMs) / totalDuration) * 100),
+        );
       }
 
-      if (isNaN(newProgress)) newProgress = 0;
-      setProgress(newProgress);
+      setProgress(Number.isFinite(newProgress) ? newProgress : 0);
 
-      if (now - lastUpdate >= 1000) {
-        lastUpdate = now;
-        // Time Left Calculation
-        const diff = targetTime.getTime() - now;
-        if (diff > 0) {
-          const hours = Math.floor(diff / (1000 * 60 * 60));
-          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      const diff = targetMs - now;
+      if (diff > 0) {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-          setTimeLeft({
-            hours: isNaN(hours) ? 0 : hours,
-            minutes: isNaN(minutes) ? 0 : minutes,
-            seconds: isNaN(seconds) ? 0 : seconds,
-          });
-        } else {
-          setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
-        }
+        setTimeLeft({
+          hours: Number.isFinite(hours) ? hours : 0,
+          minutes: Number.isFinite(minutes) ? minutes : 0,
+          seconds: Number.isFinite(seconds) ? seconds : 0,
+        });
+      } else {
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
       }
-
-      animationFrameId = requestAnimationFrame(updateCountdown);
     };
 
-    animationFrameId = requestAnimationFrame(updateCountdown);
+    tick();
+    intervalId = setInterval(tick, 1000);
 
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [targetTime, classData, type]);
+    return () => clearInterval(intervalId);
+  }, [startMs, endMs, targetMs, type]);
 
   const isCurrent = type === "current";
 
@@ -289,6 +406,33 @@ function CountdownCardView({
             <div className="inline-block bg-black text-white px-3 py-1 font-mono text-lg font-bold transform -rotate-1 border-2 border-transparent">
               {timeRange}
             </div>
+            <div className="flex flex-wrap gap-2 pt-3">
+              {dateLabel && (
+                <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000]">
+                  {dateLabel}
+                </span>
+              )}
+              <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000]">
+                Type: {courseTypeLabel ?? "N/A"}
+              </span>
+              {classData.classVenue && (
+                <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000]">
+                  Venue: {classData.classVenue}
+                </span>
+              )}
+              {attendanceSummary && (
+                <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000]">
+                  Attendance: {attendanceSummary.attended}/
+                  {attendanceSummary.total} •{" "}
+                  {attendanceSummary.percent.toFixed(1)}%
+                </span>
+              )}
+            </div>
+            {attendanceHint && (
+              <p className="font-mono text-xs sm:text-sm font-bold text-black/70">
+                {attendanceHint}
+              </p>
+            )}
             {(type === "current" || type === "next") && (
               <div className="flex flex-wrap gap-2 pt-2">
                 {type === "current" && isTodayClass && (

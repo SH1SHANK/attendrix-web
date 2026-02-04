@@ -197,6 +197,81 @@ export function useUpcomingClasses(
 }
 
 /**
+ * Hook to fetch the very next upcoming class for enrolled courses
+ * Direct query on timetableRecords
+ *
+ * @param userId - Firebase Auth UID
+ * @param batchId - User's batch ID
+ */
+export function useNextEnrolledClass(
+  userId: string | null,
+  batchId: string,
+  enrolledCourses?: string[],
+) {
+  const [data, setData] = useState<UpcomingClass | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!userId || !batchId) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const nextClass = await ClassesService.getNextEnrolledClass(
+        userId as string,
+        batchId,
+        enrolledCourses,
+      );
+      setData(nextClass);
+    } catch (err) {
+      console.error("Error fetching next enrolled class:", err);
+      setError(err instanceof Error ? err : new Error("Unknown error"));
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, batchId, enrolledCourses]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Realtime Subscription
+  useEffect(() => {
+    if (!batchId) return;
+
+    const channel = supabase
+      .channel(`next-enrolled-class-${batchId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "timetableRecords",
+          filter: `batchID=eq.${batchId}`,
+        },
+        () => {
+          fetchData();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [batchId, fetchData]);
+
+  const refetch = () => fetchData();
+
+  return { data, loading, error, refetch };
+}
+
+/**
  * Hook to fetch classes by specific date
  * Uses get_classes_by_date RPC
  *
