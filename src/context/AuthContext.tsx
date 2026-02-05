@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (isPublicPage) return;
     },
-    [pathname, router],
+    [pathname],
   );
 
   useEffect(() => {

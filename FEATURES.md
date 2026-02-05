@@ -25,6 +25,17 @@ Last reviewed: 2026-02-05
 - Read-only tasks and exams list.
 - Tabs for assignments and exams.
 
+## Academic Resources
+
+- Academic repository per enrolled course.
+- Google Drive-backed folder/file browsing (read-only).
+- Favorites, recently opened, and tagged sections.
+- Drag-and-drop section ordering persisted in user preferences.
+- Inline quick actions for star/unstar and offline access.
+- Offline cache with storage usage indicator, cache limits, and manual clear.
+- Offline storage mode: web cache (default) or dedicated device folder with permission + fallback.
+- Personal repository placeholder (coming soon state).
+
 ## Profile
 
 - Course editing and enrollment updates.

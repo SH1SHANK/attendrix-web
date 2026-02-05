@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     const missingInSupabase = firebaseIds.filter((id) => !supabaseIds.includes(id));
     const extraInSupabase = supabaseIds.filter((id) => !firebaseIds.includes(id));
 
-    const { data: summaryData } = await (supabaseAdmin as any).rpc(
+    const { data: summaryData } = await supabaseAdmin.rpc(
       "get_user_course_attendance_summary",
       {
         uid: decoded.uid,
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
         p_semester_id: Number(supabaseRecord.semesterID || 0),
       };
 
-      const { error: rpcError } = await (supabaseAdmin as any).rpc(
+      const { error: rpcError } = await supabaseAdmin.rpc(
         "set_user_courses",
         payload,
       );
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
         return response;
       }
 
-      await (supabaseAdmin as any)
+      await supabaseAdmin
         .from("userCourseRecords")
         .update({
           enrolledCourses: firebaseIds,

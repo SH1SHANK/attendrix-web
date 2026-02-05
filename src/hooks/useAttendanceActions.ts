@@ -12,6 +12,7 @@ import {
   getFirestoreUser,
   markClassAbsentRpc,
 } from "@/lib/attendance/attendance-service";
+import type { StreakUpdateResult } from "@/lib/attendance/streak-utils";
 import {
   enqueueFirestoreAttendanceUpdate,
   flushNow,
@@ -134,16 +135,18 @@ export function useAttendanceActions(params: {
         ]);
 
         const fullDayCompleted = checkInResponse.full_day_completed === true;
+        const emptyStreakUpdates: StreakUpdateResult = {};
         const streakPayload = fullDayCompleted
           ? computeStreakUpdatesForCheckIn({
               user,
               classStartTime,
             })
-          : { streakData: null, updates: {} };
+          : { streakData: null, updates: emptyStreakUpdates };
 
+        const { updates } = streakPayload;
         const computedCurrentStreak =
-          typeof (streakPayload.updates as any).currentStreak === "number"
-            ? (streakPayload.updates as any).currentStreak
+          typeof updates.currentStreak === "number"
+            ? updates.currentStreak
             : (user?.currentStreak ?? 0);
 
         let challengeResult: EvaluateChallengesResponse | null = null;

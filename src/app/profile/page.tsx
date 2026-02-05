@@ -48,6 +48,7 @@ import { usePastClasses } from "@/hooks/usePastClasses";
 import { db } from "@/lib/firebase";
 import { recordMetric } from "@/lib/metrics/client-metrics";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { SmoothSection } from "@/components/ui/SmoothSection";
 import {
   Dialog,
   DialogContent,
@@ -132,6 +133,13 @@ export default function ProfilePage() {
     attendanceGoal,
   );
   const pastClassesQuery = usePastClasses(user?.uid ?? null, "all");
+  const attendanceSummary = useMemo(
+    () => attendanceSummaryQuery.data ?? [],
+    [attendanceSummaryQuery.data],
+  );
+  const exportCourses = firebaseData?.coursesEnrolled ?? [];
+  const hasAttendanceData = attendanceSummary.length > 0;
+  const hasCourseExportData = exportCourses.length > 0;
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [displayNameInput, setDisplayNameInput] = useState("");
@@ -191,6 +199,14 @@ export default function ProfilePage() {
 
   const [goalInput, setGoalInput] = useState(attendanceGoal.toString());
   const [settingsMounted, setSettingsMounted] = useState(false);
+  const parsedGoal = Number.parseInt(goalInput, 10);
+  const goalValue = Number.isFinite(parsedGoal) ? parsedGoal : attendanceGoal;
+  const [exportFormat, setExportFormat] = useState<"csv" | "markdown" | "pdf">(
+    "csv",
+  );
+  const [exportDataset, setExportDataset] = useState<
+    "attendance" | "courses"
+  >("attendance");
 
   useEffect(() => {
     setSettingsMounted(true);
@@ -260,8 +276,7 @@ export default function ProfilePage() {
       .join(",");
 
   const exportAttendanceCsv = () => {
-    const summary = attendanceSummaryQuery.data ?? [];
-    if (summary.length === 0) {
+    if (attendanceSummary.length === 0) {
       toast.error("Attendance summary not available yet.");
       return;
     }
@@ -275,7 +290,7 @@ export default function ProfilePage() {
         "Total",
         "Attendance %",
       ]),
-      ...summary.map((item) =>
+      ...attendanceSummary.map((item) =>
         buildCsvRow([
           item.courseID,
           item.courseName,
@@ -292,8 +307,7 @@ export default function ProfilePage() {
   };
 
   const exportCoursesCsv = () => {
-    const courses = firebaseData?.coursesEnrolled ?? [];
-    if (courses.length === 0) {
+    if (exportCourses.length === 0) {
       toast.error("No enrolled courses available.");
       return;
     }
@@ -306,7 +320,7 @@ export default function ProfilePage() {
         "Attended",
         "Total",
       ]),
-      ...courses.map((course) =>
+      ...exportCourses.map((course) =>
         buildCsvRow([
           course.courseID,
           course.courseName,
@@ -322,7 +336,7 @@ export default function ProfilePage() {
   };
 
   const exportMarkdown = () => {
-    const summary = attendanceSummaryQuery.data ?? [];
+    const summary = attendanceSummary;
     const createdAt = new Date().toLocaleString();
     const header = `# Attendrix Attendance Export\n\nGenerated: ${createdAt}\n\nUser: ${
       user?.displayName || user?.email || "Student"
@@ -342,7 +356,7 @@ export default function ProfilePage() {
 
   const exportPdf = () => {
     if (typeof window === "undefined") return;
-    const summary = attendanceSummaryQuery.data ?? [];
+    const summary = attendanceSummary;
     const pastClasses = pastClassesQuery.data ?? [];
     const createdAt = new Date();
 
@@ -728,6 +742,15 @@ export default function ProfilePage() {
     },
   ];
 
+  const listVisibilityStyle = useMemo(
+    () =>
+      ({
+      contentVisibility: "auto",
+      containIntrinsicSize: "1px 720px",
+      }) as React.CSSProperties,
+    [],
+  );
+
   const coursesById = useMemo(() => {
     const map = new Map<string, FirebaseCourseEnrollment>();
     (firebaseData?.coursesEnrolled ?? []).forEach((course) => {
@@ -789,14 +812,6 @@ export default function ProfilePage() {
     });
   }, [firebaseData?.created_time, user?.metadata?.creationTime]);
 
-  const handleBackNavigation = useCallback(() => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.push("/dashboard");
-  }, [router]);
-
   const handleSaveDisplayName = useCallback(async () => {
     if (!user || !displayNameInput.trim()) return;
     if (displayNameInput.trim() === displayName) {
@@ -854,6 +869,23 @@ export default function ProfilePage() {
     }
   }, [hasPasswordProvider, passwordConfirm, passwordInput, user]);
 
+  const handleTimeFormatChange = useCallback(
+    (value: "12" | "24") => {
+      const nextIs24 = value === "24";
+      if (nextIs24 !== is24Hour) {
+        toggleTimeFormat();
+      }
+    },
+    [is24Hour, toggleTimeFormat],
+  );
+
+  const handleGoalSliderChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setGoalInput(event.target.value);
+    },
+    [],
+  );
+
   const handleGoalSave = useCallback(() => {
     const parsed = parseInt(goalInput, 10);
     if (Number.isNaN(parsed) || parsed < 50 || parsed > 100) {
@@ -878,6 +910,40 @@ export default function ProfilePage() {
       toast.error("Unable to clear cache.");
     }
   }, []);
+
+  const exportSupportsSelection =
+    exportFormat === "csv" || exportDataset === "attendance";
+  const exportHasData =
+    exportDataset === "attendance" ? hasAttendanceData : hasCourseExportData;
+  const canExport = exportSupportsSelection && exportHasData;
+  const exportHelper =
+    exportFormat === "csv"
+      ? "CSV exports download instantly."
+      : exportFormat === "markdown"
+        ? "Markdown exports attendance summary only."
+        : "PDF export opens a print dialog for Save as PDF.";
+
+  const handleExport = () => {
+    if (!exportSupportsSelection) {
+      toast.error("This format is available for attendance summary only.");
+      return;
+    }
+
+    if (exportDataset === "attendance") {
+      if (exportFormat === "markdown") {
+        exportMarkdown();
+        return;
+      }
+      if (exportFormat === "pdf") {
+        exportPdf();
+        return;
+      }
+      exportAttendanceCsv();
+      return;
+    }
+
+    exportCoursesCsv();
+  };
 
   if (authLoading) {
     return <div className="min-h-screen bg-[#f5f5f5]" />;
@@ -909,9 +975,9 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-[#f5f5f5] pb-24 relative isolate">
       <DotPatternBackground />
 
-      <div className="mx-auto max-w-4xl relative z-10 px-4 sm:px-6 py-6">
+      <div className="mx-auto max-w-6xl relative z-10 px-4 sm:px-6 pt-3 pb-4 sm:pt-4 sm:pb-5">
         {/* Top Navigation */}
-        <div className="mb-6 flex flex-col gap-3">
+        <div className="mb-4 flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href="/"
@@ -944,14 +1010,29 @@ export default function ProfilePage() {
               </ol>
             </nav>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black uppercase text-black tracking-tight">
-            PROFILE
-          </h1>
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-black uppercase text-black tracking-tight">
+              PROFILE
+            </h1>
+            <p className="text-xs sm:text-sm font-bold uppercase text-neutral-600 mt-1">
+              Manage identity, academics, and preferences in one place.
+            </p>
+          </div>
         </div>
 
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <div className="space-y-6">
         {/* Profile Card */}
-        <section className="mb-6 border-[3px] border-black bg-white px-6 py-8 shadow-[5px_5px_0px_0px_#000]">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+        <SmoothSection className="border-[3px] border-black bg-white px-6 py-8 shadow-[5px_5px_0px_0px_#000]">
+          <div className="mb-6">
+            <h3 className="text-xl font-black uppercase tracking-tight">
+              PROFILE OVERVIEW
+            </h3>
+            <p className="text-sm font-bold text-neutral-600">
+              Identity details, contact info, and security tools.
+            </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-[140px_minmax(0,1fr)]">
             {/* Avatar */}
             <div className="shrink-0">
               {photoUrl ? (
@@ -974,32 +1055,46 @@ export default function ProfilePage() {
             </div>
 
             {/* Profile Info */}
-            <div className="flex-1 space-y-5">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-2xl sm:text-3xl font-black uppercase text-black">
-                  {displayName}
-                </h2>
-                <span className="border-[3px] border-black bg-black px-3 py-1 text-xs font-black uppercase text-white shadow-[3px_3px_0px_0px_#000]">
-                  {authProviderLabel}
-                </span>
-                <span className="border-[3px] border-black bg-[#FFD700] px-3 py-1 text-xs font-black uppercase text-black shadow-[3px_3px_0px_0px_#000]">
-                  {role}
-                </span>
+            <div className="flex-1 space-y-6">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-2xl sm:text-3xl font-black uppercase text-black">
+                    {displayName}
+                  </h2>
+                  <span className="border-[3px] border-black bg-black px-3 py-1 text-xs font-black uppercase text-white shadow-[3px_3px_0px_0px_#000]">
+                    {authProviderLabel}
+                  </span>
+                  <span className="border-[3px] border-black bg-[#FFD700] px-3 py-1 text-xs font-black uppercase text-black shadow-[3px_3px_0px_0px_#000]">
+                    {role}
+                  </span>
+                </div>
+                <p className="text-sm font-bold text-neutral-600">
+                  This is your primary account identity across Attendrix.
+                </p>
               </div>
 
-              <div className="space-y-3 text-sm font-bold text-stone-800">
-                <div className="flex items-center gap-3">
-                  <User className="h-5 w-5" />
-                  <span className="text-base">@{username}</span>
+              <div className="grid gap-3 sm:grid-cols-2 text-sm font-bold text-stone-800">
+                <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000]">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase text-neutral-500">
+                    <User className="h-4 w-4" />
+                    Username
+                  </div>
+                  <p className="text-base font-black">@{username}</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Mail className="h-5 w-5" />
-                  <span className="text-base">{email}</span>
+                <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000]">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase text-neutral-500">
+                    <Mail className="h-4 w-4" />
+                    Email
+                  </div>
+                  <p className="text-base font-black break-all">{email}</p>
                 </div>
               </div>
 
               {/* Edit Display Name Section */}
-              <div className="flex flex-wrap items-center gap-3 pt-2">
+              <div className="border-t-[3px] border-black pt-5 space-y-3">
+                <p className="text-xs font-black uppercase text-neutral-600">
+                  Display name
+                </p>
                 {!isEditingName ? (
                   <button
                     type="button"
@@ -1041,7 +1136,10 @@ export default function ProfilePage() {
               </div>
 
               {/* Password Section */}
-              <div className="border-t-[3px] border-black pt-5">
+              <div className="border-t-[3px] border-black pt-5 space-y-3">
+                <p className="text-xs font-black uppercase text-neutral-600">
+                  Security
+                </p>
                 <button
                   type="button"
                   onClick={() => setShowPasswordForm((prev) => !prev)}
@@ -1051,7 +1149,7 @@ export default function ProfilePage() {
                   {hasPasswordProvider ? "CHANGE PASSWORD" : "ADD PASSWORD"}
                 </button>
                 {showPasswordForm && (
-                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <input
                       type="password"
                       value={passwordInput}
@@ -1082,17 +1180,22 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
-        </section>
+        </SmoothSection>
 
         {/* Amplix Overview - Gamification Stats */}
-        <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+        <SmoothSection className="border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
           <div className="flex items-center gap-3 mb-6">
             <div className="bg-[#FFD700] p-2 border-[3px] border-black shadow-[3px_3px_0px_0px_#000]">
               <BadgeCheck className="h-6 w-6 text-black" />
             </div>
-            <h3 className="text-xl font-black uppercase tracking-tight">
-              AMPLIX OVERVIEW
-            </h3>
+            <div>
+              <h3 className="text-xl font-black uppercase tracking-tight">
+                AMPLIX OVERVIEW
+              </h3>
+              <p className="text-sm font-bold text-neutral-600">
+                Track streaks and rewards tied to your attendance.
+              </p>
+            </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             {/* Amplix Score - Yellow highlight like dashboard */}
@@ -1127,13 +1230,18 @@ export default function ProfilePage() {
               </p>
             </div>
           </div>
-        </section>
+        </SmoothSection>
 
         {/* Academic Info */}
-        <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
-          <h3 className="text-xl font-black uppercase tracking-tight mb-6">
-            ACADEMIC INFO
-          </h3>
+        <SmoothSection className="border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+          <div className="mb-6">
+            <h3 className="text-xl font-black uppercase tracking-tight">
+              ACADEMIC INFO
+            </h3>
+            <p className="text-sm font-bold text-neutral-600">
+              Verified batch and enrollment summary from your records.
+            </p>
+          </div>
           {courseLoading ? (
             <p className="text-base font-bold text-neutral-600">Loading...</p>
           ) : courseError ? (
@@ -1161,14 +1269,19 @@ export default function ProfilePage() {
               </div>
             </div>
           )}
-        </section>
+        </SmoothSection>
 
         {/* Enrolled Courses List */}
-        <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            <h3 className="text-xl font-black uppercase tracking-tight">
-              ENROLLED COURSES
-            </h3>
+        <SmoothSection className="border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+            <div>
+              <h3 className="text-xl font-black uppercase tracking-tight">
+                ENROLLED COURSES
+              </h3>
+              <p className="text-sm font-bold text-neutral-600">
+                View current courses, credit types, and attendance counts.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => router.push("/profile/edit-courses")}
@@ -1186,7 +1299,7 @@ export default function ProfilePage() {
               No enrolled courses found.
             </p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4" style={listVisibilityStyle}>
               {coursesToDisplay.map((course) => {
                 const typeLabel = course.courseType?.isLab
                   ? "Lab"
@@ -1221,15 +1334,20 @@ export default function ProfilePage() {
               })}
             </div>
           )}
-        </section>
+        </SmoothSection>
 
         {/* Sync Calendar */}
-        <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            <div className="flex items-center gap-3">
-              <h3 className="text-xl font-black uppercase tracking-tight">
-                SYNC YOUR CALENDAR
-              </h3>
+        <SmoothSection className="border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+            <div className="flex items-start gap-3">
+              <div>
+                <h3 className="text-xl font-black uppercase tracking-tight">
+                  SYNC YOUR CALENDAR
+                </h3>
+                <p className="text-sm font-bold text-neutral-600">
+                  Export your batch timetable to Google Calendar or iCal.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsCalendarHelpOpen(true)}
@@ -1254,7 +1372,7 @@ export default function ProfilePage() {
               No calendars available for your batch yet.
             </p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4" style={listVisibilityStyle}>
               {(calendarsQuery.data ?? []).map((calendar) => (
                 <div
                   key={calendar.calendarID}
@@ -1304,27 +1422,65 @@ export default function ProfilePage() {
             Note: Google Calendar does not currently support electives or custom
             classes. This feature is work-in-progress and will be added soon!
           </p>
-        </section>
+        </SmoothSection>
 
+          </div>
+          <div className="space-y-6 lg:sticky lg:top-6">
         {/* Settings */}
-        <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
-          <h3 className="text-xl font-black uppercase tracking-tight mb-6">
-            SETTINGS
-          </h3>
+        <SmoothSection className="border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+          <div className="mb-6">
+            <h3 className="text-xl font-black uppercase tracking-tight">
+              SETTINGS
+            </h3>
+            <p className="text-sm font-bold text-neutral-600">
+              Tune the experience, attendance targets, and data sync tools.
+            </p>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Time Format */}
             <div className="border-[3px] border-black bg-white px-5 py-4 shadow-[5px_5px_0px_0px_#000]">
               <p className="text-xs font-black uppercase text-neutral-600 mb-3">
                 TIME FORMAT
               </p>
+              <p className="text-sm font-bold text-neutral-600 mb-3">
+                Choose how class times display throughout the app.
+              </p>
               {settingsMounted && (
-                <button
-                  type="button"
-                  onClick={toggleTimeFormat}
-                  className="inline-flex items-center gap-2 border-[3px] border-black bg-black px-4 py-3 text-sm font-black uppercase text-white shadow-[5px_5px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_#000] active:translate-y-0 active:shadow-[3px_3px_0px_0px_#000]"
-                >
-                  {is24Hour ? "24H" : "12H"}
-                </button>
+                <fieldset className="grid grid-cols-2 gap-2" aria-label="Time format">
+                  <legend className="sr-only">Time format</legend>
+                  <label
+                    className={`flex items-center justify-center border-[3px] border-black px-4 py-2 text-sm font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 ${
+                      is24Hour
+                        ? "bg-black text-white"
+                        : "bg-white text-black hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="time-format"
+                      className="sr-only"
+                      checked={is24Hour}
+                      onChange={() => handleTimeFormatChange("24")}
+                    />
+                    24H
+                  </label>
+                  <label
+                    className={`flex items-center justify-center border-[3px] border-black px-4 py-2 text-sm font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 ${
+                      !is24Hour
+                        ? "bg-black text-white"
+                        : "bg-white text-black hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="time-format"
+                      className="sr-only"
+                      checked={!is24Hour}
+                      onChange={() => handleTimeFormatChange("12")}
+                    />
+                    12H
+                  </label>
+                </fieldset>
               )}
             </div>
             {/* Attendance Goal */}
@@ -1332,25 +1488,43 @@ export default function ProfilePage() {
               <p className="text-xs font-black uppercase text-neutral-600 mb-3">
                 ATTENDANCE GOAL
               </p>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  min={50}
-                  max={100}
-                  value={goalInput}
-                  onChange={(event) => setGoalInput(event.target.value)}
-                  className="w-24 border-[3px] border-black px-3 py-2 text-base font-black uppercase shadow-[3px_3px_0px_0px_#000] focus:outline-none focus:ring-4 focus:ring-black/20"
-                />
-                <span className="text-base font-black uppercase text-neutral-600">
-                  %
-                </span>
-                <button
-                  type="button"
-                  onClick={handleGoalSave}
-                  className="ml-auto inline-flex items-center gap-2 border-[3px] border-black bg-[#FFD700] px-4 py-2 text-sm font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000] active:translate-y-0 active:shadow-[2px_2px_0px_0px_#000]"
-                >
-                  SAVE
-                </button>
+              <p className="text-sm font-bold text-neutral-600 mb-3">
+                Set the minimum percentage you want to stay above.
+              </p>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={50}
+                    max={100}
+                    value={goalValue}
+                    onChange={handleGoalSliderChange}
+                    className="w-full accent-black"
+                  />
+                  <div className="border-[3px] border-black bg-white px-3 py-1 text-sm font-black uppercase shadow-[3px_3px_0px_0px_#000]">
+                    {goalValue}%
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    type="number"
+                    min={50}
+                    max={100}
+                    value={goalInput}
+                    onChange={(event) => setGoalInput(event.target.value)}
+                    className="w-24 border-[3px] border-black px-3 py-2 text-base font-black uppercase shadow-[3px_3px_0px_0px_#000] focus:outline-none focus:ring-4 focus:ring-black/20"
+                  />
+                  <span className="text-base font-black uppercase text-neutral-600">
+                    %
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleGoalSave}
+                    className="ml-auto inline-flex items-center gap-2 border-[3px] border-black bg-[#FFD700] px-4 py-2 text-sm font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000] active:translate-y-0 active:shadow-[2px_2px_0px_0px_#000]"
+                  >
+                    SAVE
+                  </button>
+                </div>
               </div>
             </div>
             <div className="border-[3px] border-black bg-white px-5 py-4 shadow-[5px_5px_0px_0px_#000]">
@@ -1371,10 +1545,10 @@ export default function ProfilePage() {
               </button>
             </div>
           </div>
-        </section>
+        </SmoothSection>
 
         {resyncSummary && (
-          <section className="mb-6 border-[3px] border-black bg-white px-6 py-5 shadow-[5px_5px_0px_0px_#000]">
+          <SmoothSection className="border-[3px] border-black bg-white px-6 py-5 shadow-[5px_5px_0px_0px_#000]">
             <h3 className="text-lg font-black uppercase tracking-tight mb-4">
               Resync Summary
             </h3>
@@ -1409,14 +1583,18 @@ export default function ProfilePage() {
                 ? "Supabase enrollment updated to match Firebase."
                 : "No enrollment updates were required."}
             </p>
-          </section>
+          </SmoothSection>
         )}
 
-        <details className="mb-6 border-[3px] border-black bg-white px-6 py-5 shadow-[5px_5px_0px_0px_#000]">
-          <summary className="cursor-pointer text-lg font-black uppercase tracking-tight">
-            Additional Settings
-          </summary>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <SmoothSection>
+          <details className="border-[3px] border-black bg-white px-6 py-5 shadow-[5px_5px_0px_0px_#000]">
+            <summary className="cursor-pointer text-lg font-black uppercase tracking-tight">
+              <span className="block">Additional Settings</span>
+              <span className="mt-1 block text-xs font-bold uppercase text-neutral-500">
+                Exports, installs, and account controls
+              </span>
+            </summary>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000] opacity-60">
               <p className="text-xs font-black uppercase text-neutral-600 mb-2">
                 Notification Preferences
@@ -1429,39 +1607,105 @@ export default function ProfilePage() {
               <p className="text-xs font-black uppercase text-neutral-600 mb-2">
                 Data Export
               </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={exportAttendanceCsv}
-                  className="inline-flex items-center gap-2 border-[3px] border-black bg-[#FFD700] px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
-                >
-                  Attendance CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={exportCoursesCsv}
-                  className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
-                >
-                  Courses CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={exportMarkdown}
-                  className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
-                >
-                  Markdown
-                </button>
-                <button
-                  type="button"
-                  onClick={exportPdf}
-                  className="inline-flex items-center gap-2 border-[3px] border-black bg-black px-3 py-2 text-[10px] font-black uppercase text-white shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
-                >
-                  PDF
-                </button>
-              </div>
-              <p className="mt-2 text-[10px] font-bold text-neutral-500">
-                PDF export opens a print dialog for Save as PDF.
+              <p className="text-sm font-bold text-neutral-600">
+                Pick a dataset and format, then export on demand.
               </p>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-neutral-500 mb-2">
+                    Export Format
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["csv", "markdown", "pdf"] as const).map((format) => (
+                      <label
+                        key={format}
+                        className={`flex items-center justify-center border-[3px] border-black px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 ${
+                          exportFormat === format
+                            ? "bg-black text-white"
+                            : "bg-white text-black hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="export-format"
+                          className="sr-only"
+                          checked={exportFormat === format}
+                          onChange={() => setExportFormat(format)}
+                        />
+                        {format}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-neutral-500 mb-2">
+                    Dataset
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { value: "attendance", label: "Attendance" },
+                      { value: "courses", label: "Courses" },
+                    ] as const).map((dataset) => (
+                      <label
+                        key={dataset.value}
+                        className={`flex items-center justify-center border-[3px] border-black px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 ${
+                          exportDataset === dataset.value
+                            ? "bg-black text-white"
+                            : "bg-white text-black hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="export-dataset"
+                          className="sr-only"
+                          checked={exportDataset === dataset.value}
+                          onChange={() => setExportDataset(dataset.value)}
+                        />
+                        {dataset.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExport}
+                    disabled={!canExport}
+                    className="inline-flex items-center gap-2 border-[3px] border-black bg-[#FFD700] px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000] disabled:opacity-60"
+                  >
+                    Export Now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportAttendanceCsv}
+                    className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                  >
+                    Attendance CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportCoursesCsv}
+                    className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-3 py-2 text-[10px] font-black uppercase shadow-[3px_3px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_#000]"
+                  >
+                    Courses CSV
+                  </button>
+                </div>
+                <p
+                  className={`text-[10px] font-bold ${
+                    !exportSupportsSelection
+                      ? "text-red-600"
+                      : !exportHasData
+                        ? "text-neutral-500"
+                        : "text-neutral-500"
+                  }`}
+                >
+                  {!exportSupportsSelection
+                    ? "Markdown/PDF support attendance summaries only."
+                    : !exportHasData
+                      ? "No data available for the selected dataset."
+                      : exportHelper}
+                </p>
+              </div>
             </div>
             <InstallPrompt variant="card" />
             <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000] opacity-60">
@@ -1516,8 +1760,9 @@ export default function ProfilePage() {
                 support@attendrix.app
               </p>
             </div>
-          </div>
-        </details>
+            </div>
+          </details>
+        </SmoothSection>
 
         <Dialog open={isCalendarHelpOpen} onOpenChange={setIsCalendarHelpOpen}>
           <DialogContent className="max-w-xl border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_#000]">
@@ -1696,10 +1941,15 @@ export default function ProfilePage() {
         </Dialog>
 
         {/* System Info */}
-        <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
-          <h3 className="text-xl font-black uppercase tracking-tight mb-6">
-            SYSTEM INFO
-          </h3>
+        <SmoothSection className="border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+          <div className="mb-6">
+            <h3 className="text-xl font-black uppercase tracking-tight">
+              SYSTEM INFO
+            </h3>
+            <p className="text-sm font-bold text-neutral-600">
+              Internal identifiers for support and troubleshooting.
+            </p>
+          </div>
           <div className="grid gap-4 sm:grid-cols-3 text-sm font-bold uppercase text-neutral-700">
             <div className="border-[3px] border-black bg-white px-4 py-3 shadow-[3px_3px_0px_0px_#000]">
               <p className="text-xs font-black uppercase text-neutral-600 mb-1">
@@ -1722,10 +1972,10 @@ export default function ProfilePage() {
               <p className="text-black text-xs">{accountCreatedAt}</p>
             </div>
           </div>
-        </section>
+        </SmoothSection>
 
         {/* About Attendrix Web */}
-        <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+        <SmoothSection className="border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
           <h3 className="text-xl font-black uppercase tracking-tight mb-4">
             ABOUT ATTENDRIX WEB
           </h3>
@@ -1768,10 +2018,10 @@ export default function ProfilePage() {
               );
             })}
           </div>
-        </section>
+        </SmoothSection>
 
         {/* Support */}
-        <section className="mb-6 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+        <SmoothSection className="border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
           <h3 className="text-xl font-black uppercase tracking-tight mb-2">
             SUPPORT
           </h3>
@@ -1816,10 +2066,10 @@ export default function ProfilePage() {
               );
             })}
           </div>
-        </section>
+        </SmoothSection>
 
         {/* Sign Out */}
-        <section className="mb-10 border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
+        <SmoothSection className="border-[3px] border-black bg-white px-6 py-6 shadow-[5px_5px_0px_0px_#000]">
           <h3 className="text-xl font-black uppercase tracking-tight mb-2">
             SIGN OUT
           </h3>
@@ -1835,7 +2085,9 @@ export default function ProfilePage() {
             <LogOut className="h-4 w-4" />
             Sign Out
           </button>
-        </section>
+        </SmoothSection>
+          </div>
+        </div>
       </div>
 
       {/* Bottom Navigation */}

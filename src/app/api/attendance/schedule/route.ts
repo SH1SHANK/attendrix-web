@@ -91,7 +91,7 @@ export async function GET(request: Request) {
       return response;
     }
 
-    const { data: todayData, error: todayError } = await (supabaseAdmin as any).rpc(
+    const { data: todayData, error: todayError } = await supabaseAdmin.rpc(
       "get_today_schedule",
       {
         batch_id: batchId,

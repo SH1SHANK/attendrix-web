@@ -21,7 +21,16 @@ export default function CoursesCompletedPage() {
   const { attendanceGoal } = useUserPreferences();
   const userId = user?.uid ?? null;
 
-  const [session, setSession] = useState<EditSession | null>(null);
+  const [session] = useState<EditSession | null>(() => {
+    if (typeof window === "undefined") return null;
+    const raw = window.sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as EditSession;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     if (authLoading) return;
@@ -30,21 +39,13 @@ export default function CoursesCompletedPage() {
       return;
     }
     if (typeof window === "undefined") return;
-    const raw = window.sessionStorage.getItem(SESSION_KEY);
-    if (!raw) {
-      router.push("/profile");
-      return;
-    }
-    try {
-      const parsed = JSON.parse(raw) as EditSession;
-      setSession(parsed);
-    } catch {
+    if (!session) {
       router.push("/profile");
     }
-  }, [authLoading, router, user]);
+  }, [authLoading, router, session, user]);
 
   const attendanceQuery = useAttendanceSummary(userId, attendanceGoal);
-  const summary = attendanceQuery.data ?? [];
+  const summary = useMemo(() => attendanceQuery.data ?? [], [attendanceQuery.data]);
 
   const addedSummaries = useMemo(() => {
     if (!session) return [];

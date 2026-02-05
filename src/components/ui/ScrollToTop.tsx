@@ -14,10 +14,7 @@ export default function ScrollToTop() {
     pathname?.startsWith("/dashboard") || pathname?.startsWith("/profile");
 
   useEffect(() => {
-    if (shouldHide) {
-      setIsVisible(false);
-      return;
-    }
+    if (shouldHide) return;
 
     const handleScroll = () => {
       setIsVisible(window.scrollY > 400);

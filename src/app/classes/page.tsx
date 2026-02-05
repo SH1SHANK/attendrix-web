@@ -10,7 +10,6 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
-  ArrowLeft,
   ArrowUpDown,
   Calendar,
   Check,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import DotPatternBackground from "@/components/ui/DotPatternBackground";
+import { DashboardHeaderMenu } from "@/components/dashboard/DashboardHeaderMenu";
 import { useAuth } from "@/context/AuthContext";
 import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { useAttendanceActions } from "@/hooks/useAttendanceActions";
@@ -46,7 +46,6 @@ import type {
   PastClass,
 } from "@/types/types-defination";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 type TabType = "all" | "missed";
 type MissedViewMode = "list" | "date" | "class";
@@ -81,33 +80,8 @@ const formatDateLabel = (dateString: string) => {
 
 const formatDateHeader = (dateString: string) => formatDateLabel(dateString);
 
-const getClassStartMs = (item: PastClass) =>
-  parseTimestampAsIST(item.classStartTime).getTime();
-
-function buildClassesByDate(classes: PastClass[]): ClassesByDate {
-  const grouped: ClassesByDate = {};
-
-  classes.forEach((item) => {
-    const dateKey = getISTDateString(parseTimestampAsIST(item.classStartTime));
-    if (!grouped[dateKey]) {
-      grouped[dateKey] = [];
-    }
-    grouped[dateKey]?.push(item);
-  });
-
-  Object.values(grouped).forEach((items) => {
-    items.sort(
-      (a, b) =>
-        parseTimestampAsIST(b.classStartTime).getTime() -
-        parseTimestampAsIST(a.classStartTime).getTime(),
-    );
-  });
-
-  return grouped;
-}
 
 export default function ClassesPage() {
-  const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { formatTime } = useUserPreferences();
   const userId = user?.uid ?? null;
@@ -160,7 +134,10 @@ export default function ClassesPage() {
   );
 
   const pastClassesQuery = usePastClasses(userId, activeFilter);
-  const pastClasses = pastClassesQuery.data ?? [];
+  const pastClasses = useMemo(
+    () => pastClassesQuery.data ?? [],
+    [pastClassesQuery.data],
+  );
   const loading = authLoading || pastClassesQuery.isLoading;
   const isRefreshing =
     pastClassesQuery.isFetching && !pastClassesQuery.isLoading;
@@ -229,9 +206,51 @@ export default function ClassesPage() {
     },
   });
 
+  const classTimeIndex = useMemo(() => {
+    const map = new Map<string, { startMs: number; dateKey: string }>();
+    pastClasses.forEach((item) => {
+      const start = parseTimestampAsIST(item.classStartTime);
+      map.set(item.classID, {
+        startMs: start.getTime(),
+        dateKey: getISTDateString(start),
+      });
+    });
+    return map;
+  }, [pastClasses]);
+
+  const getClassStartMs = useCallback(
+    (item: PastClass) =>
+      classTimeIndex.get(item.classID)?.startMs ??
+      parseTimestampAsIST(item.classStartTime).getTime(),
+    [classTimeIndex],
+  );
+
+  const getClassDateKey = useCallback(
+    (item: PastClass) =>
+      classTimeIndex.get(item.classID)?.dateKey ??
+      getISTDateString(parseTimestampAsIST(item.classStartTime)),
+    [classTimeIndex],
+  );
+
   const classesByDate = useMemo(
-    () => buildClassesByDate(pastClasses),
-    [pastClasses],
+    () => {
+      const grouped: ClassesByDate = {};
+
+      pastClasses.forEach((item) => {
+        const dateKey = getClassDateKey(item);
+        if (!grouped[dateKey]) {
+          grouped[dateKey] = [];
+        }
+        grouped[dateKey]?.push(item);
+      });
+
+      Object.values(grouped).forEach((items) => {
+        items.sort((a, b) => getClassStartMs(b) - getClassStartMs(a));
+      });
+
+      return grouped;
+    },
+    [pastClasses, getClassDateKey, getClassStartMs],
   );
 
   const sortedGroupKeys = useMemo(
@@ -259,7 +278,7 @@ export default function ClassesPage() {
     [allClasses],
   );
 
-  const todayKey = useMemo(() => getISTDateString(new Date()), [classesByDate]);
+  const todayKey = getISTDateString(new Date());
 
   const canJumpToToday = useMemo(
     () => activeTab === "all" && sortedGroupKeys.includes(todayKey),
@@ -335,7 +354,7 @@ export default function ClassesPage() {
         : getClassStartMs(b) - getClassStartMs(a),
     );
     return items;
-  }, [missedClasses, missedSortDirection]);
+  }, [getClassStartMs, missedClasses, missedSortDirection]);
 
   const isEligibleForBulk = useCallback((item: PastClass) => {
     return item.attendanceStatus === "ABSENT";
@@ -345,7 +364,7 @@ export default function ClassesPage() {
     const grouped: ClassesByDate = {};
 
     missedClassesSorted.forEach((item) => {
-      const dateKey = getISTDateString(parseTimestampAsIST(item.classStartTime));
+      const dateKey = getClassDateKey(item);
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
       }
@@ -361,7 +380,7 @@ export default function ClassesPage() {
     });
 
     return grouped;
-  }, [missedClassesSorted, missedSortDirection]);
+  }, [getClassDateKey, getClassStartMs, missedClassesSorted, missedSortDirection]);
 
   const missedDateKeys = useMemo(() => {
     const keys = Object.keys(missedClassesByDate);
@@ -393,7 +412,7 @@ export default function ClassesPage() {
     });
 
     return grouped;
-  }, [missedClassesSorted, missedSortDirection]);
+  }, [getClassStartMs, missedClassesSorted, missedSortDirection]);
 
   const missedCourseKeys = useMemo(() => {
     const keys = Object.keys(missedClassesByCourse);
@@ -571,7 +590,7 @@ export default function ClassesPage() {
   const handleConfirmDateAction = async () => {
     if (!dateActionDialog || !userId) return;
 
-    const { dateKey, action } = dateActionDialog;
+    const { action } = dateActionDialog;
     const targets = dateActionTargets;
 
     if (targets.length === 0) {
@@ -699,14 +718,6 @@ export default function ClassesPage() {
     } finally {
       setDateActionPending(false);
     }
-  };
-
-  const handleBackNavigation = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.push("/dashboard");
   };
 
   const handleRefresh = () => {
@@ -1221,9 +1232,7 @@ export default function ClassesPage() {
     const isMissed = item.attendanceStatus === "ABSENT";
     const fadePhase = fadeOutState[item.classID];
     const isFadingOut = !!fadePhase;
-    const dateKey = getISTDateString(
-      parseTimestampAsIST(item.classStartTime),
-    );
+    const dateKey = getClassDateKey(item);
     const timeRange = `${formatTime(item.classStartTime)} – ${formatTime(
       item.classEndTime,
     )}`;
@@ -1300,41 +1309,37 @@ export default function ClassesPage() {
       <DotPatternBackground />
 
       <div className="mx-auto max-w-3xl relative z-10">
-        <header className="bg-white border-b-4 border-black px-4 py-3 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
-          <div className="mb-4 flex flex-col gap-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 border-[3px] border-black bg-white px-4 py-3 text-sm font-black uppercase shadow-[5px_5px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_#000] active:translate-y-0 active:shadow-[3px_3px_0px_0px_#000] self-start"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              BACK TO HOME
-            </Link>
-            <nav aria-label="Breadcrumb">
-              <ol className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase">
-                <li>
-                  <Link
-                    href="/"
-                    className="text-neutral-500 hover:text-black transition-colors"
-                  >
-                    Home
-                  </Link>
-                </li>
-                <li className="text-neutral-300">/</li>
-                <li>
-                  <Link
-                    href="/dashboard"
-                    className="text-neutral-500 hover:text-black transition-colors"
-                  >
-                    Dashboard
-                  </Link>
-                </li>
-                <li className="text-neutral-300">/</li>
-                <li className="text-black">Classes</li>
-              </ol>
-            </nav>
-            <h1 className="font-display text-2xl sm:text-3xl font-black uppercase text-stone-900 tracking-tight">
-              Classes
-            </h1>
+        <header className="bg-white border-b-4 border-black px-4 py-2 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
+          <div className="mb-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex flex-col gap-2">
+              <nav aria-label="Breadcrumb">
+                <ol className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase">
+                  <li>
+                    <Link
+                      href="/"
+                      className="text-neutral-500 hover:text-black transition-colors"
+                    >
+                      Home
+                    </Link>
+                  </li>
+                  <li className="text-neutral-300">/</li>
+                  <li>
+                    <Link
+                      href="/dashboard"
+                      className="text-neutral-500 hover:text-black transition-colors"
+                    >
+                      Dashboard
+                    </Link>
+                  </li>
+                  <li className="text-neutral-300">/</li>
+                  <li className="text-black">Classes</li>
+                </ol>
+              </nav>
+              <h1 className="font-display text-2xl sm:text-3xl font-black uppercase text-stone-900 tracking-tight">
+                Classes
+              </h1>
+            </div>
+            <DashboardHeaderMenu className="self-start" />
           </div>
 
           <div
@@ -1906,9 +1911,7 @@ export default function ClassesPage() {
                 </p>
                 <p className="text-sm font-bold text-stone-700 mb-1">
                   {formatDateLabel(
-                    getISTDateString(
-                      parseTimestampAsIST(activeDialogClass.classStartTime),
-                    ),
+                    getClassDateKey(activeDialogClass),
                   )}
                 </p>
                 <p className="font-mono text-base font-black text-stone-900">

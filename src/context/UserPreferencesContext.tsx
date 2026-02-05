@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { formatISTTime } from "@/lib/time/ist";
 
 /**
@@ -34,28 +34,18 @@ export function UserPreferencesProvider({
   children: React.ReactNode;
 }) {
   // Default Settings
-  const [is24Hour, setIs24Hour] = useState(false);
-  const [attendanceGoal, setAttendanceGoalState] = useState(75);
-
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    // Load preferences from localStorage
-    const savedTime = localStorage.getItem("attendrix-time-format");
-    if (savedTime) {
-      setIs24Hour(savedTime === "24h");
-    }
-
-    const savedGoal = localStorage.getItem("attendrix-attendance-goal");
-    if (savedGoal) {
-      const parsed = parseInt(savedGoal, 10);
-      if (!isNaN(parsed)) {
-        setAttendanceGoalState(parsed);
-      }
-    }
-
-    setMounted(true);
-  }, []);
+  const [is24Hour, setIs24Hour] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const savedTime = window.localStorage.getItem("attendrix-time-format");
+    return savedTime === "24h";
+  });
+  const [attendanceGoal, setAttendanceGoalState] = useState(() => {
+    if (typeof window === "undefined") return 75;
+    const savedGoal = window.localStorage.getItem("attendrix-attendance-goal");
+    if (!savedGoal) return 75;
+    const parsed = parseInt(savedGoal, 10);
+    return Number.isNaN(parsed) ? 75 : parsed;
+  });
 
   const toggleTimeFormat = () => {
     setIs24Hour((prev) => {

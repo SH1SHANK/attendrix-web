@@ -287,8 +287,6 @@ function CountdownCardView({
   const canMarkAbsent = hasStarted && isCheckedIn;
 
   useEffect(() => {
-    let intervalId: ReturnType<typeof setInterval>;
-
     const tick = () => {
       const now = Date.now();
       setNowMs(now);
@@ -334,7 +332,7 @@ function CountdownCardView({
     };
 
     tick();
-    intervalId = setInterval(tick, 1000);
+    const intervalId = setInterval(tick, 1000);
 
     return () => clearInterval(intervalId);
   }, [startMs, endMs, targetMs, type]);

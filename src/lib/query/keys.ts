@@ -29,4 +29,6 @@ export const queryKeys = {
   userCalendars: (batchId: string | null) =>
     ["user-calendars", batchId] as const,
   tasks: (uid: string | null) => ["tasks", uid] as const,
+  resourceCourses: (uid: string | null) => ["resource-courses", uid] as const,
+  driveFolder: (folderId: string | null) => ["drive-folder", folderId] as const,
 };

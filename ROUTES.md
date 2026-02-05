@@ -9,6 +9,8 @@ Last reviewed: 2026-02-05
 - `/attendance` Attendance view
 - `/classes` Classes view
 - `/tasks` Read-only tasks
+- `/resources` Academic resources
+- `/resources/course/[courseID]` Course folder browser
 - `/profile` Profile and settings
 - `/profile/edit-courses` Edit enrolled courses
 - `/courses/review-missed` Review missed classes

@@ -13,10 +13,20 @@ Attendrix Web combines a modern Next.js app router frontend with Firebase-authen
 - Attendance: check in, mark absent, bulk check-in, past classes, and summaries.
 - Classes: daily schedule, upcoming classes, and date-based views.
 - Tasks: read-only assignments and exams list with filters.
+- Academic resources: Drive-backed course folders with favorites, recents, tags, and offline access.
 - Profile: course editing, export (CSV/Markdown/PDF), calendar sync, resync tools, deactivation and deletion flows.
 - Support: bug and feature reporting with image attachments and GitHub issue creation.
 - PWA: installable experience with manifest and service worker.
 - Caching: React Query cache profiles with runtime overrides.
+
+## Study Materials
+
+- Drive-backed course folders and file browsing.
+- Favorites, recently opened, tagged sections, and drag-and-drop section ordering.
+- Inline quick actions for star/unstar and offline access; overflow menu for secondary actions.
+- Offline cache with storage usage indicator, cache limits, and manual clear.
+- Offline storage mode options: web app cache (default) or a dedicated device folder with explicit permission.
+- Offline files remain on the client only; no file blobs are synced to Firebase.
 
 ## Documentation
 
@@ -58,6 +68,7 @@ Use `.env.local.example` as the source of truth. Key variables include:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_FIREBASE_*` (client)
 - `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` (admin)
+- `GOOGLE_DRIVE_API_KEY` (server-side Drive proxy for resources)
 - `NEXT_PRIVATE_GITHUB_TOKEN` (issue creation)
 - `NEXT_PUBLIC_CACHE_PROFILE` (balanced | fresh | relaxed)
 

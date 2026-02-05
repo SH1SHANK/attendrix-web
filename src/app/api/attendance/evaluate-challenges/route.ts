@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       return response;
     }
 
-    const { data, error } = await (supabaseAdmin as any).rpc(
+    const { data, error } = await supabaseAdmin.rpc(
       "evaluate_user_challenges",
       {
         p_user_id: decoded.uid,

@@ -206,6 +206,71 @@ Deletes user data in Supabase and Firestore and deletes Firebase user.
 
 Returns all task records for the authenticated user based on enrolled courses.
 
+## Resources Endpoints
+
+### GET `/api/resources/courses`
+
+Returns enrolled courses with their `syllabusAssets` metadata for the authenticated user.
+
+Response JSON:
+
+```json
+{
+  "ok": true,
+  "data": [
+    {
+      "courseID": "string",
+      "courseName": "string | null",
+      "syllabusAssets": {
+        "provider": "google-drive",
+        "folderId": "string",
+        "folderUrl": "string",
+        "visibility": "string"
+      }
+    }
+  ]
+}
+```
+
+### GET `/api/resources/drive`
+
+Proxies Google Drive API v3 folder listing for a given folder ID.
+
+Query params:
+
+- `folderId` required
+
+Response JSON:
+
+```json
+{
+  "ok": true,
+  "data": [
+    {
+      "id": "string",
+      "name": "string",
+      "mimeType": "string",
+      "modifiedTime": "string",
+      "webViewLink": "string",
+      "iconLink": "string"
+    }
+  ]
+}
+```
+
+### GET `/api/resources/drive/file`
+
+Proxies Google Drive API v3 file download (and export for Google Docs formats).
+
+Query params:
+
+- `fileId` required
+- `export` optional mime type for export (e.g. `application/pdf`)
+
+Response:
+
+- Binary file response with the Drive file contents (or export output).
+
 ## Support and Issues
 
 ### POST `/api/issues/bug`

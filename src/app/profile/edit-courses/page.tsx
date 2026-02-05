@@ -52,8 +52,7 @@ export default function EditCoursesPage() {
   const batchQuery = useBatchOnboardingData(batchId);
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [initialized, setInitialized] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -72,12 +71,10 @@ export default function EditCoursesPage() {
       : [];
   }, [courseRecord?.enrolledCourses, firebaseProfileQuery.data?.coursesEnrolled]);
 
-  useEffect(() => {
-    if (initialized) return;
-    if (initialSelection.length === 0) return;
-    setSelectedIds(new Set(initialSelection));
-    setInitialized(true);
-  }, [initialSelection, initialized]);
+  const effectiveSelectedIds = useMemo(
+    () => selectedIds ?? new Set(initialSelection),
+    [initialSelection, selectedIds],
+  );
 
   const coreCourses = useMemo(
     () => sortCourses(batchQuery.data?.coreCourses ?? []),
@@ -117,7 +114,8 @@ export default function EditCoursesPage() {
 
   const toggleCourse = (courseId: string) => {
     setSelectedIds((prev) => {
-      const next = new Set(prev);
+      const base = prev ?? new Set(initialSelection);
+      const next = new Set(base);
       if (next.has(courseId)) {
         next.delete(courseId);
       } else {
@@ -151,7 +149,7 @@ export default function EditCoursesPage() {
   });
 
   const handleSave = () => {
-    const courseIds = Array.from(selectedIds);
+    const courseIds = Array.from(effectiveSelectedIds);
     if (courseIds.length === 0) {
       toast.error("Please select at least one course.");
       return;
@@ -231,7 +229,7 @@ export default function EditCoursesPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {group.courses.map((course) => {
                       const type = parseCourseType(course.courseType);
-                      const isSelected = selectedIds.has(course.courseID);
+                      const isSelected = effectiveSelectedIds.has(course.courseID);
                       return (
                         <button
                           key={course.courseID}

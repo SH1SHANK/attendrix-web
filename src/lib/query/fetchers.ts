@@ -7,6 +7,7 @@ import type {
   TaskRecord,
   UserCourseRecord,
 } from "@/types/types-defination";
+import type { DriveItem, ResourceCourse } from "@/types/resources";
 import type {
   ClassByDate,
   TodayScheduleClass,
@@ -126,6 +127,27 @@ export async function fetchTasks(options?: { signal?: AbortSignal }) {
     "/api/tasks",
     { signal: options?.signal },
     { metricName: "tasks" },
+  );
+}
+
+export async function fetchResourceCourses(options?: { signal?: AbortSignal }) {
+  return fetchJson<ResourceCourse[]>(
+    "/api/resources/courses",
+    { signal: options?.signal },
+    { metricName: "resource-courses" },
+  );
+}
+
+export async function fetchDriveFolder(options: {
+  signal?: AbortSignal;
+  folderId: string;
+}) {
+  const params = new URLSearchParams();
+  params.set("folderId", options.folderId);
+  return fetchJson<DriveItem[]>(
+    `/api/resources/drive?${params.toString()}`,
+    { signal: options.signal },
+    { metricName: "drive-folder" },
   );
 }
 

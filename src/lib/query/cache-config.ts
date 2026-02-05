@@ -7,7 +7,9 @@ export type CacheKey =
   | "pastClasses"
   | "classesByDate"
   | "userCalendars"
-  | "tasks";
+  | "tasks"
+  | "resourceCourses"
+  | "driveFolder";
 
 export type CacheConfig = {
   staleTimeMs: number;
@@ -48,6 +50,14 @@ const PROFILE_DEFAULTS: Record<CacheProfileName, Record<CacheKey, CacheConfig>> 
         staleTimeMs: 5 * 60_000,
         gcTimeMs: 30 * 60_000,
       },
+      resourceCourses: {
+        staleTimeMs: 30 * 60_000,
+        gcTimeMs: 6 * 60 * 60_000,
+      },
+      driveFolder: {
+        staleTimeMs: 20 * 60_000,
+        gcTimeMs: 2 * 60 * 60_000,
+      },
     },
     fresh: {
       dashboardSchedule: {
@@ -78,6 +88,14 @@ const PROFILE_DEFAULTS: Record<CacheProfileName, Record<CacheKey, CacheConfig>> 
         staleTimeMs: 2 * 60_000,
         gcTimeMs: 20 * 60_000,
       },
+      resourceCourses: {
+        staleTimeMs: 10 * 60_000,
+        gcTimeMs: 2 * 60 * 60_000,
+      },
+      driveFolder: {
+        staleTimeMs: 8 * 60_000,
+        gcTimeMs: 60 * 60_000,
+      },
     },
     relaxed: {
       dashboardSchedule: {
@@ -107,6 +125,14 @@ const PROFILE_DEFAULTS: Record<CacheProfileName, Record<CacheKey, CacheConfig>> 
       tasks: {
         staleTimeMs: 10 * 60_000,
         gcTimeMs: 60 * 60_000,
+      },
+      resourceCourses: {
+        staleTimeMs: 2 * 60 * 60_000,
+        gcTimeMs: 8 * 60 * 60_000,
+      },
+      driveFolder: {
+        staleTimeMs: 60 * 60_000,
+        gcTimeMs: 6 * 60 * 60_000,
       },
     },
   };

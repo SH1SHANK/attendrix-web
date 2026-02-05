@@ -60,7 +60,10 @@ export default function ReviewMissedPage() {
   }, [authLoading, router, user]);
 
   const pastClassesQuery = usePastClasses(userId, "all");
-  const pastClasses = pastClassesQuery.data ?? [];
+  const pastClasses = useMemo(
+    () => pastClassesQuery.data ?? [],
+    [pastClassesQuery.data],
+  );
 
   const relevantClasses = useMemo(() => {
     if (!session) return [] as PastClass[];

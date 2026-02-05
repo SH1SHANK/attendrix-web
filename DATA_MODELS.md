@@ -140,6 +140,33 @@ Key fields:
 - `consentTerms`, `consentPromotions`, `isOnboarded`
 - `lastDataFetchTime`, `lastResyncAt`, `resyncCount`
 
+### Study Materials Preferences
+
+Stored in `studyMaterialsPreferences` on the user document.
+
+Fields:
+- `favorites`: map of resourceId -> true
+- `tags`: map of resourceId -> string[]
+- `lastOpened`: map of resourceId -> ISO timestamp string
+- `sectionOrder`: ordered section ids (`favorites`, `recent`, `offline`, `tagged`, `all`)
+- `offlineFiles`: map of resourceId -> OfflineFileMeta
+- `cacheConfig.limitMb`: number or null for unlimited
+- `offlineStorageMode`: `web` or `folder`
+
+OfflineFileMeta fields:
+- `fileId`: Drive file id
+- `size`: bytes
+- `cachedAt`: ISO timestamp string
+- `name`: optional display name
+- `courseId`: optional course id
+- `path`: optional resource path
+- `mimeType`: optional mime type
+- `storageMode`: `web` or `folder`
+
+Notes:
+- Offline file blobs are stored client-side only (Cache Storage or device folder).
+- Preference writes are debounced and only changed subkeys are patched.
+
 ### Course Object
 
 Each `coursesEnrolled` entry contains:

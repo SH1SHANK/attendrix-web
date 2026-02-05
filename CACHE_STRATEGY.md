@@ -1,6 +1,6 @@
 # Attendrix Cache Strategy
 
-Last updated: 2026-02-04
+Last updated: 2026-02-05
 
 ## Goals
 - Reduce duplicate Supabase reads and Firestore writes.
@@ -65,3 +65,10 @@ Overrides are ignored in production.
 ## Notes
 - Firestore write buffer uses a short coalescing window and an urgent flush path for attendance actions.
 - Metrics are stored in a bounded localStorage ring buffer (`attendrix.metrics`) and in-memory counters.
+
+## Study Materials Offline Cache
+
+- Offline blobs are stored client-side only using Cache Storage or a dedicated device folder (when permitted).
+- Storage usage is computed from Cache Storage metadata, falling back to stored offline sizes for folder mode.
+- Cache limits are enforced locally with size-based LRU eviction using `cachedAt`.
+- Manual cache clear removes local blobs and prunes offline metadata.

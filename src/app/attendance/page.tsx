@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   BarChart3,
@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import DotPatternBackground from "@/components/ui/DotPatternBackground";
+import { DashboardHeaderMenu } from "@/components/dashboard/DashboardHeaderMenu";
 import { useAuth } from "@/context/AuthContext";
 import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { useAttendanceSummary } from "@/hooks/useAttendanceSummary";
@@ -80,7 +81,7 @@ export default function AttendancePage() {
   const { user } = useAuth();
   const { attendanceGoal } = useUserPreferences();
   const attendanceQuery = useAttendanceSummary(user?.uid ?? null, attendanceGoal);
-  const summary = attendanceQuery.data ?? [];
+  const summary = useMemo(() => attendanceQuery.data ?? [], [attendanceQuery.data]);
   const loading = attendanceQuery.isLoading;
   const isRefreshing =
     attendanceQuery.isFetching && !attendanceQuery.isLoading;
@@ -93,6 +94,18 @@ export default function AttendancePage() {
     useState<CourseAttendanceSummary | null>(null);
   const [plannedAttend, setPlannedAttend] = useState(0);
   const [plannedMiss, setPlannedMiss] = useState(0);
+  const listPerfStyle = useMemo(
+    () =>
+      ({
+      contentVisibility: "auto",
+      containIntrinsicSize: "1px 720px",
+      }) as React.CSSProperties,
+    [],
+  );
+  const nameCollator = useMemo(
+    () => new Intl.Collator("en", { sensitivity: "base" }),
+    [],
+  );
 
   const normalizedSummary = useMemo(() => {
     return (summary ?? []).map((item) => {
@@ -136,11 +149,11 @@ export default function AttendancePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openMenuId]);
 
-  useEffect(() => {
-    if (!calculatorCourse) return;
+  const openCalculator = useCallback((course: CourseAttendanceSummary) => {
+    setCalculatorCourse(course);
     setPlannedAttend(0);
     setPlannedMiss(0);
-  }, [calculatorCourse]);
+  }, []);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -157,9 +170,9 @@ export default function AttendancePage() {
     return items.sort((a, b) => {
       const nameA = a.courseName ?? "";
       const nameB = b.courseName ?? "";
-      return nameA.localeCompare(nameB);
+      return nameCollator.compare(nameA, nameB);
     });
-  }, [normalizedSummary]);
+  }, [nameCollator, normalizedSummary]);
 
   const calculatorStats = useMemo(() => {
     if (!calculatorCourse) return null;
@@ -267,30 +280,33 @@ export default function AttendancePage() {
       <DotPatternBackground />
 
       <div className="mx-auto max-w-3xl relative z-10">
-        <header className="bg-white border-b-4 border-black px-4 py-3 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
+        <header className="bg-white border-b-4 border-black px-4 py-2 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
           {/* token: border-4 + shadow-[0_6px_0_#0a0a0a] for Neo-Brutalist elevation */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleBackNavigation}
-              aria-label="Go back"
-              className="h-10 w-10 border-2 border-black bg-white flex items-center justify-center shadow-[3px_3px_0_#0a0a0a] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a]"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div>
-              <h1 className="font-display text-2xl sm:text-3xl font-black uppercase text-stone-900 tracking-tight">
-                Attendance
-              </h1>
-              <p className="text-xs sm:text-sm font-bold uppercase tracking-wide text-stone-500">
-                Course-wise overview
-              </p>
-              {isRefreshing && (
-                <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-stone-400">
-                  Syncing latest updates…
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleBackNavigation}
+                aria-label="Go back"
+                className="h-10 w-10 border-2 border-black bg-white flex items-center justify-center shadow-[3px_3px_0_#0a0a0a] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a]"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <div>
+                <h1 className="font-display text-2xl sm:text-3xl font-black uppercase text-stone-900 tracking-tight">
+                  Attendance
+                </h1>
+                <p className="text-xs sm:text-sm font-bold uppercase tracking-wide text-stone-500">
+                  Course-wise overview
                 </p>
-              )}
+                {isRefreshing && (
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-stone-400">
+                    Syncing latest updates…
+                  </p>
+                )}
+              </div>
             </div>
+            <DashboardHeaderMenu className="self-start" />
           </div>
         </header>
 
@@ -360,7 +376,7 @@ export default function AttendancePage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3" style={{ contentVisibility: "auto" }}>
+            <div className="space-y-3" style={listPerfStyle}>
               {sortedSummary.map((item, index) => {
                 const attended = item.attendedClasses ?? 0;
                 const total = item.totalClasses ?? 0;
@@ -395,13 +411,13 @@ export default function AttendancePage() {
                     tabIndex={0}
                     onClick={() => {
                       setOpenMenuId(null);
-                      setCalculatorCourse(item);
+                      openCalculator(item);
                     }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         setOpenMenuId(null);
-                        setCalculatorCourse(item);
+                        openCalculator(item);
                       }
                     }}
                     className={`border-2 border-black border-l-4 bg-gradient-to-br px-4 py-4 shadow-[5px_5px_0_#0a0a0a] transition-all duration-300 ease-out animate-in fade-in slide-in-from-bottom-2 motion-reduce:animate-none focus:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2 cursor-pointer ${accentClass}`}

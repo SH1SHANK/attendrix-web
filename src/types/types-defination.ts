@@ -461,6 +461,9 @@ export interface FirebaseUserDocument {
   // Metadata
   created_time: string; // ISO timestamp
   lastDataFetchTime: string; // ISO timestamp
+
+  // Study materials personalization (optional)
+  studyMaterialsPreferences?: Record<string, unknown>;
 }
 
 /**

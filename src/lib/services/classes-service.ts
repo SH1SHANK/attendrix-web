@@ -15,6 +15,37 @@ import { getISTDateString } from "@/lib/time/ist";
  * Focuses on robust data fetching without hiding logic in database functions.
  */
 
+type TodayScheduleRow = {
+  classID?: string;
+  classid?: string;
+  courseID?: string;
+  courseid?: string;
+  courseName?: string;
+  coursename?: string;
+  classStartTime?: string;
+  classstarttime?: string;
+  classEndTime?: string;
+  classendtime?: string;
+  classVenue?: string | null;
+  classvenue?: string | null;
+  isCancelled?: boolean;
+  iscancelled?: boolean;
+  userAttended?: boolean;
+  userattended?: boolean;
+  userCheckinTime?: string | null;
+  usercheckintime?: string | null;
+  totalClasses?: number;
+  totalclasses?: number;
+  attendedClasses?: number;
+  attendedclasses?: number;
+  currentAttendancePercentage?: number;
+  currentattendancepercentage?: number;
+  classesRequiredToReachGoal?: number;
+  classesrequiredtoreachgoal?: number;
+  classesCanSkipAndStayAboveGoal?: number;
+  classescanskipandstayabovegoal?: number;
+};
+
 export const ClassesService = {
   init: () => console.log("[DEBUG] ClassesService loaded"),
   /**
@@ -61,13 +92,15 @@ export const ClassesService = {
 
       // RPC returns rows matching the TodayScheduleClass interface structure directly
       // but we ensure it matches the interface
-      let filteredData = data as any[];
+      const rawData = Array.isArray(data) ? (data as TodayScheduleRow[]) : [];
+      let filteredData = rawData;
 
       // Filter by enrolled courses if provided
       if (enrolledCourses && enrolledCourses.length > 0) {
-        filteredData = filteredData.filter((row) =>
-          enrolledCourses.includes(row.courseID || row.courseid),
-        );
+        filteredData = filteredData.filter((row) => {
+          const courseId = row.courseID || row.courseid;
+          return courseId ? enrolledCourses.includes(courseId) : false;
+        });
         console.log("[getTodaySchedule] Filtered to enrolled courses:", {
           total: data.length,
           filtered: filteredData.length,
@@ -75,29 +108,44 @@ export const ClassesService = {
         });
       }
 
-      return filteredData.map((row) => ({
-        classID: row.classID || row.classid,
-        courseID: row.courseID || row.courseid,
-        courseName: row.courseName || row.coursename || "Unknown Course",
-        classStartTime: row.classStartTime || row.classstarttime,
-        classEndTime: row.classEndTime || row.classendtime,
-        classVenue: row.classVenue || row.classvenue,
-        isCancelled: row.isCancelled ?? row.iscancelled ?? false,
-        userAttended: row.userAttended ?? row.userattended ?? false,
-        userCheckinTime: row.userCheckinTime || row.usercheckintime,
-        totalClasses: row.totalClasses ?? row.totalclasses ?? 0,
-        attendedClasses: row.attendedClasses ?? row.attendedclasses ?? 0,
-        currentAttendancePercentage:
-          row.currentAttendancePercentage ??
-          row.currentattendancepercentage ??
-          0,
-        classesRequiredToReachGoal:
-          row.classesRequiredToReachGoal ?? row.classesrequiredtoreachgoal ?? 0,
-        classesCanSkipAndStayAboveGoal:
-          row.classesCanSkipAndStayAboveGoal ??
-          row.classescanskipandstayabovegoal ??
-          0,
-      }));
+      return filteredData
+        .map((row) => {
+          const classID = row.classID || row.classid;
+          const courseID = row.courseID || row.courseid;
+          const classStartTime = row.classStartTime || row.classstarttime;
+          const classEndTime = row.classEndTime || row.classendtime;
+
+          if (!classID || !courseID || !classStartTime || !classEndTime) {
+            return null;
+          }
+
+          return {
+            classID,
+            courseID,
+            courseName: row.courseName || row.coursename || "Unknown Course",
+            classStartTime,
+            classEndTime,
+            classVenue: row.classVenue || row.classvenue,
+            isCancelled: row.isCancelled ?? row.iscancelled ?? false,
+            userAttended: row.userAttended ?? row.userattended ?? false,
+            userCheckinTime: row.userCheckinTime || row.usercheckintime,
+            totalClasses: row.totalClasses ?? row.totalclasses ?? 0,
+            attendedClasses: row.attendedClasses ?? row.attendedclasses ?? 0,
+            currentAttendancePercentage:
+              row.currentAttendancePercentage ??
+              row.currentattendancepercentage ??
+              0,
+            classesRequiredToReachGoal:
+              row.classesRequiredToReachGoal ??
+              row.classesrequiredtoreachgoal ??
+              0,
+            classesCanSkipAndStayAboveGoal:
+              row.classesCanSkipAndStayAboveGoal ??
+              row.classescanskipandstayabovegoal ??
+              0,
+          };
+        })
+        .filter((row): row is TodayScheduleClass => row !== null);
     } catch (err) {
       console.error("[getTodaySchedule] Failed:", err);
       // Return empty array instead of throwing to prevent UI crash

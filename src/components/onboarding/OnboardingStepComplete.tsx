@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { CheckCircle2, Sparkles, PartyPopper, TrendingUp } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { NeoBrutalButton } from "@/components/ui/NeoBrutalButton";
 import { motion } from "framer-motion";
 

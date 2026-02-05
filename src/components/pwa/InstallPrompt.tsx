@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Download } from "lucide-react";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { cn } from "@/lib/utils";
@@ -14,13 +14,11 @@ type InstallPromptProps = {
 
 export function InstallPrompt({ variant = "banner", className }: InstallPromptProps) {
   const { isInstallable, isInstalled, promptInstall } = useInstallPrompt();
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
     const stored = window.localStorage.getItem(DISMISS_KEY);
-    setDismissed(stored === "true");
-  }, []);
+    return stored === "true";
+  });
 
   if (!isInstallable || isInstalled || dismissed) return null;
 

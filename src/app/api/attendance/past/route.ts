@@ -79,7 +79,7 @@ export async function GET(request: Request) {
 
     const { filter } = parsed.data;
 
-    const { data, error } = await (supabaseAdmin as any).rpc(
+    const { data, error } = await supabaseAdmin.rpc(
       "get_user_past_classes",
       {
         uid: decoded.uid,

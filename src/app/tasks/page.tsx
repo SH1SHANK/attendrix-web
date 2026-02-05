@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import DotPatternBackground from "@/components/ui/DotPatternBackground";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
+import { DashboardHeaderMenu } from "@/components/dashboard/DashboardHeaderMenu";
 import { useAuth } from "@/context/AuthContext";
 import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { useTasks } from "@/hooks/useTasks";
@@ -98,30 +99,49 @@ export default function TasksPage() {
   const { user, loading: authLoading } = useAuth();
   const { formatTime } = useUserPreferences();
   const tasksQuery = useTasks(user?.uid ?? null);
-  const tasks = tasksQuery.data ?? [];
+  const tasks = useMemo(() => tasksQuery.data ?? [], [tasksQuery.data]);
   const [activeTab, setActiveTab] = useState<TaskTab>("assignment");
   const [now, setNow] = useState(() => Date.now());
+  const listVisibilityStyle = useMemo(
+    () =>
+      ({
+        contentVisibility: "auto",
+        containIntrinsicSize: "1px 520px",
+      }) as React.CSSProperties,
+    [],
+  );
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(timer);
   }, []);
 
-  const assignments = useMemo(
-    () => tasks.filter((task) => getTaskType(task) === "assignment"),
-    [tasks],
-  );
-  const exams = useMemo(
-    () => tasks.filter((task) => getTaskType(task) === "exam"),
-    [tasks],
-  );
+  const { assignments, exams } = useMemo(() => {
+    const nextAssignments: TaskRecord[] = [];
+    const nextExams: TaskRecord[] = [];
+    tasks.forEach((task) => {
+      const type = getTaskType(task);
+      if (type === "exam") {
+        nextExams.push(task);
+      } else {
+        nextAssignments.push(task);
+      }
+    });
+    return { assignments: nextAssignments, exams: nextExams };
+  }, [tasks]);
 
-  const upcomingTask = useMemo(() => {
-    const upcoming = tasks
-      .map((task) => ({ task, time: getTaskTimestamp(task) }))
-      .filter((entry) => entry.time !== null && entry.time >= now)
-      .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
-    return upcoming[0]?.task ?? null;
+  const upcomingTask = useMemo<TaskRecord | null>(() => {
+    let bestTask: TaskRecord | null = null;
+    let bestTime = Infinity;
+    tasks.forEach((task) => {
+      const time = getTaskTimestamp(task);
+      if (time === null || time < now) return;
+      if (time < bestTime) {
+        bestTime = time;
+        bestTask = task;
+      }
+    });
+    return bestTask;
   }, [tasks, now]);
 
   const upcomingCountdown = useMemo(() => {
@@ -131,7 +151,10 @@ export default function TasksPage() {
     return buildCountdown(now, timestamp);
   }, [now, upcomingTask]);
 
-  const tabTasks = activeTab === "assignment" ? assignments : exams;
+  const tabTasks = useMemo(
+    () => (activeTab === "assignment" ? assignments : exams),
+    [activeTab, assignments, exams],
+  );
 
   if (authLoading || tasksQuery.isLoading) {
     return <div className="min-h-screen bg-neutral-50" />;
@@ -163,29 +186,32 @@ export default function TasksPage() {
       <DotPatternBackground />
 
       <div className="mx-auto max-w-3xl relative z-10">
-        <header className="bg-white border-b-4 border-black px-4 py-3 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              aria-label="Go back"
-              className="h-10 w-10 border-2 border-black bg-white flex items-center justify-center shadow-[3px_3px_0_#0a0a0a] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a]"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div>
-              <h1 className="font-display text-2xl sm:text-3xl font-black uppercase text-stone-900 tracking-tight">
-                Tasks
-              </h1>
-              <p className="text-xs sm:text-sm font-bold uppercase tracking-wide text-stone-500">
-                Upcoming exams & assignments
-              </p>
-              {tasksQuery.isFetching && (
-                <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-stone-400">
-                  Syncing latest tasks…
+        <header className="bg-white border-b-4 border-black px-4 py-2 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                aria-label="Go back"
+                className="h-10 w-10 border-2 border-black bg-white flex items-center justify-center shadow-[3px_3px_0_#0a0a0a] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a]"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <div>
+                <h1 className="font-display text-2xl sm:text-3xl font-black uppercase text-stone-900 tracking-tight">
+                  Tasks
+                </h1>
+                <p className="text-xs sm:text-sm font-bold uppercase tracking-wide text-stone-500">
+                  Upcoming exams & assignments
                 </p>
-              )}
+                {tasksQuery.isFetching && (
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-stone-400">
+                    Syncing latest tasks…
+                  </p>
+                )}
+              </div>
             </div>
+            <DashboardHeaderMenu className="self-start" />
           </div>
         </header>
 
@@ -268,12 +294,11 @@ export default function TasksPage() {
               </p>
             </div>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-3" style={listVisibilityStyle}>
               {tabTasks.map((task) => {
+                const taskType = getTaskType(task);
                 const Icon =
-                  getTaskType(task) === "exam"
-                    ? GraduationCap
-                    : ClipboardList;
+                  taskType === "exam" ? GraduationCap : ClipboardList;
                 const extra =
                   task.additional_info || task.taskDescription || "";
                 return (

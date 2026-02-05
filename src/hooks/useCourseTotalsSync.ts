@@ -49,7 +49,7 @@ export function useCourseTotalsSync(userId: string | null) {
   const cache = getCacheConfig("attendanceSummary");
 
   const summaryQuery = useAttendanceSummary(userId);
-  const summary = summaryQuery.data ?? [];
+  const summary = useMemo(() => summaryQuery.data ?? [], [summaryQuery.data]);
 
   const summaryHash = useMemo(() => summarize(summary), [summary]);
 

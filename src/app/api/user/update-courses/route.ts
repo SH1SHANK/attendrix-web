@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       return response;
     }
 
-    const { data: courseRecords, error: courseError } = await (supabaseAdmin as any)
+    const { data: courseRecords, error: courseError } = await supabaseAdmin
       .from("courseRecords")
       .select("courseID,courseName,credits,courseType")
       .in("courseID", requestedIds);
@@ -172,7 +172,7 @@ export async function POST(request: Request) {
       p_semester_id: Number(semesterId || 0),
     };
 
-    const { error: rpcError } = await (supabaseAdmin as any).rpc(
+    const { error: rpcError } = await supabaseAdmin.rpc(
       "set_user_courses",
       rpcPayload,
     );

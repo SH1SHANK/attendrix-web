@@ -274,8 +274,7 @@ export default function OnboardingWizard({ nextPath }: Props) {
 
   const onFinish = () => {
     dispatch({ type: "RESET" });
-    // Always navigate to dashboard after onboarding
-    router.push("/dashboard");
+    router.push(nextPath ?? "/dashboard");
   };
 
   if (!user) {
