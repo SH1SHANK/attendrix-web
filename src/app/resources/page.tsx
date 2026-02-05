@@ -791,32 +791,30 @@ export default function ResourcesPage() {
     return <div className="min-h-screen bg-neutral-50" />;
   }
 
-  if (!user?.uid) {
-    return (
-      <div className="min-h-screen bg-[#fffdf5] flex items-center justify-center p-4">
-        <div className="border-2 border-black bg-white p-8 shadow-[8px_8px_0px_0px_#000] max-w-md">
-          <h2 className="font-display text-2xl font-black uppercase mb-4">
-            Authentication Required
-          </h2>
-          <p className="font-mono text-sm text-neutral-600 mb-6">
-            Please sign in to access academic resources.
-          </p>
-          <button
-            onClick={() => router.push("/auth/signin")}
-            className="w-full bg-black text-white font-bold py-3 px-4 uppercase border-2 border-black hover:bg-neutral-800 transition-colors"
-          >
-            Go to Sign In
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const isGuest = !user?.uid;
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-24 transition-colors duration-300 relative isolate overflow-x-hidden">
       <DotPatternBackground />
 
       <div className="mx-auto max-w-5xl relative z-10">
+        {isGuest && (
+          <div className="mt-6 border-2 border-black bg-white p-5 shadow-[6px_6px_0px_0px_#000]">
+            <h2 className="font-display text-lg sm:text-xl font-black uppercase mb-2">
+              Guest Access
+            </h2>
+            <p className="font-mono text-xs sm:text-sm text-neutral-600 mb-4">
+              Study Materials is available without sign-in. Sign in to sync your
+              Drive folders, favorites, and offline cache.
+            </p>
+            <button
+              onClick={() => router.push("/auth/signin")}
+              className="bg-black text-white font-bold py-2.5 px-4 uppercase border-2 border-black hover:bg-neutral-800 transition-colors"
+            >
+              Sign In to Sync
+            </button>
+          </div>
+        )}
         <p className="sr-only" aria-live="polite">
           {reorderAnnouncement}
         </p>

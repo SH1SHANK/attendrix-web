@@ -146,7 +146,10 @@ export default function EditCoursesPage() {
   const batchId = courseRecord?.batchID ?? null;
 
   const firebaseProfileQuery = useUserOnboardingProfile(userId);
-  const firebaseCourses = firebaseProfileQuery.data?.coursesEnrolled ?? [];
+  const firebaseCourses = useMemo(
+    () => firebaseProfileQuery.data?.coursesEnrolled ?? [],
+    [firebaseProfileQuery.data?.coursesEnrolled],
+  );
 
   const [removedCourseIds, setRemovedCourseIds] = useState<Set<string>>(
     new Set(),
@@ -169,7 +172,7 @@ export default function EditCoursesPage() {
     }
   }, [authLoading, router, user]);
 
-  const initialCourses = useMemo(() => {
+  const initialCourses = useMemo<FirebaseCourseEnrollment[]>(() => {
     if (firebaseCourses.length > 0) return firebaseCourses;
     const fallbackIds = Array.isArray(courseRecord?.enrolledCourses)
       ? courseRecord?.enrolledCourses
@@ -333,6 +336,8 @@ export default function EditCoursesPage() {
           key: "elective:open",
           kind: "elective",
           required: false,
+          originalCourseId: "elective:open",
+          category: "",
           courseId,
           course: courseId ? selectionMap.get(courseId) : undefined,
           slot: getCourseSlot(courseId ?? ""),
@@ -416,24 +421,28 @@ export default function EditCoursesPage() {
     const removed = initialIds.filter((id) => !currentIdSet.has(id));
 
     const slotChanges = [...coreSlots, ...labSlots, ...electiveSlots]
-      .filter(
-        (slot) =>
-          slot.originalCourseId &&
-          slot.courseId &&
-          slot.courseId !== slot.originalCourseId,
-      )
-      .map((slot) => {
+      .flatMap((slot) => {
+        if (
+          !slot.originalCourseId ||
+          !slot.courseId ||
+          slot.courseId === slot.originalCourseId
+        ) {
+          return [];
+        }
+
         const from = getCourseSlot(slot.originalCourseId);
         const to = getCourseSlot(slot.courseId);
-        return {
-          key: slot.key,
-          from,
-          to,
-          name:
-            selectionMap.get(slot.courseId)?.courseName ??
-            slot.courseId ??
-            "Course",
-        };
+        return [
+          {
+            key: slot.key,
+            from,
+            to,
+            name:
+              selectionMap.get(slot.courseId)?.courseName ??
+              slot.courseId ??
+              "Course",
+          },
+        ];
       })
       .filter((entry) => entry.from && entry.to && entry.from !== entry.to);
 

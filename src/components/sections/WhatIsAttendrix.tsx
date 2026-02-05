@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
-import { Sparkles, Target, TrendingUp } from "lucide-react";
+import { Calendar, Database, Sparkles, Target } from "lucide-react";
 import DotPatternBackground from "../ui/DotPatternBackground";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
@@ -13,9 +13,14 @@ export default function WhatIsAttendrix() {
   const sectionRef = useRef<HTMLElement>(null);
   const textContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
 
   useGSAP(
     () => {
+      if (prefersReducedMotion) return;
       const mm = gsap.matchMedia();
 
       // Desktop animations
@@ -117,12 +122,13 @@ export default function WhatIsAttendrix() {
 
       return () => mm.revert();
     },
-    { scope: sectionRef },
+    { scope: sectionRef, dependencies: [prefersReducedMotion] },
   );
 
   return (
     <section
       ref={sectionRef}
+      id="what-is-attendrix"
       className="relative py-24 px-6 sm:px-8 lg:px-12 overflow-hidden"
     >
       <DotPatternBackground />
@@ -137,7 +143,7 @@ export default function WhatIsAttendrix() {
               className="inline-flex items-center gap-2 border-2 border-black bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider shadow-[3px_3px_0_#0a0a0a]"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              The Ecosystem
+              NITC Slot Engine
             </div>
 
             {/* Headline */}
@@ -157,7 +163,7 @@ export default function WhatIsAttendrix() {
               data-reveal
               className="text-xl sm:text-2xl font-semibold text-stone-800"
             >
-              It&apos;s an Ecosystem.
+              One ecosystem, one subject-wise view.
             </p>
 
             {/* Body */}
@@ -165,25 +171,24 @@ export default function WhatIsAttendrix() {
               data-reveal
               className="text-lg text-stone-600 leading-relaxed max-w-xl"
             >
-              Standard apps fail at NITC. Attendrix understands strict
-              subject-wise 80% rules, &apos;W&apos; grades, and slot-based
-              timetables. It&apos;s hard-coded for Calicut. Your academic
-              standing is calculated exactly as the administration does it.
+              Attendrix models NITC&apos;s slot system with subject-wise
+              tracking and slot-aware counts. Web, APK, and Lumen read the same
+              backend, so updates stay consistent everywhere.
             </p>
 
             {/* Feature pills */}
             <div data-reveal className="flex flex-wrap gap-3 pt-2">
               <div className="inline-flex items-center gap-2 border-2 border-black bg-green-100 px-3 py-2 text-sm font-semibold shadow-[2px_2px_0_#0a0a0a]">
                 <Target className="h-4 w-4 text-green-700" />
-                Track Attendance
+                Subject-Wise Tracking
               </div>
-              <div className="inline-flex items-center gap-2 border-2 border-black bg-purple-100 px-3 py-2 text-sm font-semibold shadow-[2px_2px_0_#0a0a0a]">
-                <Sparkles className="h-4 w-4 text-purple-700" />
-                Earn XP
+              <div className="inline-flex items-center gap-2 border-2 border-black bg-yellow-100 px-3 py-2 text-sm font-semibold shadow-[2px_2px_0_#0a0a0a]">
+                <Calendar className="h-4 w-4 text-yellow-700" />
+                Slot-Aware
               </div>
               <div className="inline-flex items-center gap-2 border-2 border-black bg-blue-100 px-3 py-2 text-sm font-semibold shadow-[2px_2px_0_#0a0a0a]">
-                <TrendingUp className="h-4 w-4 text-blue-700" />
-                Plan Ahead
+                <Database className="h-4 w-4 text-blue-700" />
+                Shared Backend
               </div>
             </div>
           </div>
@@ -215,16 +220,22 @@ export default function WhatIsAttendrix() {
                   {/* Stats row */}
                   <div className="grid grid-cols-3 gap-3">
                     <div className="border-2 border-black bg-yellow-400 p-3 shadow-[2px_2px_0_#0a0a0a]">
-                      <div className="text-2xl font-black">87%</div>
-                      <div className="text-xs font-bold uppercase">Overall</div>
+                      <div className="text-2xl font-black">4/6</div>
+                      <div className="text-xs font-bold uppercase">
+                        On Track
+                      </div>
                     </div>
                     <div className="border-2 border-black bg-white p-3 shadow-[2px_2px_0_#0a0a0a]">
-                      <div className="text-2xl font-black">1,250</div>
-                      <div className="text-xs font-bold uppercase">XP</div>
+                      <div className="text-2xl font-black">2</div>
+                      <div className="text-xs font-bold uppercase">
+                        Scenarios
+                      </div>
                     </div>
                     <div className="border-2 border-black bg-green-200 p-3 shadow-[2px_2px_0_#0a0a0a]">
-                      <div className="text-2xl font-black">Lv.5</div>
-                      <div className="text-xs font-bold uppercase">Rank</div>
+                      <div className="text-2xl font-black">1,250</div>
+                      <div className="text-xs font-bold uppercase">
+                        Amplix XP
+                      </div>
                     </div>
                   </div>
 

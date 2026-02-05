@@ -29,6 +29,13 @@ export function useMagneticHover(
     () => {
       const el = ref.current;
       if (!el) return; // Safety: exit early if ref is null
+      if (typeof window !== "undefined") {
+        const prefersReduced = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        if (prefersReduced) return;
+        if (window.matchMedia("(pointer: coarse)").matches) return;
+      }
 
       const mm = gsap.matchMedia();
 
@@ -95,6 +102,13 @@ export function useWiggleOnHover(
     () => {
       const el = ref.current;
       if (!el) return; // Safety: exit early if ref is null
+      if (typeof window !== "undefined") {
+        const prefersReduced = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        if (prefersReduced) return;
+        if (window.matchMedia("(pointer: coarse)").matches) return;
+      }
 
       const shake = () => {
         if (!el.isConnected) return; // Safety: element removed from DOM

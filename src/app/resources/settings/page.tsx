@@ -213,10 +213,11 @@ export default function ResourcesSettingsPage() {
       <div className="min-h-screen bg-[#fffdf5] flex items-center justify-center p-4">
         <div className="border-2 border-black bg-white p-8 shadow-[8px_8px_0px_0px_#000] max-w-md">
           <h2 className="font-display text-2xl font-black uppercase mb-4">
-            Authentication Required
+            Sign In to Manage Settings
           </h2>
           <p className="font-mono text-sm text-neutral-600 mb-6">
-            Please sign in to access study materials settings.
+            Study Materials is accessible without sign-in, but settings and
+            offline cache controls are tied to your account.
           </p>
           <button
             onClick={() => router.push("/auth/signin")}

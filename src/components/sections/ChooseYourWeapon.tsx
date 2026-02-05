@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -11,9 +11,8 @@ import {
   Smartphone,
   Globe,
   Zap,
-  Wifi,
   Bell,
-  CloudOff,
+  BookOpen,
 } from "lucide-react";
 import DotPatternBackground from "../ui/DotPatternBackground";
 
@@ -26,9 +25,14 @@ export default function ChooseYourWeapon() {
   const cardARef = useRef<HTMLDivElement>(null);
   const cardBRef = useRef<HTMLDivElement>(null);
   const [hoveredCard, setHoveredCard] = useState<CardType>(null);
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
 
   useGSAP(
     () => {
+      if (prefersReducedMotion) return;
       const mm = gsap.matchMedia();
 
       // Desktop animations
@@ -97,7 +101,7 @@ export default function ChooseYourWeapon() {
 
       return () => mm.revert();
     },
-    { scope: sectionRef },
+    { scope: sectionRef, dependencies: [prefersReducedMotion] },
   );
 
   const getCardClasses = (card: CardType) => {
@@ -125,12 +129,12 @@ export default function ChooseYourWeapon() {
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 border-2 border-black bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider shadow-[4px_4px_0_#0a0a0a] mb-6">
             <Zap className="h-4 w-4" />
-            Choose Your Weapon
+            Choose Your Surface
           </div>
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-[0.95] tracking-tight text-stone-900">
-            Two Ways to{" "}
+            Two Ways to Run{" "}
             <span className="relative inline-block">
-              <span className="relative z-10">Dominate</span>
+              <span className="relative z-10">Attendrix</span>
               <span className="absolute bottom-1 left-0 right-0 h-3 bg-yellow-400 -z-10 rotate-1" />
             </span>
           </h2>
@@ -173,28 +177,32 @@ export default function ChooseYourWeapon() {
             <div className="text-center space-y-4">
               <div className="inline-flex items-center gap-2 bg-stone-900 text-white px-3 py-1 text-xs font-bold uppercase">
                 <Smartphone className="h-3.5 w-3.5" />
-                Android
+                Android APK
               </div>
               <h3 className="text-2xl sm:text-3xl font-black uppercase">
-                The Power User
+                The On-the-Go Engine
               </h3>
               <p className="text-stone-600 leading-relaxed">
-                Native mobile app with instant push notifications, offline
-                access, and background sync. Designed for always-on tracking.
+                Native Android app for instant check-ins, attendance calculator,
+                study materials, and quick actions. Online-first with smart
+                sync (lighter materials than Web).
               </p>
 
               {/* Features */}
               <div className="flex flex-wrap justify-center gap-2 pt-2">
                 <span className="inline-flex items-center gap-1 border border-black bg-green-100 px-2 py-1 text-xs font-semibold">
-                  <Bell className="h-3 w-3" /> Notifications
+                  <Bell className="h-3 w-3" /> Push Nudges
                 </span>
                 <span className="inline-flex items-center gap-1 border border-black bg-blue-100 px-2 py-1 text-xs font-semibold">
-                  <CloudOff className="h-3 w-3" /> Offline
+                  <Zap className="h-3 w-3" /> Attendance Calc
                 </span>
                 <span className="inline-flex items-center gap-1 border border-black bg-purple-100 px-2 py-1 text-xs font-semibold">
-                  <Wifi className="h-3 w-3" /> Background Sync
+                  <BookOpen className="h-3 w-3" /> Study Materials
                 </span>
               </div>
+              <p className="text-xs font-mono uppercase tracking-wider text-stone-500">
+                Most Web features included, kept in sync via the backend
+              </p>
 
               {/* CTA */}
               <Link
@@ -202,7 +210,7 @@ export default function ChooseYourWeapon() {
                 className="inline-flex items-center gap-3 border-2 border-black bg-white px-6 py-3 text-sm font-bold uppercase shadow-[4px_4px_0_#0a0a0a] transition-all hover:shadow-[2px_2px_0_#0a0a0a] hover:-translate-x-0.5 hover:-translate-y-0.5 mt-4"
               >
                 <Download className="h-4 w-4" />
-                Download .APK
+                Download Android App (APK)
               </Link>
             </div>
           </div>
@@ -254,29 +262,32 @@ export default function ChooseYourWeapon() {
             <div className="text-center space-y-4">
               <div className="inline-flex items-center gap-2 bg-yellow-400 text-black border-2 border-black px-3 py-1 text-xs font-bold uppercase">
                 <Globe className="h-3.5 w-3.5" />
-                Web App
+                Attendrix Web
               </div>
               <h3 className="text-2xl sm:text-3xl font-black uppercase">
-                The Speedster
+                The Command Center
               </h3>
               <p className="text-stone-600 leading-relaxed">
-                Instant desktop access. High-density dashboard with subject-wise
-                analytics, future calculator, and Lumen AI. No installation
-                needed.
+                Desktop + iOS access for subject-wise analysis, attendance
+                simulation, study materials, assignments, exams, and exports.
+                Mobile-first PWA with optional install.
               </p>
 
               {/* Features */}
               <div className="flex flex-wrap justify-center gap-2 pt-2">
                 <span className="inline-flex items-center gap-1 border border-black bg-yellow-100 px-2 py-1 text-xs font-semibold">
-                  <Zap className="h-3 w-3" /> Instant
+                  <Zap className="h-3 w-3" /> Simulator
                 </span>
                 <span className="inline-flex items-center gap-1 border border-black bg-green-100 px-2 py-1 text-xs font-semibold">
-                  <Globe className="h-3 w-3" /> Any Device
+                  <Globe className="h-3 w-3" /> iOS Access
                 </span>
                 <span className="inline-flex items-center gap-1 border border-black bg-blue-100 px-2 py-1 text-xs font-semibold">
-                  <ExternalLink className="h-3 w-3" /> No Install
+                  <ExternalLink className="h-3 w-3" /> PWA Install
                 </span>
               </div>
+              <p className="text-xs font-mono uppercase tracking-wider text-stone-500">
+                Built to expand the ecosystem beyond APKs
+              </p>
 
               {/* CTA */}
               <Link
@@ -284,9 +295,15 @@ export default function ChooseYourWeapon() {
                 className="inline-flex items-center gap-3 border-2 border-black bg-white px-6 py-3 text-sm font-bold uppercase shadow-[4px_4px_0_#0a0a0a] transition-all hover:shadow-[2px_2px_0_#0a0a0a] hover:-translate-x-0.5 hover:-translate-y-0.5 mt-4"
               >
                 <ExternalLink className="h-4 w-4" />
-                Launch Web
+                Use Attendrix Web
               </Link>
             </div>
+          </div>
+        </div>
+
+        <div className="mt-10 flex items-center justify-center">
+          <div className="inline-flex items-center gap-3 border-2 border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-yellow-400 shadow-[4px_4px_0_#0a0a0a]">
+            One backend • Web + APK + Lumen in sync
           </div>
         </div>
       </div>

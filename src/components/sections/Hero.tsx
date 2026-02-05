@@ -33,7 +33,7 @@ export default function Hero({ isVisible = false }: HeroProps) {
   useWiggleOnHover(primaryRef, { rotation: 1.8 });
 
   const subheadingText =
-    "The bespoke academic ecosystem for NITC. Track subject-wise eligibility, sync your Google Calendar, and level up your 'Mage Rank'—all in one app.";
+    "Subject-wise attendance built for the NITC slot system. Track attendance, manage classes, assignments, exams, and study materials across the mobile-first PWA and Android APK.";
 
   return (
     <section
@@ -41,6 +41,8 @@ export default function Hero({ isVisible = false }: HeroProps) {
       className="relative isolate flex min-h-[92vh] flex-col items-center justify-center overflow-hidden px-6 pb-20 pt-28 sm:px-8 lg:px-12"
     >
       <DotPatternBackground />
+      <div className="pointer-events-none absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-yellow-300/40 blur-3xl animate-float-slow motion-reduce:animate-none" />
+      <div className="pointer-events-none absolute bottom-[-6rem] right-[-4rem] h-96 w-96 rounded-full bg-green-300/25 blur-3xl animate-float-slower motion-reduce:animate-none" />
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-8 text-center">
         {/* Badge */}
@@ -52,7 +54,7 @@ export default function Hero({ isVisible = false }: HeroProps) {
             className="h-2 w-2 rounded-full bg-green-500 animate-pulse"
             aria-hidden="true"
           />
-          AttendrixWeb v2.0.5 Alpha-Preview
+          Attendrix Ecosystem • Public Beta (Invite-only)
         </div>
 
         {/* Main Typography */}
@@ -86,7 +88,7 @@ export default function Hero({ isVisible = false }: HeroProps) {
             className="text-balance text-3xl font-black leading-tight tracking-tight text-stone-950 sm:text-4xl lg:text-5xl"
             data-hero-stagger
           >
-            Your Academic Life. Gamified.
+            Subject-wise attendance. Designed for NITC.
           </h1>
           <p
             className="mx-auto max-w-3xl text-lg leading-relaxed text-stone-700 sm:text-xl"
@@ -101,28 +103,28 @@ export default function Hero({ isVisible = false }: HeroProps) {
           className="flex flex-col items-center justify-center gap-4 sm:flex-row"
           data-hero-stagger
         >
-          {/* Primary: Download APK */}
+          {/* Primary: Attendrix Web */}
           <Link
             ref={primaryRef}
-            href="/download"
-            className="ripple-effect group relative inline-flex items-center gap-3 border-2 border-black bg-yellow-400 px-6 py-3 text-lg font-bold uppercase tracking-tight text-black shadow-[6px_6px_0_#0a0a0a] transition-all duration-300 ease-smooth hover:shadow-[8px_8px_0_#0a0a0a] hover:-translate-x-0.75 hover:-translate-y-0.75 active:shadow-[2px_2px_0_#0a0a0a] active:translate-x-0.5 active:translate-y-0.5"
-          >
-            <span className="inline-flex h-10 w-10 items-center justify-center bg-black text-yellow-400 transition-transform duration-300 group-hover:scale-110">
-              <Download className="h-5 w-5" />
-            </span>
-            Download APK
-          </Link>
-
-          {/* Secondary: Launch Web App */}
-          <Link
-            ref={secondaryRef}
             href="/dashboard"
-            className="ripple-effect group inline-flex items-center gap-3 border-2 border-black bg-white px-6 py-3 text-lg font-bold uppercase tracking-tight text-stone-900 shadow-[6px_6px_0_#0a0a0a] transition-all duration-300 ease-smooth hover:shadow-[8px_8px_0_#0a0a0a] hover:-translate-x-0.75 hover:-translate-y-0.75 active:shadow-[2px_2px_0_#0a0a0a] active:translate-x-0.5 active:translate-y-0.5"
+            className="ripple-effect group relative inline-flex items-center gap-3 border-2 border-black bg-black px-6 py-3 text-base font-bold uppercase tracking-tight text-yellow-400 shadow-[6px_6px_0_#0a0a0a] transition-all duration-300 ease-smooth hover:shadow-[8px_8px_0_#0a0a0a] hover:-translate-x-0.75 hover:-translate-y-0.75 active:shadow-[2px_2px_0_#0a0a0a] active:translate-x-0.5 active:translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 sm:text-lg"
           >
-            <span className="inline-flex h-10 w-10 items-center justify-center border-2 border-black bg-stone-900 text-white transition-transform duration-300 group-hover:scale-110">
+            <span className="inline-flex h-10 w-10 items-center justify-center border-2 border-black bg-yellow-400 text-black transition-transform duration-300 group-hover:scale-110">
               <ExternalLink className="h-4 w-4" />
             </span>
-            Launch Web App
+            Use Attendrix Web
+          </Link>
+
+          {/* Secondary: Download APK */}
+          <Link
+            ref={secondaryRef}
+            href="/download"
+            className="ripple-effect group inline-flex items-center gap-3 border-2 border-black bg-yellow-400 px-6 py-3 text-base font-bold uppercase tracking-tight text-black shadow-[6px_6px_0_#0a0a0a] transition-all duration-300 ease-smooth hover:shadow-[8px_8px_0_#0a0a0a] hover:-translate-x-0.75 hover:-translate-y-0.75 active:shadow-[2px_2px_0_#0a0a0a] active:translate-x-0.5 active:translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 sm:text-lg"
+          >
+            <span className="inline-flex h-10 w-10 items-center justify-center border-2 border-black bg-black text-yellow-400 transition-transform duration-300 group-hover:scale-110">
+              <Download className="h-5 w-5" />
+            </span>
+            Download Android App (APK)
           </Link>
         </div>
       </div>

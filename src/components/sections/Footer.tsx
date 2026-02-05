@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { Github, Twitter, Send } from "lucide-react";
+import { Download, ExternalLink, Github, Send, Twitter } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 
 // ============================================
@@ -97,6 +97,42 @@ export default function Footer() {
     >
       {/* Main content */}
       <div className="relative z-10">
+        {/* Final CTA */}
+        <div className="border-b-4 border-white">
+          <div className="max-w-7xl mx-auto px-6 py-10 sm:px-8 lg:px-12">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-3">
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
+                  NITC Slot-Aware • Transparent • Student-Built
+                </p>
+                <h2 className="font-display text-3xl sm:text-4xl font-black uppercase tracking-tight">
+                  Ready for subject-wise clarity?
+                </h2>
+                <p className="text-sm sm:text-base text-neutral-300 max-w-xl">
+                  Every surface stays in sync. Track attendance, manage classes,
+                  assignments, exams, and study materials.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-3 border-2 border-white bg-white px-6 py-3 text-sm font-bold uppercase tracking-tight text-black shadow-[4px_4px_0_#FFD02F] transition-all duration-200 hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[6px_6px_0_#FFD02F]"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Use Attendrix Web
+                </Link>
+                <Link
+                  href="/download"
+                  className="inline-flex items-center gap-3 border-2 border-white bg-black px-6 py-3 text-sm font-bold uppercase tracking-tight text-yellow-400 shadow-[4px_4px_0_#FFD02F] transition-all duration-200 hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[6px_6px_0_#FFD02F]"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Android App (APK)
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Unified footer surface */}
         <div className="max-w-7xl mx-auto px-6 py-10 sm:px-8 lg:px-12">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
@@ -113,14 +149,14 @@ export default function Footer() {
 
               <div className="mt-4 space-y-3">
                 <p className="font-mono text-xs font-bold text-neutral-300 uppercase tracking-[0.22em]">
-                  Attendance Hub
+                  Subject-Wise Attendance Hub
                 </p>
                 <p className="text-base font-bold leading-relaxed text-neutral-200">
-                  The bespoke academic ecosystem for NITC. Track attendance,
-                  gamify learning, and level up your academic journey.
+                  The bespoke academic ecosystem for NITC. Subject-wise
+                  tracking with transparent calculations.
                 </p>
                 <p className="font-mono text-xs font-bold uppercase tracking-widest text-neutral-400">
-                  Built by students, for students, at NITC
+                  Engineered by NITC students
                 </p>
               </div>
             </div>
@@ -201,7 +237,7 @@ export default function Footer() {
                 </div>
               </div>
               <p className="mt-4 font-mono text-xs font-bold uppercase tracking-wider text-neutral-400">
-                © 2026 Attendrix. Open Source.
+                © 2026 Attendrix. Built by students.
               </p>
             </div>
           </div>
@@ -214,7 +250,7 @@ export default function Footer() {
                   Dreamt, designed, and built by Shashank
                 </p>
                 <p className="mt-2 font-mono text-xs font-bold uppercase tracking-wider text-black/70">
-                  Open-sourced and maintained by Attendrix Inc.
+                  Managed by the Attendrix team
                 </p>
               </div>
             </div>

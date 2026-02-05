@@ -35,15 +35,17 @@ export function ScrollIndicator({
     <div
       ref={indicatorRef}
       onClick={handleClick}
-      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 cursor-pointer group hidden md:block"
+      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 cursor-pointer group hidden md:block motion-reduce:hidden"
       style={{ transition: "opacity 0.3s ease" }}
+      role="button"
+      aria-label="Scroll to next section"
     >
       <div className="flex flex-col items-center gap-2">
         <span className="text-xs font-bold uppercase tracking-wider text-stone-700">
           Scroll
         </span>
         <div className="relative h-12 w-6 border-2 border-black rounded-full bg-white shadow-[2px_2px_0_#0a0a0a]">
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 h-2 w-1 bg-black rounded-full animate-scroll-bounce" />
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 h-2 w-1 bg-black rounded-full animate-scroll-bounce motion-reduce:animate-none" />
         </div>
       </div>
     </div>

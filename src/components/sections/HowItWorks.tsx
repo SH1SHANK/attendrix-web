@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { UserPlus, Zap, Trophy, ArrowRight, ArrowDown } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { UserPlus, Zap, BookOpen, ArrowRight, ArrowDown } from "lucide-react";
 import DotPatternBackground from "../ui/DotPatternBackground";
 
 // Animation variants
@@ -44,36 +44,42 @@ const arrowVariants = {
 const steps = [
   {
     number: "01",
-    title: "Secure Identity Mapping",
+    title: "Sign In + Slot Mapping",
     description:
-      "Log in via Firebase. Attendrix maps your identity to the Supabase backend and auto-fetches your exact timetable, courses, and NITC slot data. No manual entry required.",
+      "Log in via Firebase. Attendrix maps your identity to the shared Supabase backend and pulls your slot timetable and courses. No manual entry required.",
     icon: UserPlus,
   },
   {
     number: "02",
-    title: "Subject-Wise Ledger Sync",
+    title: "Live Subject Ledger Sync",
     description:
-      "Mark attendance and our database syncs instantly. Your subject-wise eligibility (80% per course) updates in real-time across all platforms. Single source of truth.",
+      "Check-ins from APK, Web, or Lumen update your subject-wise status instantly across every surface.",
     icon: Zap,
   },
   {
     number: "03",
-    title: "Amplix Gamification",
+    title: "Plan & Study in Context",
     description:
-      "Every class attended earns XP and feeds the Amplix engine. Climb from Novice Mage to Master Mage, earn streaks, and compete on the leaderboard. Attendance becomes engaging.",
-    icon: Trophy,
+      "Use the simulator (Web + APK), study materials, and Lumen’s syllabus-bound answers to stay on top of classes and exams.",
+    icon: BookOpen,
   },
 ];
 
 // Step Card Component
-function StepCard({ step }: { step: (typeof steps)[0] }) {
+function StepCard({
+  step,
+  reduceMotion,
+}: {
+  step: (typeof steps)[0];
+  reduceMotion: boolean;
+}) {
   const Icon = step.icon;
 
   return (
     <motion.div
       className="relative z-10 bg-white border-2 border-black p-6 md:p-8 h-full transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-1 hover:-translate-x-1 hover:shadow-[12px_12px_0px_0px_#000]"
       style={{ boxShadow: "8px 8px 0px 0px #000000" }}
-      variants={cardVariants}
+      variants={reduceMotion ? undefined : cardVariants}
     >
       {/* Header Row - Number Left, Icon Right */}
       <div className="flex items-start justify-between mb-6">
@@ -101,13 +107,15 @@ function StepCard({ step }: { step: (typeof steps)[0] }) {
 // Arrow Connector Component
 function ArrowConnector({
   direction = "right",
+  reduceMotion,
 }: {
   direction?: "right" | "down";
+  reduceMotion: boolean;
 }) {
   return (
     <motion.div
       className="relative z-20 bg-black flex items-center justify-center w-10 h-10 md:w-12 md:h-12 shrink-0"
-      variants={arrowVariants}
+      variants={reduceMotion ? undefined : arrowVariants}
     >
       {direction === "right" ? (
         <ArrowRight
@@ -125,6 +133,8 @@ function ArrowConnector({
 }
 
 export default function HowItWorks() {
+  const reduceMotion = useReducedMotion() ?? false;
+
   return (
     <section id="how-it-works" className="relative py-20 md:py-24 px-4">
       <DotPatternBackground />
@@ -132,10 +142,10 @@ export default function HowItWorks() {
         {/* Section Header */}
         <div className="text-center mb-12 md:mb-16">
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={reduceMotion ? false : { opacity: 0, y: -20 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
+            transition={reduceMotion ? undefined : { duration: 0.5 }}
           >
             {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-neutral-900 text-white px-4 py-1.5 border-2 border-black mb-6 shadow-[3px_3px_0_#000]">
@@ -148,7 +158,7 @@ export default function HowItWorks() {
               How It Works
             </h2>
             <p className="text-base md:text-lg text-neutral-600 font-medium max-w-2xl mx-auto">
-              Three simple steps to never miss an attendance again.
+              Three steps to a subject-wise system built for NITC.
             </p>
           </motion.div>
         </div>
@@ -156,9 +166,9 @@ export default function HowItWorks() {
         {/* Desktop Layout - Horizontal Pipeline */}
         <motion.div
           className="hidden md:block relative"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
+          variants={reduceMotion ? undefined : containerVariants}
+          initial={reduceMotion ? false : "hidden"}
+          whileInView={reduceMotion ? undefined : "visible"}
           viewport={{ once: true, margin: "-100px" }}
         >
           {/* The Dotted Pipeline Line (Behind Everything) */}
@@ -170,27 +180,27 @@ export default function HowItWorks() {
           <div className="relative z-10 flex items-stretch gap-4">
             {/* Card 1 */}
             <div className="flex-1">
-              <StepCard step={steps[0]!} />
+              <StepCard step={steps[0]!} reduceMotion={reduceMotion} />
             </div>
 
             {/* Arrow 1 */}
             <div className="flex items-center justify-center">
-              <ArrowConnector direction="right" />
+              <ArrowConnector direction="right" reduceMotion={reduceMotion} />
             </div>
 
             {/* Card 2 */}
             <div className="flex-1">
-              <StepCard step={steps[1]!} />
+              <StepCard step={steps[1]!} reduceMotion={reduceMotion} />
             </div>
 
             {/* Arrow 2 */}
             <div className="flex items-center justify-center">
-              <ArrowConnector direction="right" />
+              <ArrowConnector direction="right" reduceMotion={reduceMotion} />
             </div>
 
             {/* Card 3 */}
             <div className="flex-1">
-              <StepCard step={steps[2]!} />
+              <StepCard step={steps[2]!} reduceMotion={reduceMotion} />
             </div>
           </div>
         </motion.div>
@@ -198,9 +208,9 @@ export default function HowItWorks() {
         {/* Mobile Layout - Vertical Pipeline */}
         <motion.div
           className="md:hidden relative"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
+          variants={reduceMotion ? undefined : containerVariants}
+          initial={reduceMotion ? false : "hidden"}
+          whileInView={reduceMotion ? undefined : "visible"}
           viewport={{ once: true, margin: "-50px" }}
         >
           {/* The Dotted Pipeline Line (Behind Everything - Vertical) */}
@@ -212,23 +222,23 @@ export default function HowItWorks() {
           <div className="relative z-10 flex flex-col items-center gap-4">
             {/* Card 1 */}
             <div className="w-full">
-              <StepCard step={steps[0]!} />
+              <StepCard step={steps[0]!} reduceMotion={reduceMotion} />
             </div>
 
             {/* Arrow 1 */}
-            <ArrowConnector direction="down" />
+            <ArrowConnector direction="down" reduceMotion={reduceMotion} />
 
             {/* Card 2 */}
             <div className="w-full">
-              <StepCard step={steps[1]!} />
+              <StepCard step={steps[1]!} reduceMotion={reduceMotion} />
             </div>
 
             {/* Arrow 2 */}
-            <ArrowConnector direction="down" />
+            <ArrowConnector direction="down" reduceMotion={reduceMotion} />
 
             {/* Card 3 */}
             <div className="w-full">
-              <StepCard step={steps[2]!} />
+              <StepCard step={steps[2]!} reduceMotion={reduceMotion} />
             </div>
           </div>
         </motion.div>

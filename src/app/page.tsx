@@ -31,6 +31,10 @@ const WebAccessSpotlight = dynamic(
   () => import("@/components/sections/WebAccessSpotlight"),
   { ssr: true },
 );
+const StudyMaterialsSpotlight = dynamic(
+  () => import("@/components/sections/StudyMaterialsSpotlight"),
+  { ssr: true },
+);
 const HowItWorks = dynamic(() => import("@/components/sections/HowItWorks"), {
   ssr: true,
 });
@@ -108,6 +112,7 @@ export default function Home() {
         <ChooseYourWeapon />
         <FeaturesGrid />
         <WebAccessSpotlight />
+        <StudyMaterialsSpotlight />
         <HowItWorks />
         <Gamification />
         <Pricing />

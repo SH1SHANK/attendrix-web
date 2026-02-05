@@ -2,16 +2,25 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { NeoAvatar } from "@/components/ui/NeoAvatar";
 import {
+  BookOpen,
+  Bug,
+  CalendarCheck,
   ChevronDown,
+  ClipboardList,
+  Cookie,
+  LayoutDashboard,
+  LifeBuoy,
+  Lightbulb,
   Rocket,
   Shield,
   Scale,
   LogOut,
   ExternalLink,
+  User,
 } from "lucide-react";
 
 // ============================================================================
@@ -74,6 +83,7 @@ interface MenuItemProps {
   isExternal?: boolean;
   isFocused?: boolean;
   onFocus?: () => void;
+  itemRef?: React.Ref<HTMLAnchorElement | HTMLButtonElement>;
 }
 
 function MenuItem({
@@ -86,7 +96,9 @@ function MenuItem({
   isExternal = false,
   isFocused = false,
   onFocus,
+  itemRef,
 }: MenuItemProps) {
+  const reduceMotion = useReducedMotion() ?? false;
   const baseClasses = `
     w-full text-left px-4 py-3 flex items-center gap-3
     font-bold uppercase text-sm tracking-wide
@@ -136,7 +148,11 @@ function MenuItem({
 
   if (href) {
     return (
-      <motion.div variants={itemVariants}>
+      <motion.div
+        variants={itemVariants}
+        whileHover={reduceMotion ? undefined : { x: 2 }}
+        whileTap={reduceMotion ? undefined : { x: 0 }}
+      >
         <Link
           href={href}
           onClick={onClick}
@@ -146,6 +162,7 @@ function MenuItem({
           tabIndex={isFocused ? 0 : -1}
           target={isExternal ? "_blank" : undefined}
           rel={isExternal ? "noopener noreferrer" : undefined}
+          ref={itemRef as React.Ref<HTMLAnchorElement>}
         >
           {content}
         </Link>
@@ -154,13 +171,18 @@ function MenuItem({
   }
 
   return (
-    <motion.div variants={itemVariants}>
+    <motion.div
+      variants={itemVariants}
+      whileHover={reduceMotion ? undefined : { x: 2 }}
+      whileTap={reduceMotion ? undefined : { x: 0 }}
+    >
       <button
         onClick={onClick}
         onFocus={onFocus}
         className={`${baseClasses} ${variantClasses[variant]}`}
         role="menuitem"
         tabIndex={isFocused ? 0 : -1}
+        ref={itemRef as React.Ref<HTMLButtonElement>}
       >
         {content}
       </button>
@@ -197,6 +219,7 @@ function MenuSection({ title, children, className = "" }: MenuSectionProps) {
 
 export function UserMenu() {
   const { user, logout } = useAuth();
+  const reduceMotion = useReducedMotion() ?? false;
   const [isOpen, setIsOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -205,8 +228,109 @@ export function UserMenu() {
     [],
   );
 
-  // Total number of focusable menu items
-  const MENU_ITEMS_COUNT = 4; // Primary action, 2 legal links, logout
+  const primaryItems = [
+    {
+      key: "dashboard",
+      href: "/dashboard",
+      icon: <LayoutDashboard className="w-4 h-4" />,
+      label: "Dashboard",
+      description: "Home base overview",
+      variant: "primary" as const,
+    },
+    {
+      key: "attendance",
+      href: "/attendance",
+      icon: <CalendarCheck className="w-4 h-4" />,
+      label: "Attendance",
+      description: "Track subject-wise status",
+    },
+    {
+      key: "classes",
+      href: "/classes",
+      icon: <Rocket className="w-4 h-4" />,
+      label: "Classes",
+      description: "Today + upcoming schedule",
+    },
+    {
+      key: "tasks",
+      href: "/tasks",
+      icon: <ClipboardList className="w-4 h-4" />,
+      label: "Assignments & Exams",
+      description: "Deadlines and next-up",
+    },
+    {
+      key: "resources",
+      href: "/resources",
+      icon: <BookOpen className="w-4 h-4" />,
+      label: "Study Materials",
+      description: "Drive-linked course library",
+    },
+  ];
+
+  const accountItems = [
+    {
+      key: "profile",
+      href: "/profile",
+      icon: <User className="w-4 h-4" />,
+      label: "Profile",
+      description: "Settings and exports",
+    },
+    {
+      key: "support",
+      href: "/support/contact",
+      icon: <LifeBuoy className="w-4 h-4" />,
+      label: "Support",
+      description: "Get help fast",
+    },
+  ];
+
+  const feedbackItems = [
+    {
+      key: "feature",
+      href: "/support/feature",
+      icon: <Lightbulb className="w-4 h-4" />,
+      label: "Request Feature",
+      description: "Shape the roadmap",
+    },
+    {
+      key: "bug",
+      href: "/support/bug",
+      icon: <Bug className="w-4 h-4" />,
+      label: "Report Bug",
+      description: "Help us fix issues",
+    },
+  ];
+
+  const legalItems = [
+    {
+      key: "privacy",
+      href: "/privacy",
+      icon: <Shield className="w-4 h-4" />,
+      label: "Privacy Policy",
+    },
+    {
+      key: "terms",
+      href: "/terms",
+      icon: <Scale className="w-4 h-4" />,
+      label: "Terms of Service",
+    },
+    {
+      key: "cookies",
+      href: "/cookies",
+      icon: <Cookie className="w-4 h-4" />,
+      label: "Cookie Policy",
+    },
+  ];
+
+  const allMenuItems = [
+    ...primaryItems,
+    ...accountItems,
+    ...feedbackItems,
+    ...legalItems,
+    { key: "logout" },
+  ];
+
+  const MENU_ITEMS_COUNT = allMenuItems.length;
 
   // Close menu and return focus to trigger
   const closeMenu = useCallback(() => {
@@ -348,6 +472,7 @@ export function UserMenu() {
         aria-haspopup="menu"
         aria-controls="user-menu"
         aria-label={`Account menu for ${displayName}`}
+        id="user-menu-button"
       >
         {/* Avatar with subtle scale on hover */}
         <motion.div
@@ -380,10 +505,10 @@ export function UserMenu() {
         {isOpen && (
           <motion.div
             id="user-menu"
-            variants={dropdownVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
+            variants={reduceMotion ? undefined : dropdownVariants}
+            initial={reduceMotion ? false : "hidden"}
+            animate={reduceMotion ? undefined : "visible"}
+            exit={reduceMotion ? undefined : "exit"}
             className="
               absolute top-full right-0 mt-2 w-72
               bg-white border-2 border-black shadow-[6px_6px_0px_0px_#000] 
@@ -412,40 +537,96 @@ export function UserMenu() {
             </motion.div>
 
             {/* Primary Actions */}
-            <MenuSection className="py-1">
-              <MenuItem
-                href="/dashboard"
-                icon={<Rocket className="w-4 h-4" />}
-                label="Launch Web App"
-                description="Access the full dashboard"
-                variant="primary"
-                onClick={handleItemClick}
-                isFocused={focusedIndex === 0}
-                onFocus={() => setFocusedIndex(0)}
-              />
+            <MenuSection className="py-1" title="Academics">
+              {primaryItems.map((item, index) => {
+                const absoluteIndex = index;
+                return (
+                  <MenuItem
+                    key={item.key}
+                    href={item.href}
+                    icon={item.icon}
+                    label={item.label}
+                    description={item.description}
+                    variant={item.variant}
+                    onClick={handleItemClick}
+                    isFocused={focusedIndex === absoluteIndex}
+                    onFocus={() => setFocusedIndex(absoluteIndex)}
+                    itemRef={(el) => {
+                      menuItemsRef.current[absoluteIndex] = el;
+                    }}
+                  />
+                );
+              })}
             </MenuSection>
 
-            {/* Legal Section */}
+            <MenuSection title="Account" className="py-1 border-t border-neutral-200">
+              {accountItems.map((item, index) => {
+                const absoluteIndex = primaryItems.length + index;
+                return (
+                  <MenuItem
+                    key={item.key}
+                    href={item.href}
+                    icon={item.icon}
+                    label={item.label}
+                    description={item.description}
+                    onClick={handleItemClick}
+                    isFocused={focusedIndex === absoluteIndex}
+                    onFocus={() => setFocusedIndex(absoluteIndex)}
+                    itemRef={(el) => {
+                      menuItemsRef.current[absoluteIndex] = el;
+                    }}
+                  />
+                );
+              })}
+            </MenuSection>
+
+            <MenuSection title="Feedback" className="py-1 border-t border-neutral-200">
+              {feedbackItems.map((item, index) => {
+                const absoluteIndex =
+                  primaryItems.length + accountItems.length + index;
+                return (
+                  <MenuItem
+                    key={item.key}
+                    href={item.href}
+                    icon={item.icon}
+                    label={item.label}
+                    description={item.description}
+                    onClick={handleItemClick}
+                    isFocused={focusedIndex === absoluteIndex}
+                    onFocus={() => setFocusedIndex(absoluteIndex)}
+                    itemRef={(el) => {
+                      menuItemsRef.current[absoluteIndex] = el;
+                    }}
+                  />
+                );
+              })}
+            </MenuSection>
+
             <MenuSection
               title="Legal"
               className="py-1 border-t border-neutral-200"
             >
-              <MenuItem
-                href="/privacy"
-                icon={<Shield className="w-4 h-4" />}
-                label="Privacy Policy"
-                onClick={handleItemClick}
-                isFocused={focusedIndex === 1}
-                onFocus={() => setFocusedIndex(1)}
-              />
-              <MenuItem
-                href="/terms"
-                icon={<Scale className="w-4 h-4" />}
-                label="Terms of Service"
-                onClick={handleItemClick}
-                isFocused={focusedIndex === 2}
-                onFocus={() => setFocusedIndex(2)}
-              />
+              {legalItems.map((item, index) => {
+                const absoluteIndex =
+                  primaryItems.length +
+                  accountItems.length +
+                  feedbackItems.length +
+                  index;
+                return (
+                  <MenuItem
+                    key={item.key}
+                    href={item.href}
+                    icon={item.icon}
+                    label={item.label}
+                    onClick={handleItemClick}
+                    isFocused={focusedIndex === absoluteIndex}
+                    onFocus={() => setFocusedIndex(absoluteIndex)}
+                    itemRef={(el) => {
+                      menuItemsRef.current[absoluteIndex] = el;
+                    }}
+                  />
+                );
+              })}
             </MenuSection>
 
             {/* Logout Footer - Destructive Action Last */}
@@ -455,8 +636,11 @@ export function UserMenu() {
                 icon={<LogOut className="w-4 h-4" />}
                 label="Sign Out"
                 variant="destructive"
-                isFocused={focusedIndex === 3}
-                onFocus={() => setFocusedIndex(3)}
+                isFocused={focusedIndex === MENU_ITEMS_COUNT - 1}
+                onFocus={() => setFocusedIndex(MENU_ITEMS_COUNT - 1)}
+                itemRef={(el) => {
+                  menuItemsRef.current[MENU_ITEMS_COUNT - 1] = el;
+                }}
               />
             </MenuSection>
           </motion.div>

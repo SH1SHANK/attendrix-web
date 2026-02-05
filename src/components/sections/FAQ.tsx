@@ -16,37 +16,43 @@ const faqs: FAQItem[] = [
     id: "F01",
     question: "Is this official NITC software?",
     answer:
-      "No. Attendrix is an independent student project. However, we've reverse-engineered NITC's Slot System and attendance policies to ensure 100% compliance with how the Academic Section calculates eligibility.",
+      "No. Attendrix is a student-built project and not affiliated with NITC. It is designed specifically for the NITC slot system and subject-wise tracking.",
   },
   {
     id: "F02",
-    question: "How does the Safe Cut calculator work?",
+    question: "Why subject-wise instead of overall attendance?",
     answer:
-      "Safe Cuts = ((Current% × Classes Held) - (80% × Total Expected)) / 20%. Attendrix calculates this in real-time for every subject.",
+      "Attendrix keeps a subject-wise view so one risky course never hides behind a healthy overall. It’s built for NITC’s slot system and daily attendance reality.",
   },
   {
     id: "F03",
-    question: "What happens if I delete an attendance record?",
+    question: "How do Web, APK, and Lumen stay in sync?",
     answer:
-      "The attendance recalculates correctly. If you're using gamification features, any XP earned from that check-in is revoked and streaks reset.",
+      "They share the same Supabase backend. Any check-in or edit appears everywhere instantly.",
   },
   {
     id: "F04",
-    question: "Does Lumen AI access my personal data?",
+    question: "What’s the difference between Web and Android APK?",
     answer:
-      "No. Lumen only reads: your timetable, uploaded syllabi, and attendance records. All AI interactions are logged locally.",
+      "Most features are on both, including the attendance calculator. Android APK is built for instant check-ins, push nudges, and quick actions (online-first). Attendrix Web is mobile-first and installable as a PWA, expanding the ecosystem with iOS-friendly access, deeper analysis, richer study materials, and exports. The overall attendance target is currently Web-only.",
   },
   {
     id: "F05",
-    question: "Why APK and not Play Store?",
+    question: "Does Lumen AI see my personal data?",
     answer:
-      "Attendrix is in Public Beta. APK distribution lets us iterate fast. Once we hit v2.0 stable, we'll launch on Google Play and App Store.",
+      "Lumen only accesses your attendance data and the course materials you upload. Responses are grounded in your files and do not use other students’ data.",
   },
   {
     id: "F06",
-    question: "How do I get my batch onboarded?",
+    question: "Why APK distribution during beta?",
     answer:
-      "Email onboarding@attendrix.app with Batch ID, Semester, and Core Courses. Setup takes 48-72 hours.",
+      "We’re invite-only right now and ship APKs to move faster and coordinate batch rollouts. Store release is planned once the beta stabilizes.",
+  },
+  {
+    id: "F07",
+    question: "How do we onboard our batch?",
+    answer:
+      "Email onboarding@attendrix.app with batch ID, semester, and core courses. We coordinate rollout with class reps.",
   },
 ];
 
@@ -74,19 +80,24 @@ export default function FAQ() {
               <div
                 key={faq.id}
                 className={`border-2 border-black shadow-[4px_4px_0px_0px_#000] transition-colors duration-200 overflow-hidden ${
-                  isOpen ? "bg-[#ffc2d1]" : "bg-white"
+                  isOpen ? "bg-[#FFF1D6]" : "bg-white"
                 }`}
               >
                 {/* Question Header */}
                 <button
                   onClick={() => setOpenId(isOpen ? null : faq.id)}
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-${faq.id}`}
                   className={`w-full flex items-center justify-between p-6 cursor-pointer text-left transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${
                     !isOpen
                       ? "hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000] active:translate-y-0 active:shadow-[2px_2px_0px_0px_#000]"
                       : ""
                   }`}
                 >
-                  <h3 className="text-lg font-bold text-black pr-4">
+                  <h3
+                    id={`faq-${faq.id}-label`}
+                    className="text-lg font-bold text-black pr-4"
+                  >
                     {faq.question}
                   </h3>
                   <span
@@ -102,6 +113,9 @@ export default function FAQ() {
                 <AnimatePresence initial={false}>
                   {isOpen && (
                     <motion.div
+                      id={`faq-${faq.id}`}
+                      role="region"
+                      aria-labelledby={`faq-${faq.id}-label`}
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
@@ -129,7 +143,9 @@ export default function FAQ() {
             <h3 className="text-2xl font-bold uppercase text-yellow-400 mb-2">
               STILL CONFUSED?
             </h3>
-            <p className="text-neutral-400 mb-6">Ping us directly.</p>
+            <p className="text-neutral-400 mb-6">
+              Need onboarding or support? Ping us directly.
+            </p>
             <div className="flex flex-wrap gap-4">
               {/* Support Button */}
               <a

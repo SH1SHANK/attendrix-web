@@ -216,7 +216,7 @@ export default function Preloader({ onComplete }: PreloaderProps) {
                 Boot Sequence
               </span>
               <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-black/80 font-mono">
-                v2.0.5-alpha
+                public beta
               </span>
             </div>
 
@@ -246,7 +246,7 @@ export default function Preloader({ onComplete }: PreloaderProps) {
                   </div>
                   <div className="border-t-3 border-black pt-3">
                     <div className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-black/70">
-                      Attendance logic · Academic rules · Sync pipeline
+                      Slot logic · Tracking · Sync pipeline
                     </div>
                   </div>
                 </div>

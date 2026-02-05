@@ -15,7 +15,7 @@ import {
   CheckSquare,
   Download,
   FileText,
-  File,
+  File as FileIcon,
   FileArchive,
   FileAudio,
   FileCode,
@@ -212,7 +212,7 @@ const getItemIcon = (mimeType?: string) => {
     return FileCode;
   }
   if (ARCHIVE_MIMES.has(mimeType ?? "")) return FileArchive;
-  return File;
+  return FileIcon;
 };
 
 const ROW_TONES = {
@@ -311,10 +311,14 @@ function ResourceCourseBrowser({
     () => new Set(),
   );
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
-  const [aiTarget, setAiTarget] = useState<DriveItem | null>(null);
+  const [aiTarget, setAiTarget] = useState<{
+    item: DriveItem;
+    resourceId: string;
+  } | null>(null);
   const [aiChoice, setAiChoice] = useState<(typeof AI_PROVIDERS)[number] | null>(
     null,
   );
+  const [aiBusy, setAiBusy] = useState(false);
   const [accountNotice, setAccountNotice] = useState<{
     link: string;
     email: string;
@@ -1635,11 +1639,63 @@ function ResourceCourseBrowser({
     triggerHaptic,
   ]);
 
-  const handleOpenWithAi = useCallback((item: DriveItem) => {
-    setAiTarget(item);
+  const handleOpenWithAi = useCallback((item: DriveItem, resourceId: string) => {
+    setAiTarget({ item, resourceId });
     setAiChoice(null);
     setAiDrawerOpen(true);
   }, []);
+
+  const buildAiFilename = useCallback(
+    (item: DriveItem, exportMime?: string | null) => {
+      const fallback = item.name || "study-material";
+      if (exportMime === "application/pdf" && !fallback.toLowerCase().endsWith(".pdf")) {
+        return `${fallback}.pdf`;
+      }
+      return fallback;
+    },
+    [],
+  );
+
+  const getAiFileBlob = useCallback(
+    async (item: DriveItem, resourceId: string) => {
+      const storedMode =
+        offlineFiles[resourceId]?.storageMode ?? offlineStorageMode;
+
+      if (offlineFiles[resourceId]) {
+        if (storedMode === "folder") {
+          const file = await readOfflineFolderFile(
+            offlineFiles[resourceId]?.fileId ?? item.id,
+          );
+          if (file) return file;
+        } else {
+          const cached = await readCachedFile(resourceId);
+          if (cached) return cached.blob();
+        }
+      }
+
+      if (!isOnline) {
+        toast.error("Connect to the internet to share this file.");
+        return null;
+      }
+
+      const exportMime = getExportMime(item.mimeType);
+      const params = new URLSearchParams();
+      params.set("fileId", item.id);
+      if (exportMime) {
+        params.set("export", exportMime);
+      }
+
+      const response = await fetch(
+        `/api/resources/drive/file?${params.toString()}`,
+      );
+      if (!response.ok) {
+        toast.error("Unable to fetch the file for sharing.");
+        return null;
+      }
+      return response.blob();
+    },
+    [isOnline, offlineFiles, offlineStorageMode],
+  );
 
   const handleShareFile = useCallback(
     async (item: DriveItem) => {
@@ -1824,14 +1880,78 @@ function ResourceCourseBrowser({
     tagOptions,
   ]);
 
-  const handleConfirmAi = useCallback(() => {
-    if (!aiChoice) return;
-    window.open(aiChoice.href, "_blank", "noopener,noreferrer");
-    setAiDrawerOpen(false);
-    toast.message(
-      "Opened AI assistant. You'll choose what content to share manually.",
-    );
-  }, [aiChoice]);
+  const handleConfirmAi = useCallback(async () => {
+    if (!aiChoice || !aiTarget) return;
+    if (aiBusy) return;
+    setAiBusy(true);
+
+    try {
+      const { item, resourceId } = aiTarget;
+      const exportMime = getExportMime(item.mimeType);
+      const filename = buildAiFilename(item, exportMime);
+      const blob = await getAiFileBlob(item, resourceId);
+
+      if (blob && typeof navigator !== "undefined" && "share" in navigator) {
+        const file = new File([blob], filename, {
+          type: blob.type || exportMime || "application/octet-stream",
+        });
+        const canShareFiles =
+          "canShare" in navigator &&
+          typeof navigator.canShare === "function" &&
+          navigator.canShare({ files: [file] });
+
+        if (canShareFiles) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: item.name || filename,
+              text: `Open with ${aiChoice.label}`,
+            });
+            toast.message("Shared file. Choose your AI assistant.");
+            setAiDrawerOpen(false);
+            return;
+          } catch (error) {
+            if ((error as Error)?.name === "AbortError") {
+              return;
+            }
+          }
+        }
+      }
+
+      const baseLink =
+        item.webViewLink ??
+        `https://drive.google.com/file/d/${item.id}/view`;
+      const shareLink = buildDriveLink(baseLink, userEmail);
+
+      window.open(aiChoice.href, "_blank", "noopener,noreferrer");
+
+      if (shareLink) {
+        try {
+          await navigator.clipboard.writeText(shareLink);
+          toast.message(
+            "Opened assistant and copied the file link. Upload or paste it there.",
+          );
+        } catch {
+          toast.message(
+            "Opened assistant. Upload the file manually or paste its link.",
+          );
+        }
+      } else {
+        toast.message("Opened assistant. Upload the file manually.");
+      }
+
+      setAiDrawerOpen(false);
+    } finally {
+      setAiBusy(false);
+    }
+  }, [
+    aiBusy,
+    aiChoice,
+    aiTarget,
+    buildAiFilename,
+    getAiFileBlob,
+    userEmail,
+  ]);
 
   return (
     <>
@@ -2750,9 +2870,9 @@ function ResourceCourseBrowser({
                           </Menu.Item>
                           <Menu.Item
                             className="flex items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-wide hover:bg-yellow-100 focus:bg-yellow-100"
-                            onSelect={() => handleOpenWithAi(item)}
+                            onSelect={() => handleOpenWithAi(item, resourceId)}
                           >
-                            <File className="h-4 w-4" />
+                            <FileIcon className="h-4 w-4" />
                             Open with AI
                           </Menu.Item>
                           <Menu.Item
@@ -2798,7 +2918,8 @@ function ResourceCourseBrowser({
               Open with AI
             </Drawer.Title>
             <Drawer.Description className="text-sm font-bold text-neutral-600">
-              Choose an assistant. You will confirm before opening.
+              On mobile, we’ll open the share sheet with the file attached. On
+              desktop, we’ll open the assistant and copy the file link.
             </Drawer.Description>
           </Drawer.Header>
           <div className="px-4 pb-2 space-y-3">
@@ -2820,17 +2941,17 @@ function ResourceCourseBrowser({
           </div>
           <Drawer.Footer>
             <div className="border-2 border-black bg-white px-4 py-3 text-xs font-black uppercase text-neutral-600 shadow-[3px_3px_0px_0px_#000]">
-              {aiTarget?.name
-                ? `Selected: ${aiTarget.name}`
+              {aiTarget?.item?.name
+                ? `Selected: ${aiTarget.item.name}`
                 : "Select a file to continue."}
             </div>
             <button
               type="button"
               onClick={handleConfirmAi}
-              disabled={!aiChoice}
+              disabled={!aiChoice || aiBusy}
               className="inline-flex items-center justify-center gap-2 border-2 border-black bg-[#FFD700] px-4 py-3 text-sm font-black uppercase shadow-[4px_4px_0px_0px_#000] disabled:opacity-60"
             >
-              Confirm & Open
+              {aiBusy ? "Preparing..." : "Confirm & Open"}
             </button>
           </Drawer.Footer>
         </Drawer.Content>
@@ -3114,17 +3235,26 @@ export default function ResourceCoursePage() {
       <div className="min-h-screen bg-[#fffdf5] flex items-center justify-center p-4">
         <div className="border-2 border-black bg-white p-8 shadow-[8px_8px_0px_0px_#000] max-w-md">
           <h2 className="font-display text-2xl font-black uppercase mb-4">
-            Authentication Required
+            Guest Access
           </h2>
           <p className="font-mono text-sm text-neutral-600 mb-6">
-            Please sign in to access academic resources.
+            Sign in to load your course materials and Drive sync. You can still
+            browse the Study Materials hub without an account.
           </p>
-          <button
-            onClick={() => router.push("/auth/signin")}
-            className="w-full bg-black text-white font-bold py-3 px-4 uppercase border-2 border-black hover:bg-neutral-800 transition-colors"
-          >
-            Go to Sign In
-          </button>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => router.push("/auth/signin")}
+              className="w-full bg-black text-white font-bold py-3 px-4 uppercase border-2 border-black hover:bg-neutral-800 transition-colors"
+            >
+              Sign In to Sync
+            </button>
+            <button
+              onClick={() => router.push("/resources")}
+              className="w-full bg-white text-black font-bold py-3 px-4 uppercase border-2 border-black hover:bg-neutral-100 transition-colors"
+            >
+              Back to Study Materials
+            </button>
+          </div>
         </div>
       </div>
     );

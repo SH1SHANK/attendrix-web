@@ -9,8 +9,9 @@
   /* Global Font Scaling - Bumps 1rem from 16px to 18px for bolder feel */
   font-size: 16px;
   scroll-behavior: smooth;
-  --font-space-grotesk: "Space Grotesk", "Inter", system-ui, sans-serif;
-  --font-inter: "Inter", system-ui, sans-serif;
+  --font-space-grotesk: "Unbounded", "Atkinson Hyperlegible", system-ui,
+    sans-serif;
+  --font-inter: "Atkinson Hyperlegible", system-ui, sans-serif;
   --font-jetbrains: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
 
@@ -200,6 +201,35 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  /* Subtle float for ambient background shapes */
+  @keyframes float-slow {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) rotate(-1deg);
+    }
+    50% {
+      transform: translate3d(12px, -10px, 0) rotate(1deg);
+    }
+  }
+
+  @keyframes float-slower {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) rotate(1deg);
+    }
+    50% {
+      transform: translate3d(-10px, 12px, 0) rotate(-1deg);
+    }
+  }
+
+  .animate-float-slow {
+    animation: float-slow 14s ease-in-out infinite;
+  }
+
+  .animate-float-slower {
+    animation: float-slower 18s ease-in-out infinite;
   }
 
   /* Pulse animation for CTAs */

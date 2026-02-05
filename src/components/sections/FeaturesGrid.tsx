@@ -7,10 +7,11 @@ import { useGSAP } from "@gsap/react";
 import {
   Bot,
   Calculator,
-  TrendingUp,
-  Lock,
-  LayoutDashboard,
   Calendar,
+  Target,
+  BookOpen,
+  Database,
+  ShieldCheck,
 } from "lucide-react";
 import DotPatternBackground from "../ui/DotPatternBackground";
 
@@ -125,6 +126,7 @@ export default function FeaturesGrid() {
   return (
     <section
       ref={sectionRef}
+      id="features"
       className="w-full relative py-20 md:py-32 flex flex-col items-center"
     >
       <DotPatternBackground />
@@ -132,14 +134,14 @@ export default function FeaturesGrid() {
         {/* Header */}
         <div ref={headerRef} className="text-center mb-16 md:mb-20">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter text-black mb-4 leading-tight">
-            Tired of Manually Calculating
+            Stop Guessing.
             <br />
-            Your Attendance?
+            Track with Precision.
           </h2>
           <div className="flex justify-center mb-16 md:mb-20">
             <p className="sm:text-xl text-neutral-600 font-medium max-w-2xl">
-              Stop guessing. Start tracking. Here&apos;s everything Attendrix
-              does for you.
+              Subject-wise tracking, slot-aware counts, plus classes,
+              assignments, exams, and study materials in one system.
             </p>
           </div>
         </div>
@@ -161,16 +163,15 @@ export default function FeaturesGrid() {
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="feature-icon p-1">
-                  <TrendingUp className="w-8 h-8 text-black" />
+                  <Target className="w-8 h-8 text-black" />
                 </div>
               </div>
               <h3 className="text-2xl md:text-3xl font-black tracking-tight text-black mb-3">
-                Calculations on Autopilot
+                Subject-Wise, NITC-Ready
               </h3>
               <p className="text-base md:text-lg text-neutral-600 leading-relaxed font-medium">
-                Real-time tracking automatically updates your attendance
-                percentages. Spot &quot;Bunkable&quot; classes instantly and
-                know exactly when you need to show up.
+                Every course tracks independently with slot-aware class counts.
+                Built for NITC without confusing aggregate-only views.
               </p>
             </div>
           </div>
@@ -191,11 +192,11 @@ export default function FeaturesGrid() {
                     <Calendar className="w-12 h-12 text-black" />
                   </div>
                   <h3 className="text-2xl md:text-3xl font-black tracking-tight text-black mb-3">
-                    NITC Slot System Built-In
+                    Slot System Built-In
                   </h3>
                   <p className="text-base text-black/80 leading-relaxed font-bold">
-                    Forget manual timetable entry. We support the NITC slot
-                    system natively.
+                    Timetables and check-ins follow NITC slots automatically —
+                    no manual mapping.
                   </p>
                 </div>
               </div>
@@ -216,12 +217,11 @@ export default function FeaturesGrid() {
                 <Bot className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
-                Meet Lumen
+                Lumen AI (Syllabus-Bound)
               </h3>
               <p className="text-sm text-white/90 leading-relaxed font-medium">
-                Your syllabus-aware companion. Powered by Gemini 2.5, Lumen
-                answers doubts directly from your uploaded course PDFs using RAG
-                technology.
+                Ask questions grounded in your uploaded PDFs. Lumen retrieves
+                only verified syllabus context and your attendance status.
               </p>
             </div>
           </div>
@@ -237,14 +237,14 @@ export default function FeaturesGrid() {
               }}
             >
               <div className="feature-icon p-1 mb-4 inline-block">
-                <TrendingUp className="w-8 h-8 text-white" />
+                <BookOpen className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
-                Amplix Gamification
+                Study Materials (Web + APK)
               </h3>
               <p className="text-sm text-white/90 leading-relaxed font-medium">
-                Don&apos;t just attend. Compete. Earn XP, maintain streaks, and
-                climb from Novice to Master Mage.
+                Drive-backed materials on both. Web includes the full offline
+                cache, tags, and focus mode; APK keeps a lighter version.
               </p>
             </div>
           </div>
@@ -263,11 +263,10 @@ export default function FeaturesGrid() {
                 <Calculator className="w-8 h-8 text-black" />
               </div>
               <h3 className="text-2xl md:text-3xl font-black tracking-tight text-black mb-3">
-                Future Calculator
+                Attendance Simulator
               </h3>
               <p className="text-sm text-neutral-600 leading-relaxed font-medium">
-                &quot;What if I bunk 3 classes?&quot; Simulate scenarios to see
-                how your attendance drops or climbs.
+                What-if engine for attendance impact on Web and APK.
               </p>
             </div>
           </div>
@@ -283,14 +282,14 @@ export default function FeaturesGrid() {
               }}
             >
               <div className="feature-icon p-1 mb-4 inline-block">
-                <LayoutDashboard className="w-8 h-8 text-black" />
+                <Database className="w-8 h-8 text-black" />
               </div>
               <h3 className="text-2xl md:text-3xl font-black tracking-tight text-black mb-3">
-                Everything in One View
+                Classes, Assignments, Exams
               </h3>
               <p className="text-base md:text-lg text-neutral-600 leading-relaxed font-medium">
-                A unified dashboard that gives you a complete overview of your
-                academic life at a glance.
+                Manage classes, assignments, and exams in one place alongside
+                attendance and study materials.
               </p>
             </div>
           </div>
@@ -308,15 +307,14 @@ export default function FeaturesGrid() {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                 <div>
                   <div className="feature-icon p-1 mb-4 inline-block">
-                    <Lock className="w-8 h-8 text-[#FFD02F]" />
+                    <ShieldCheck className="w-8 h-8 text-[#FFD02F]" />
                   </div>
                   <h3 className="text-2xl md:text-3xl font-black tracking-tight text-white mb-2">
-                    Iron-Clad Privacy
+                    Privacy & Transparency
                   </h3>
                   <p className="text-base text-neutral-400 leading-relaxed max-w-2xl font-medium">
-                    Your data stays on your device. We don&apos;t sell it, we
-                    don&apos;t share it. End-to-end encryption ensures only you
-                    have access to your attendance records.
+                    Your academic data stays scoped to your account. Export
+                    anytime and see the math behind every calculation.
                   </p>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Globe, Check, Clock, MapPin } from "lucide-react";
 import DotPatternBackground from "../ui/DotPatternBackground";
 
@@ -67,7 +67,7 @@ function MockTimelineRow({
   );
 }
 
-function MockDashboard() {
+function MockDashboard({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <div className="bg-[#fffdf5] h-full p-3 space-y-3 relative group/dashboard">
       {/* Header */}
@@ -88,11 +88,15 @@ function MockDashboard() {
       {/* Next Up Card - PARALLAX EFFECT */}
       <motion.div
         className="p-2.5 bg-[#FFD02F] border-2 border-black shadow-[3px_3px_0px_0px_#000] relative cursor-default transition-all"
-        whileHover={{
-          y: -2,
-          x: -2,
-          boxShadow: "5px 5px 0px 0px #000",
-        }}
+        whileHover={
+          reduceMotion
+            ? undefined
+            : {
+                y: -2,
+                x: -2,
+                boxShadow: "5px 5px 0px 0px #000",
+              }
+        }
       >
         <span className="font-mono text-[8px] uppercase text-neutral-800 block mb-0.5 font-bold">
           Next Up
@@ -129,19 +133,25 @@ function MockDashboard() {
 // Interactive Browser Window
 // ============================================================================
 
-function BrowserWindow() {
+function BrowserWindow({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <motion.div
       className="relative perspective-1000 group"
-      initial={{ rotateY: -5, rotateX: 5 }}
-      whileHover={{ rotateY: 0, rotateX: 0, scale: 1.02 }}
-      transition={{ type: "spring", stiffness: 200, damping: 20 }}
+      initial={reduceMotion ? false : { rotateY: -5, rotateX: 5 }}
+      whileHover={
+        reduceMotion ? undefined : { rotateY: 0, rotateX: 0, scale: 1.02 }
+      }
+      transition={
+        reduceMotion ? undefined : { type: "spring", stiffness: 200, damping: 20 }
+      }
       style={{ transformStyle: "preserve-3d" }}
     >
       <motion.div
         className="bg-[#E5E7EB] border-[3px] border-black shadow-[12px_12px_0px_0px_#000] overflow-hidden relative z-10"
-        whileHover={{ boxShadow: "6px 6px 0px 0px #000" }}
-        transition={{ duration: 0.2 }}
+        whileHover={
+          reduceMotion ? undefined : { boxShadow: "6px 6px 0px 0px #000" }
+        }
+        transition={reduceMotion ? undefined : { duration: 0.2 }}
       >
         {/* Window Chrome */}
         <div className="flex items-center gap-2 px-3 py-2.5 border-b-[3px] border-black bg-[#E5E7EB]">
@@ -174,7 +184,7 @@ function BrowserWindow() {
 
         {/* Window Content */}
         <div className="h-70 md:h-80 overflow-hidden bg-[#fffdf5] p-3 space-y-3 relative">
-          <MockDashboard />
+          <MockDashboard reduceMotion={reduceMotion} />
 
           {/* Mouse Follower for Dashboard (Visual decoration) */}
           <motion.div
@@ -184,8 +194,14 @@ function BrowserWindow() {
               left: "50%",
               transform: "translate(-50%, -50%)",
             }}
-            animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
-            transition={{ duration: 4, repeat: Infinity }}
+            animate={
+              reduceMotion
+                ? undefined
+                : { scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }
+            }
+            transition={
+              reduceMotion ? undefined : { duration: 4, repeat: Infinity }
+            }
           />
         </div>
       </motion.div>
@@ -193,23 +209,30 @@ function BrowserWindow() {
       {/* Decorative Floating Elements */}
       <motion.div
         className="absolute -top-6 -right-6 w-12 h-12 border-4 border-black bg-white flex items-center justify-center z-20 shadow-[4px_4px_0px_0px_#000]"
-        animate={{ y: [0, -10, 0], rotate: [0, 5, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+        animate={
+          reduceMotion ? undefined : { y: [0, -10, 0], rotate: [0, 5, 0] }
+        }
+        transition={
+          reduceMotion
+            ? undefined
+            : { duration: 5, repeat: Infinity, ease: "easeInOut" }
+        }
       >
         <Globe className="w-6 h-6 text-black" />
       </motion.div>
 
       <motion.div
         className="absolute -bottom-4 -left-8 w-16 h-8 bg-[#FFD02F] border-2 border-black z-20 flex items-center justify-center shadow-[4px_4px_0px_0px_#000]"
-        animate={{ x: [0, 5, 0], rotate: [0, -3, 0] }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          delay: 1,
-          ease: "easeInOut",
-        }}
+        animate={
+          reduceMotion ? undefined : { x: [0, 5, 0], rotate: [0, -3, 0] }
+        }
+        transition={
+          reduceMotion
+            ? undefined
+            : { duration: 4, repeat: Infinity, delay: 1, ease: "easeInOut" }
+        }
       >
-        <span className="font-mono text-[10px] font-bold">v2.4</span>
+        <span className="font-mono text-[10px] font-bold">BETA</span>
       </motion.div>
     </motion.div>
   );
@@ -220,6 +243,8 @@ function BrowserWindow() {
 // ============================================================================
 
 export default function WebAccessSpotlight() {
+  const reduceMotion = useReducedMotion() ?? false;
+
   return (
     <section
       id="web-access"
@@ -230,48 +255,44 @@ export default function WebAccessSpotlight() {
       <div className="max-w-7xl mx-auto relative z-10">
         <motion.div
           className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
+          variants={reduceMotion ? undefined : containerVariants}
+          initial={reduceMotion ? false : "hidden"}
+          whileInView={reduceMotion ? undefined : "visible"}
           viewport={{ once: true, margin: "-100px" }}
         >
           {/* Left Column - Content */}
-          <motion.div className="order-2 lg:order-1" variants={itemVariants}>
+          <motion.div
+            className="order-2 lg:order-1"
+            variants={reduceMotion ? undefined : itemVariants}
+          >
             {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-[#FFD02F] text-black px-4 py-1.5 border-2 border-black mb-6 shadow-[3px_3px_0_#000]">
               <Globe className="w-4 h-4" />
               <span className="text-xs font-bold uppercase tracking-wider">
-                Public Beta
+                Invite-only Beta
               </span>
             </div>
 
             {/* Headline */}
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-black uppercase tracking-tight text-black mb-6 leading-[0.95]">
-              Introducing
+              Attendrix
               <br />
               <span className="text-[#FFD02F] bg-black px-2 py-1 inline-block mt-2">
-                AttendrixWeb v2.1
+                Web Command Center
               </span>
             </h2>
 
             {/* Subhead */}
             <h3 className="text-xl font-bold font-mono uppercase tracking-tight mb-4 text-neutral-800">
-              Neo-Brutalist Command Center
+              Mobile-First PWA + iOS Access
             </h3>
 
             {/* Body */}
             <div className="text-lg text-neutral-600 font-medium mb-8 max-w-lg leading-relaxed space-y-4">
               <p>
-                The high-density, desktop-optimized tactical dashboard for deep
-                academic analysis. Built with{" "}
-                <span className="font-bold text-black bg-yellow-100 px-1">
-                  HTTP-Only Sessions
-                </span>
-                ,{" "}
-                <span className="font-bold text-black bg-yellow-100 px-1">
-                  SSR rendering
-                </span>
-                , and Supabase sync.
+                Built to expand Attendrix beyond APKs. Mobile-first by design,
+                installable as a PWA, and available on iOS and desktop with the
+                same shared backend as the Android app.
               </p>
 
               {/* Feature Bullets */}
@@ -280,19 +301,25 @@ export default function WebAccessSpotlight() {
                   <div className="w-4 h-4 bg-black flex items-center justify-center">
                     <Check className="w-3 h-3 text-white" />
                   </div>
-                  Bento grid subject-wise status visualization
+                  Subject-wise status grid with quick flags
                 </li>
                 <li className="flex items-center gap-2 font-mono text-sm font-bold text-neutral-700">
                   <div className="w-4 h-4 bg-black flex items-center justify-center">
                     <Check className="w-3 h-3 text-white" />
                   </div>
-                  What-If attendance simulator with live projections
+                  Attendance simulator + overall target (Web only)
                 </li>
                 <li className="flex items-center gap-2 font-mono text-sm font-bold text-neutral-700">
                   <div className="w-4 h-4 bg-black flex items-center justify-center">
                     <Check className="w-3 h-3 text-white" />
                   </div>
-                  Lumen AI with syllabus RAG & PDFs
+                  Full study materials suite + Lumen AI
+                </li>
+                <li className="flex items-center gap-2 font-mono text-sm font-bold text-neutral-700">
+                  <div className="w-4 h-4 bg-black flex items-center justify-center">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                  Assignments + exams with next-up highlights
                 </li>
               </ul>
             </div>
@@ -303,26 +330,37 @@ export default function WebAccessSpotlight() {
               <motion.a
                 href="/dashboard"
                 className="inline-flex items-center gap-3 px-8 py-4 bg-black text-[#FFD02F] border-[3px] border-black font-bold uppercase tracking-wider shadow-[6px_6px_0px_0px_#FFD02F] transition-all"
-                whileHover={{
-                  x: -2,
-                  y: -2,
-                  boxShadow: "8px 8px 0px 0px #FFD02F",
-                }}
-                whileTap={{
-                  x: 4,
-                  y: 4,
-                  boxShadow: "0px 0px 0px 0px #FFD02F",
-                }}
+                whileHover={
+                  reduceMotion
+                    ? undefined
+                    : {
+                        x: -2,
+                        y: -2,
+                        boxShadow: "8px 8px 0px 0px #FFD02F",
+                      }
+                }
+                whileTap={
+                  reduceMotion
+                    ? undefined
+                    : {
+                        x: 4,
+                        y: 4,
+                        boxShadow: "0px 0px 0px 0px #FFD02F",
+                      }
+                }
               >
                 <Globe className="w-5 h-5" />
-                Launch App
+                Use Attendrix Web
               </motion.a>
             </div>
           </motion.div>
 
           {/* Right Column - Browser Window */}
-          <motion.div className="order-1 lg:order-2" variants={itemVariants}>
-            <BrowserWindow />
+          <motion.div
+            className="order-1 lg:order-2"
+            variants={reduceMotion ? undefined : itemVariants}
+          >
+            <BrowserWindow reduceMotion={reduceMotion} />
           </motion.div>
         </motion.div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Flame, Check, Lock, Sparkles, Award } from "lucide-react";
 import DotPatternBackground from "../ui/DotPatternBackground";
 
@@ -30,10 +30,12 @@ const itemVariants = {
 // ============================================================================
 
 function StatBox({ value, label }: { value: string; label: string }) {
+  const reduceMotion = useReducedMotion() ?? false;
+
   return (
     <motion.div
       className="p-4 bg-white border-2 border-black shadow-[4px_4px_0px_0px_#000] cursor-default transition-all"
-      whileHover={{ y: -4, boxShadow: "6px 6px 0px 0px #000" }}
+      whileHover={reduceMotion ? undefined : { y: -4, boxShadow: "6px 6px 0px 0px #000" }}
     >
       <span className="font-mono font-black text-2xl md:text-3xl block">
         {value}
@@ -56,10 +58,12 @@ function QuestItem({
   total?: number;
   status: "progress" | "complete" | "locked";
 }) {
+  const reduceMotion = useReducedMotion() ?? false;
+
   return (
     <motion.div
       className="flex items-center justify-between py-2.5 px-2 border-b-2 border-dashed border-neutral-300 last:border-b-0 cursor-pointer hover:bg-neutral-100 transition-colors"
-      whileHover={{ x: 4 }}
+      whileHover={reduceMotion ? undefined : { x: 4 }}
     >
       <span className="font-mono text-sm font-bold uppercase">{name}</span>
 
@@ -102,12 +106,15 @@ function CharacterSheet() {
   const xpCurrent = 2200;
   const xpRequired = 2500;
   const xpPercentage = (xpCurrent / xpRequired) * 100;
+  const reduceMotion = useReducedMotion() ?? false;
 
   return (
     <motion.div
       className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_#000] p-0 overflow-hidden"
-      whileHover={{ rotate: 1, scale: 1.02 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      whileHover={reduceMotion ? undefined : { rotate: 1, scale: 1.02 }}
+      transition={
+        reduceMotion ? undefined : { type: "spring", stiffness: 300, damping: 20 }
+      }
     >
       {/* Header Strip */}
       <div className="bg-black px-5 py-3 flex items-center justify-between">
@@ -117,7 +124,7 @@ function CharacterSheet() {
         <div className="flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-[#FFD02F]" />
           <span className="font-mono text-[10px] text-[#FFD02F] font-bold">
-            AMPLIX v2.0
+            AMPLIX CORE
           </span>
         </div>
       </div>
@@ -169,19 +176,29 @@ function CharacterSheet() {
                   #2D2D2D 12px
                 )`,
               }}
-              initial={{ width: 0 }}
-              whileInView={{ width: `${xpPercentage}%` }}
-              animate={{
-                backgroundPosition: ["0px 0px", "28px 0px"],
-              }}
-              transition={{
-                width: { duration: 1, delay: 0.3, ease: "easeOut" },
-                backgroundPosition: {
-                  duration: 1,
-                  repeat: Infinity,
-                  ease: "linear",
-                },
-              }}
+              initial={reduceMotion ? false : { width: 0 }}
+              whileInView={
+                reduceMotion ? undefined : { width: `${xpPercentage}%` }
+              }
+              animate={
+                reduceMotion
+                  ? undefined
+                  : {
+                      backgroundPosition: ["0px 0px", "28px 0px"],
+                    }
+              }
+              transition={
+                reduceMotion
+                  ? undefined
+                  : {
+                      width: { duration: 1, delay: 0.3, ease: "easeOut" },
+                      backgroundPosition: {
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "linear",
+                      },
+                    }
+              }
               viewport={{ once: true }}
             />
           </div>
@@ -213,8 +230,10 @@ function CharacterSheet() {
         {/* Footer - Streak */}
         <div className="flex items-center justify-center gap-3 p-4 bg-[#FFE8CC] border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
           <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
+            animate={reduceMotion ? undefined : { scale: [1, 1.2, 1] }}
+            transition={
+              reduceMotion ? undefined : { duration: 1.5, repeat: Infinity }
+            }
           >
             <Flame className="w-7 h-7 text-[#FF4500]" fill="#FF4500" />
           </motion.div>
@@ -237,6 +256,8 @@ function CharacterSheet() {
 // ============================================================================
 
 export default function Gamification() {
+  const reduceMotion = useReducedMotion() ?? false;
+
   return (
     <section
       id="gamification"
@@ -248,18 +269,18 @@ export default function Gamification() {
       <div className="max-w-7xl mx-auto relative z-10">
         <motion.div
           className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
+          variants={reduceMotion ? undefined : containerVariants}
+          initial={reduceMotion ? false : "hidden"}
+          whileInView={reduceMotion ? undefined : "visible"}
           viewport={{ once: true, margin: "-100px" }}
         >
           {/* Left Column - Content */}
-          <motion.div variants={itemVariants}>
+          <motion.div variants={reduceMotion ? undefined : itemVariants}>
             {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-1.5 border-2 border-black mb-6 shadow-[3px_3px_0_#FFD02F]">
               <Sparkles className="w-4 h-4" />
               <span className="font-mono text-xs font-bold uppercase tracking-widest">
-                The Amplix Engine v2.0
+                The Amplix Reinforcement Layer
               </span>
             </div>
 
@@ -267,7 +288,9 @@ export default function Gamification() {
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-black uppercase tracking-tighter text-black mb-6 leading-[0.9]">
               Attendance is no longer a chore.
               <br />
-              <span className="text-[#FFD02F]">It&apos;s an RPG GAME.</span>
+              <span className="text-[#FFD02F]">
+                It&apos;s a reinforcement system.
+              </span>
             </h2>
 
             {/* Body */}
@@ -280,20 +303,17 @@ export default function Gamification() {
                     behavioral reinforcement engine
                   </span>
                 </span>
-                . Earn <span className="font-bold text-black">XP</span> for
-                every attendance mark, climb from{" "}
-                <span className="font-bold">Novice Mage</span> to{" "}
-                <span className="font-bold">Master Mage</span>, and maintain
-                streaks that compound your rank.
+                , tied to your subject-wise tracking. Verified check-ins earn{" "}
+                <span className="font-bold text-black">XP</span>, unlock ranks,
+                and build streaks you can actually trust.
               </p>
               <p>
                 The system enforces{" "}
                 <span className="font-bold text-black">
                   anti-cheat integrity
                 </span>
-                : if you delete an attendance record, you automatically lose all
-                XP and challenges earned from that class. The &quot;Game&quot;
-                cannot be rigged.
+                : delete a record and Amplix rolls back the XP and streaks tied
+                to that class. The numbers stay honest.
               </p>
               <p>
                 Streak calculations use{" "}
@@ -308,14 +328,14 @@ export default function Gamification() {
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-4 mb-8">
               <button className="px-6 py-3 bg-[#FF6B6B] text-black border-2 border-black shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000] active:translate-y-0 active:shadow-none font-mono font-bold transition-all uppercase tracking-tight">
-                Explore the Engine
+                See Amplix Mechanics
               </button>
             </div>
 
             {/* Stats Grid */}
             <motion.div
               className="grid grid-cols-3 gap-4"
-              variants={itemVariants}
+              variants={reduceMotion ? undefined : itemVariants}
             >
               <StatBox value="12" label="Ranks to Unlock" />
               <StatBox value="Anti-Cheat" label="Rollback Engine" />
@@ -324,23 +344,23 @@ export default function Gamification() {
           </motion.div>
 
           {/* Right Column - Character Sheet */}
-          <motion.div variants={itemVariants}>
+          <motion.div variants={reduceMotion ? undefined : itemVariants}>
             <CharacterSheet />
 
             {/* Decorative Elements */}
             <div className="flex items-center gap-4 mt-6 justify-center">
               <motion.div
                 className="w-4 h-4 bg-[#FFD02F] border-2 border-black"
-                animate={{ rotate: [0, 90, 0] }}
-                transition={{ duration: 4, repeat: Infinity }}
+                animate={reduceMotion ? undefined : { rotate: [0, 90, 0] }}
+                transition={reduceMotion ? undefined : { duration: 4, repeat: Infinity }}
               />
               <span className="font-mono text-[10px] text-neutral-400 uppercase tracking-wider">
                 Powered by Amplix Engine
               </span>
               <motion.div
                 className="w-4 h-4 bg-[#8B5CF6] border-2 border-black"
-                animate={{ rotate: [0, -90, 0] }}
-                transition={{ duration: 3, repeat: Infinity }}
+                animate={reduceMotion ? undefined : { rotate: [0, -90, 0] }}
+                transition={reduceMotion ? undefined : { duration: 3, repeat: Infinity }}
               />
             </div>
           </motion.div>

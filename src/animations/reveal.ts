@@ -30,6 +30,11 @@ export function useHeroIntro({
   useGSAP(
     () => {
       if (!isActive) return;
+      const prefersReducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      if (prefersReducedMotion) return;
 
       const mm = gsap.matchMedia();
 
