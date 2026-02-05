@@ -72,3 +72,4 @@ Overrides are ignored in production.
 - Storage usage is computed from Cache Storage metadata, falling back to stored offline sizes for folder mode.
 - Cache limits are enforced locally with size-based LRU eviction using `cachedAt`.
 - Manual cache clear removes local blobs and prunes offline metadata.
+- A cleanup assistant surfaces the largest and least-used cached files when nearing limits.

@@ -9,14 +9,21 @@ const Trigger = DropdownMenu.Trigger;
 
 const Content = ({
   className,
+  side = "bottom",
+  align = "end",
+  sideOffset = 6,
+  collisionPadding = 16,
   ...props
 }: ComponentPropsWithoutRef<typeof DropdownMenu.Content>) => (
   <DropdownMenu.Portal>
     <DropdownMenu.Content
-      side="bottom"
-      align="start"
+      side={side}
+      align={align}
+      sideOffset={sideOffset}
+      collisionPadding={collisionPadding}
+      sticky="partial"
       className={cn(
-        "bg-white border-2 shadow-md absolute top-2 min-w-20",
+        "z-50 bg-white border-2 shadow-md max-w-[calc(100vw-24px)]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",

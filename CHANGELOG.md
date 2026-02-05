@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Add Study Materials offline-only page, command center, tag search refinements, cleanup assistant, and settings enhancements.
+- Refine dashboard greeting copy and reduce excess header spacing across dashboard, classes, attendance, tasks, and profile.
+- Tie Command Center to a shortcuts help panel and add pending state cues for offline folder selection.
+- Normalize legal and app navigation links to `/privacy`, `/terms`, `/cookies`, and `/dashboard`.
 - 674f0fa Fix profile page parse error
 - 65507e1 Review config updates and reports
 - 650104f Analyze caching and security risks

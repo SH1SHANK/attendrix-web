@@ -20,8 +20,8 @@ export default function ClassesLayout({
 }) {
   return (
     <>
-      <DashboardNav />
       <main className="min-h-screen">{children}</main>
+      <DashboardNav />
     </>
   );
 }

@@ -15,9 +15,16 @@ export type OfflineFileMeta = {
   storageMode?: "web" | "folder";
 };
 
+export type TagMeta = {
+  label: string;
+  color: string;
+};
+
 export type StudyMaterialsPreferences = {
   favorites?: Record<string, true>;
   tags?: Record<string, string[]>;
+  tagPalette?: Record<string, TagMeta>;
+  tagPins?: string[];
   lastOpened?: Record<string, string>;
   sectionOrder?: string[];
   offlineFiles?: Record<string, OfflineFileMeta>;
@@ -62,9 +69,79 @@ const notify = (data: StudyMaterialsPreferences) => {
   subscribers.forEach((callback) => callback(data));
 };
 
+const KEY_PREFIX = "smk_";
+
+const toBase64Url = (value: string) => {
+  if (!value) return "";
+  if (typeof btoa !== "function" || typeof TextEncoder === "undefined") {
+    return "";
+  }
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+};
+
+const fromBase64Url = (value: string) => {
+  if (!value) return "";
+  const padded = value.padEnd(value.length + ((4 - (value.length % 4)) % 4), "=");
+  const base64 = padded.replace(/-/g, "+").replace(/_/g, "/");
+  if (typeof atob !== "function" || typeof TextDecoder === "undefined") {
+    return "";
+  }
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new TextDecoder().decode(bytes);
+};
+
+const encodeFieldKey = (value: string) => {
+  if (!value) return value;
+  const encoded = toBase64Url(value);
+  if (!encoded) return value;
+  return `${KEY_PREFIX}${encoded}`;
+};
+
+const decodeFieldKey = (value: string) => {
+  if (!value.startsWith(KEY_PREFIX)) return value;
+  const decoded = fromBase64Url(value.slice(KEY_PREFIX.length));
+  return decoded || value;
+};
+
+const decodeKeyedMap = <T,>(map: Record<string, T> | undefined) => {
+  if (!map) return undefined;
+  const decoded: Record<string, T> = {};
+
+  Object.entries(map).forEach(([key, value]) => {
+    if (!key.startsWith(KEY_PREFIX)) {
+      decoded[key] = value;
+    }
+  });
+
+  Object.entries(map).forEach(([key, value]) => {
+    if (key.startsWith(KEY_PREFIX)) {
+      decoded[decodeFieldKey(key)] = value;
+    }
+  });
+
+  return decoded;
+};
+
 const normalizePrefs = (raw: unknown): StudyMaterialsPreferences => {
   if (!raw || typeof raw !== "object") return {};
-  return raw as StudyMaterialsPreferences;
+  const data = raw as StudyMaterialsPreferences;
+  return {
+    ...data,
+    favorites: decodeKeyedMap(data.favorites),
+    tags: decodeKeyedMap(data.tags),
+    tagPalette: decodeKeyedMap(data.tagPalette),
+    lastOpened: decodeKeyedMap(data.lastOpened),
+    offlineFiles: decodeKeyedMap(data.offlineFiles),
+  };
 };
 
 const mergePreferences = (
@@ -76,6 +153,8 @@ const mergePreferences = (
     ...local,
     favorites: { ...server.favorites, ...local.favorites },
     tags: { ...server.tags, ...local.tags },
+    tagPalette: { ...server.tagPalette, ...local.tagPalette },
+    tagPins: local.tagPins ?? server.tagPins,
     lastOpened: { ...server.lastOpened, ...local.lastOpened },
     offlineFiles: { ...server.offlineFiles, ...local.offlineFiles },
     sectionOrder: local.sectionOrder ?? server.sectionOrder,
@@ -212,6 +291,11 @@ export function useStudyMaterialsPreferences(uid: string | null) {
 
   const favorites = useMemo(() => prefs.favorites ?? {}, [prefs.favorites]);
   const tags = useMemo(() => prefs.tags ?? {}, [prefs.tags]);
+  const tagPalette = useMemo(
+    () => prefs.tagPalette ?? {},
+    [prefs.tagPalette],
+  );
+  const tagPins = useMemo(() => prefs.tagPins ?? [], [prefs.tagPins]);
   const lastOpened = useMemo(
     () => prefs.lastOpened ?? {},
     [prefs.lastOpened],
@@ -246,7 +330,8 @@ export function useStudyMaterialsPreferences(uid: string | null) {
 
       updateLocal({ ...prefs, favorites: nextFavorites });
 
-      const key = `studyMaterialsPreferences.favorites.${resourceId}`;
+      const encodedId = encodeFieldKey(resourceId);
+      const key = `studyMaterialsPreferences.favorites.${encodedId}`;
       enqueuePatch(uid, {
         [key]: current ? deleteField() : true,
       });
@@ -277,12 +362,78 @@ export function useStudyMaterialsPreferences(uid: string | null) {
 
       updateLocal({ ...prefs, tags: nextMap });
 
-      const key = `studyMaterialsPreferences.tags.${resourceId}`;
+      const encodedId = encodeFieldKey(resourceId);
+      const key = `studyMaterialsPreferences.tags.${encodedId}`;
       enqueuePatch(uid, {
         [key]: normalized.length === 0 ? deleteField() : normalized,
       });
     },
     [prefs, tags, uid, updateLocal],
+  );
+
+  const setTagsBatch = useCallback(
+    (updates: Record<string, string[]>) => {
+      if (!uid) return;
+      const entries = Object.entries(updates);
+      if (entries.length === 0) return;
+      const nextMap = { ...tags };
+      const patch: Record<string, unknown> = {};
+      let changed = false;
+
+      entries.forEach(([resourceId, nextTags]) => {
+        const normalized = Array.from(
+          new Set(
+            nextTags
+              .map((tag) => tag.trim())
+              .filter((tag) => tag.length > 0),
+          ),
+        );
+        const current = tags[resourceId] ?? [];
+        if (isSameArray(current, normalized)) return;
+        changed = true;
+        if (normalized.length === 0) {
+          delete nextMap[resourceId];
+        } else {
+          nextMap[resourceId] = normalized;
+        }
+        const encodedId = encodeFieldKey(resourceId);
+        const key = `studyMaterialsPreferences.tags.${encodedId}`;
+        patch[key] = normalized.length === 0 ? deleteField() : normalized;
+      });
+
+      if (!changed) return;
+      updateLocal({ ...prefs, tags: nextMap });
+      enqueuePatch(uid, patch);
+    },
+    [prefs, tags, uid, updateLocal],
+  );
+
+  const upsertTagPalette = useCallback(
+    (key: string, meta: TagMeta) => {
+      if (!uid) return;
+      const nextPalette = { ...tagPalette, [key]: meta };
+      updateLocal({ ...prefs, tagPalette: nextPalette });
+      enqueuePatch(uid, {
+        [`studyMaterialsPreferences.tagPalette.${encodeFieldKey(key)}`]: meta,
+      });
+    },
+    [prefs, tagPalette, uid, updateLocal],
+  );
+
+  const toggleTagPin = useCallback(
+    (key: string) => {
+      if (!uid) return;
+      const normalized = key.trim().toLowerCase();
+      if (!normalized) return;
+      const nextPins = tagPins.includes(normalized)
+        ? tagPins.filter((item) => item !== normalized)
+        : [...tagPins, normalized];
+      updateLocal({ ...prefs, tagPins: nextPins });
+      enqueuePatch(uid, {
+        "studyMaterialsPreferences.tagPins": nextPins,
+      });
+    },
+    [prefs, tagPins, uid, updateLocal],
   );
 
   const markOpened = useCallback(
@@ -304,7 +455,8 @@ export function useStudyMaterialsPreferences(uid: string | null) {
 
       updateLocal({ ...prefs, lastOpened: nextMap });
 
-      const key = `studyMaterialsPreferences.lastOpened.${resourceId}`;
+      const encodedId = encodeFieldKey(resourceId);
+      const key = `studyMaterialsPreferences.lastOpened.${encodedId}`;
       enqueuePatch(uid, {
         [key]: now.toISOString(),
       });
@@ -365,7 +517,8 @@ export function useStudyMaterialsPreferences(uid: string | null) {
 
       updateLocal({ ...prefs, offlineFiles: nextMap });
 
-      const key = `studyMaterialsPreferences.offlineFiles.${resourceId}`;
+      const encodedId = encodeFieldKey(resourceId);
+      const key = `studyMaterialsPreferences.offlineFiles.${encodedId}`;
       enqueuePatch(uid, {
         [key]: meta ? meta : deleteField(),
       });
@@ -391,7 +544,8 @@ export function useStudyMaterialsPreferences(uid: string | null) {
 
       const patch: Record<string, unknown> = {};
       resourceIds.forEach((resourceId) => {
-        const key = `studyMaterialsPreferences.offlineFiles.${resourceId}`;
+        const encodedId = encodeFieldKey(resourceId);
+        const key = `studyMaterialsPreferences.offlineFiles.${encodedId}`;
         patch[key] = deleteField();
       });
       enqueuePatch(uid, patch);
@@ -404,6 +558,8 @@ export function useStudyMaterialsPreferences(uid: string | null) {
       loaded: cacheState.loaded && cacheState.uid === uid,
       favorites,
       tags,
+      tagPalette,
+      tagPins,
       lastOpened,
       offlineFiles,
       sectionOrder,
@@ -411,6 +567,9 @@ export function useStudyMaterialsPreferences(uid: string | null) {
       offlineStorageMode,
       toggleFavorite,
       setTags,
+      setTagsBatch,
+      upsertTagPalette,
+      toggleTagPin,
       markOpened,
       updateSectionOrder,
       setOfflineFile,
@@ -426,8 +585,13 @@ export function useStudyMaterialsPreferences(uid: string | null) {
       cacheConfig,
       offlineStorageMode,
       tags,
+      tagPalette,
+      tagPins,
       toggleFavorite,
       setTags,
+      setTagsBatch,
+      upsertTagPalette,
+      toggleTagPin,
       markOpened,
       updateSectionOrder,
       setOfflineFile,

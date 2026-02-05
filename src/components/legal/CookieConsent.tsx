@@ -145,7 +145,7 @@ export default function CookieConsent() {
                     below.
                   </p>
                   <Link
-                    href="/legal/cookies"
+                    href="/cookies"
                     className="text-xs font-bold uppercase underline hover:text-[#FFD02F] hover:bg-black transition-colors"
                   >
                     Read Full Policy

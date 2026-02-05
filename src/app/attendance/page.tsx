@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   BarChart3,
@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import DotPatternBackground from "@/components/ui/DotPatternBackground";
 import { DashboardHeaderMenu } from "@/components/dashboard/DashboardHeaderMenu";
+import { Menu } from "@/components/ui/Menu";
 import { useAuth } from "@/context/AuthContext";
 import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { useAttendanceSummary } from "@/hooks/useAttendanceSummary";
@@ -38,9 +39,9 @@ type CourseSummaryLike = CourseAttendanceSummary & {
 };
 
 function getProgressTone(percent: number) {
-  if (percent >= 100) return "bg-green-500";
-  if (percent >= 80) return "bg-yellow-400";
-  return "bg-red-500";
+  if (percent >= 100) return "bg-emerald-500";
+  if (percent >= 80) return "bg-amber-400";
+  return "bg-rose-500";
 }
 
 function getAttendanceInsight(
@@ -49,7 +50,7 @@ function getAttendanceInsight(
 ) {
   const total = summary.totalClasses ?? 0;
   if (total === 0) {
-    return "No classes recorded yet. Attendance starts once sessions begin. 📝";
+    return "No classes recorded yet. Attendance appears after sessions begin.";
   }
 
   const mustAttend =
@@ -70,7 +71,7 @@ function getAttendanceInsight(
   }
 
   if (summary.attendancePercentage >= 100) {
-    return "Perfect attendance. Keep it locked. ✅";
+    return "Perfect attendance. Keep it up.";
   }
 
   return `You are exactly on track for ${attendanceGoal}%.`;
@@ -89,7 +90,6 @@ export default function AttendancePage() {
     ? "Unable to load attendance summary."
     : null;
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
   const [calculatorCourse, setCalculatorCourse] =
     useState<CourseAttendanceSummary | null>(null);
   const [plannedAttend, setPlannedAttend] = useState(0);
@@ -137,17 +137,6 @@ export default function AttendancePage() {
     if (!attendanceQuery.error) return;
     toast.error("Unable to load attendance summary.");
   }, [attendanceQuery.error]);
-
-  useEffect(() => {
-    if (!openMenuId) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (menuRef.current && menuRef.current.contains(target)) return;
-      setOpenMenuId(null);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [openMenuId]);
 
   const openCalculator = useCallback((course: CourseAttendanceSummary) => {
     setCalculatorCourse(course);
@@ -239,48 +228,12 @@ export default function AttendancePage() {
     router.push("/dashboard");
   };
 
-  const handleOverflowMenuKeyDown = (
-    event: React.KeyboardEvent<HTMLDivElement>,
-  ) => {
-    if (!menuRef.current) return;
-    const items = Array.from(
-      menuRef.current.querySelectorAll<HTMLButtonElement>(
-        "[role='menuitem']",
-      ),
-    );
-    if (items.length === 0) return;
-    const currentIndex = items.findIndex(
-      (item) => item === document.activeElement,
-    );
-
-    if (event.key === "Escape") {
-      event.preventDefault();
-      setOpenMenuId(null);
-      return;
-    }
-
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
-      items[nextIndex]?.focus();
-    }
-
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      const nextIndex =
-        currentIndex < 0
-          ? items.length - 1
-          : (currentIndex - 1 + items.length) % items.length;
-      items[nextIndex]?.focus();
-    }
-  };
-
   return (
     <div className="min-h-screen bg-neutral-50 pb-24 transition-colors duration-300 relative isolate">
       <DotPatternBackground />
 
       <div className="mx-auto max-w-3xl relative z-10">
-        <header className="bg-white border-b-4 border-black px-4 py-2 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
+        <header className="bg-white border-b-4 border-black px-4 py-1 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
           {/* token: border-4 + shadow-[0_6px_0_#0a0a0a] for Neo-Brutalist elevation */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -288,7 +241,7 @@ export default function AttendancePage() {
                 type="button"
                 onClick={handleBackNavigation}
                 aria-label="Go back"
-                className="h-10 w-10 border-2 border-black bg-white flex items-center justify-center shadow-[3px_3px_0_#0a0a0a] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a]"
+                className="h-10 w-10 border-2 border-black bg-white flex items-center justify-center shadow-[3px_3px_0_#0a0a0a] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] hover:bg-yellow-50 active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
@@ -297,7 +250,7 @@ export default function AttendancePage() {
                   Attendance
                 </h1>
                 <p className="text-xs sm:text-sm font-bold uppercase tracking-wide text-stone-500">
-                  Course-wise overview
+                  Course-wise status and targets
                 </p>
                 {isRefreshing && (
                   <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-stone-400">
@@ -328,7 +281,7 @@ export default function AttendancePage() {
                   onClick={() => {
                     toast.message(`${action.label} view coming soon.`);
                   }}
-                  className={`flex-1 flex items-center justify-center gap-2 h-12 text-xs font-black uppercase tracking-wide transition-all duration-200 border-2 border-black shadow-[4px_4px_0_#0a0a0a] hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a] focus:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2 ${baseTone}`}
+                  className={`flex-1 flex items-center justify-center gap-2 h-12 text-xs font-black uppercase tracking-wide transition-all duration-150 border-2 border-black shadow-[4px_4px_0_#0a0a0a] hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a] focus:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2 motion-reduce:transition-none ${baseTone}`}
                   aria-label={`${action.label} view`}
                 >
                   <Icon className="h-4 w-4" />
@@ -341,7 +294,7 @@ export default function AttendancePage() {
           <button
             type="button"
             onClick={() => toast.message("CGPA calculator is coming soon!")}
-            className="mt-4 w-full flex items-center justify-center gap-2 h-12 border-2 border-black bg-green-400 text-stone-900 text-sm font-black uppercase tracking-wide shadow-[5px_5px_0_#0a0a0a] transition-all duration-200 hover:shadow-[6px_6px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[3px_3px_0_#0a0a0a]"
+            className="mt-4 w-full flex items-center justify-center gap-2 h-12 border-2 border-black bg-green-400 text-stone-900 text-sm font-black uppercase tracking-wide shadow-[5px_5px_0_#0a0a0a] transition-all duration-150 hover:shadow-[6px_6px_0_#0a0a0a] hover:-translate-y-0.5 hover:bg-green-300 active:translate-y-0 active:shadow-[3px_3px_0_#0a0a0a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2 motion-reduce:transition-none"
             aria-label="Open CGPA calculator"
           >
             CGPA Calculator
@@ -358,7 +311,7 @@ export default function AttendancePage() {
           )}
 
           {loading ? (
-            <div className="border-2 border-black bg-white px-6 py-8 shadow-[6px_6px_0_#0a0a0a]">
+            <div className="border-2 border-black bg-white px-6 py-8 shadow-[6px_6px_0_#0a0a0a] animate-pulse motion-reduce:animate-none">
               <p className="text-lg font-black uppercase text-stone-900 mb-2">
                 Loading attendance...
               </p>
@@ -389,16 +342,16 @@ export default function AttendancePage() {
                 const isMenuOpen = openMenuId === courseKey;
                 const accentClass =
                   safePercent >= 100
-                    ? "border-l-green-500 from-white via-white to-green-50"
+                    ? "border-l-emerald-500 from-white via-white to-emerald-50"
                     : safePercent >= 80
-                      ? "border-l-yellow-400 from-white via-white to-yellow-50"
-                      : "border-l-red-500 from-white via-white to-red-50";
+                      ? "border-l-amber-400 from-white via-white to-amber-50"
+                      : "border-l-rose-500 from-white via-white to-rose-50";
                 const stripeClass =
                   safePercent >= 100
-                    ? "bg-green-500"
+                    ? "bg-emerald-500"
                     : safePercent >= 80
-                      ? "bg-yellow-400"
-                      : "bg-red-500";
+                      ? "bg-amber-400"
+                      : "bg-rose-500";
                 const courseTypeLabel = item.isLab ? "Lab" : "Core";
                 const courseTypeTone = item.isLab
                   ? "bg-blue-200 text-stone-900"
@@ -409,6 +362,7 @@ export default function AttendancePage() {
                     key={courseKey}
                     role="button"
                     tabIndex={0}
+                    aria-label={`Open attendance calculator for ${item.courseName}`}
                     onClick={() => {
                       setOpenMenuId(null);
                       openCalculator(item);
@@ -420,91 +374,99 @@ export default function AttendancePage() {
                         openCalculator(item);
                       }
                     }}
-                    className={`border-2 border-black border-l-4 bg-gradient-to-br px-4 py-4 shadow-[5px_5px_0_#0a0a0a] transition-all duration-300 ease-out animate-in fade-in slide-in-from-bottom-2 motion-reduce:animate-none focus:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2 cursor-pointer ${accentClass}`}
+                    className={`border-2 border-black border-l-4 bg-gradient-to-br px-4 py-4 shadow-[4px_4px_0_#0a0a0a] transition-all duration-200 ease-out animate-in fade-in slide-in-from-bottom-2 motion-reduce:animate-none focus:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2 cursor-pointer hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0a0a0a] active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a] ${accentClass}`}
                     style={{ animationDelay: `${index * 30}ms` }}
                   >
                     <div className={`h-2 w-full border-2 border-black shadow-[2px_2px_0_#0a0a0a] ${stripeClass}`} />
                     <div className="mt-3 flex items-start justify-between gap-3">
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-black text-lg sm:text-xl uppercase tracking-tight text-stone-900 leading-tight">
+                          <h3 className="font-black text-lg sm:text-xl uppercase tracking-tight text-stone-900 leading-tight truncate">
                             {item.courseName}
                           </h3>
                           <span
-                            className={`border-2 border-black px-2 py-0.5 text-[10px] font-black uppercase tracking-wide shadow-[2px_2px_0_#0a0a0a] ${courseTypeTone}`}
+                            className={`border-2 border-black px-2 py-0.5 text-[10px] font-black uppercase tracking-wide leading-none shadow-[2px_2px_0_#0a0a0a] ${courseTypeTone}`}
                           >
                             {courseTypeLabel}
                           </span>
                         </div>
                         <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-stone-600 flex flex-wrap items-center gap-2">
-                          <span>Attended {attended}/{total}</span>
+                          <span className="tabular-nums">
+                            Attended {attended}/{total}
+                          </span>
                           <span className="text-stone-400">•</span>
                           <span>Type: {courseTypeLabel}</span>
                         </p>
                       </div>
                       <div className="flex items-start gap-2">
-                        <span className="text-lg font-black text-stone-900">
+                        <span
+                          className="text-lg font-black text-stone-900 tabular-nums"
+                          aria-label={`Attendance ${safePercent.toFixed(1)} percent`}
+                        >
                           {safePercent.toFixed(1)}%
                         </span>
-                        <div className="relative" ref={isMenuOpen ? menuRef : null}>
-                          <button
-                            type="button"
-                            aria-label="Open course actions"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setOpenMenuId(isMenuOpen ? null : courseKey);
-                            }}
-                            className="h-9 w-9 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                          {isMenuOpen && (
-                            <div
-                              className="absolute right-0 mt-2 w-40 border-2 border-black bg-white shadow-[4px_4px_0_#0a0a0a] z-20"
-                              role="menu"
-                              aria-label="Course actions"
-                              onKeyDown={handleOverflowMenuKeyDown}
+                        <Menu
+                          open={isMenuOpen}
+                          onOpenChange={(open) =>
+                            setOpenMenuId(open ? courseKey : null)
+                          }
+                        >
+                          <Menu.Trigger asChild>
+                            <button
+                              type="button"
+                              aria-label="Open course actions"
                               onClick={(event) => event.stopPropagation()}
+                              className="h-9 w-9 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-150 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 hover:bg-yellow-50 active:translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2"
                             >
-                              <button
-                                type="button"
-                                role="menuitem"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  toast.message("View details coming soon");
-                                  setOpenMenuId(null);
-                                }}
-                                className="w-full px-3 py-2 text-xs font-black uppercase text-left border-b border-stone-200 hover:bg-stone-50"
-                              >
-                                View Details
-                              </button>
-                              <button
-                                type="button"
-                                role="menuitem"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  toast.message("Edit attendance goal");
-                                  setOpenMenuId(null);
-                                }}
-                                className="w-full px-3 py-2 text-xs font-black uppercase text-left border-b border-stone-200 hover:bg-stone-50"
-                              >
-                                Edit Goal
-                              </button>
-                              <button
-                                type="button"
-                                role="menuitem"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  toast.message("Open syllabus");
-                                  setOpenMenuId(null);
-                                }}
-                                className="w-full px-3 py-2 text-xs font-black uppercase text-left hover:bg-stone-50"
-                              >
-                                Open Syllabus
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </Menu.Trigger>
+                          <Menu.Content
+                            align="end"
+                            sideOffset={8}
+                            className="border-2 border-black bg-white shadow-[4px_4px_0_#0a0a0a] min-w-[200px] max-w-[calc(100vw-2rem)] max-h-[min(60svh,320px)] overflow-y-auto"
+                          >
+                            <Menu.Item
+                              className="w-full px-3 py-2 text-xs font-black uppercase text-left border-b border-stone-200 hover:bg-stone-50 focus:bg-stone-50"
+                              onSelect={() => {
+                                toast.message("View details coming soon");
+                              }}
+                            >
+                              View Details
+                            </Menu.Item>
+                            <Menu.Item
+                              className={`w-full px-3 py-2 text-xs font-black uppercase text-left border-b border-stone-200 hover:bg-stone-50 focus:bg-stone-50 ${
+                                item.courseID ? "" : "opacity-50"
+                              }`}
+                              disabled={!item.courseID}
+                              onSelect={() => {
+                                if (item.courseID) {
+                                  router.push(
+                                    `/resources/course/${item.courseID}`,
+                                  );
+                                }
+                              }}
+                            >
+                              Go to Course Resources
+                            </Menu.Item>
+                            <Menu.Item
+                              className="w-full px-3 py-2 text-xs font-black uppercase text-left border-b border-stone-200 hover:bg-stone-50 focus:bg-stone-50"
+                              onSelect={() => {
+                                toast.message("Edit attendance goal");
+                              }}
+                            >
+                              Edit Goal
+                            </Menu.Item>
+                            <Menu.Item
+                              className="w-full px-3 py-2 text-xs font-black uppercase text-left hover:bg-stone-50 focus:bg-stone-50"
+                              onSelect={() => {
+                                toast.message("Open syllabus");
+                              }}
+                            >
+                              Open Syllabus
+                            </Menu.Item>
+                          </Menu.Content>
+                        </Menu>
                       </div>
                     </div>
 
@@ -516,9 +478,10 @@ export default function AttendancePage() {
                         aria-valuenow={Math.min(100, Math.round(safePercent))}
                         aria-valuemin={0}
                         aria-valuemax={100}
+                        aria-valuetext={`Attendance ${safePercent.toFixed(1)} percent`}
                       >
                         <div
-                          className={`h-full ${toneClass} transition-all duration-300`}
+                          className={`h-full ${toneClass} transition-all duration-200 motion-reduce:transition-none`}
                           style={{ width: `${progress}%` }}
                         />
                       </div>
@@ -536,7 +499,7 @@ export default function AttendancePage() {
 
       {calculatorCourse && calculatorStats && (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 animate-in fade-in duration-200 motion-reduce:animate-none"
           onClick={() => setCalculatorCourse(null)}
         >
           <div
@@ -561,7 +524,7 @@ export default function AttendancePage() {
                       {calculatorStats.baseTotal}
                     </span>
                     <span
-                      className={`border-2 border-black px-2 py-0.5 text-[10px] font-black uppercase tracking-wide shadow-[2px_2px_0_#0a0a0a] ${
+                      className={`border-2 border-black px-2 py-0.5 text-[10px] font-black uppercase tracking-wide leading-none shadow-[2px_2px_0_#0a0a0a] ${
                         calculatorCourse.isLab
                           ? "bg-blue-200 text-stone-900"
                           : "bg-yellow-200 text-stone-900"
@@ -574,7 +537,7 @@ export default function AttendancePage() {
                 <button
                   type="button"
                   onClick={() => setCalculatorCourse(null)}
-                  className="h-9 w-9 border-2 border-black bg-white flex items-center justify-center font-black text-xl shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a]"
+                  className="h-9 w-9 border-2 border-black bg-white flex items-center justify-center font-black text-xl shadow-[2px_2px_0_#0a0a0a] transition-all duration-150 hover:shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 hover:bg-yellow-50 active:translate-y-0.5 active:shadow-[1px_1px_0_#0a0a0a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2 motion-reduce:transition-none"
                   aria-label="Close calculator"
                 >
                   ×
@@ -589,13 +552,16 @@ export default function AttendancePage() {
                     Current Attendance
                   </p>
                   <p className="text-base font-black text-stone-900">
-                    {calculatorStats.baseAttended}/{calculatorStats.baseTotal}
+                    <span className="tabular-nums">
+                      {calculatorStats.baseAttended}/
+                      {calculatorStats.baseTotal}
+                    </span>
                   </p>
                   <div className="mt-1 inline-flex items-center gap-2">
-                    <span className="text-sm font-black text-stone-900">
+                    <span className="text-sm font-black text-stone-900 tabular-nums">
                       {calculatorStats.currentPercent.toFixed(1)}%
                     </span>
-                    <span className="border-2 border-black bg-yellow-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide shadow-[2px_2px_0_#0a0a0a]">
+                    <span className="border-2 border-black bg-yellow-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide leading-none shadow-[2px_2px_0_#0a0a0a]">
                       Now
                     </span>
                   </div>
@@ -605,14 +571,16 @@ export default function AttendancePage() {
                     Projected Attendance
                   </p>
                   <p className="text-base font-black text-stone-900">
-                    {calculatorStats.projectedAttended}/
-                    {calculatorStats.projectedTotal}
+                    <span className="tabular-nums">
+                      {calculatorStats.projectedAttended}/
+                      {calculatorStats.projectedTotal}
+                    </span>
                   </p>
                   <div className="mt-1 inline-flex items-center gap-2">
-                    <span className="text-sm font-black text-stone-900">
+                    <span className="text-sm font-black text-stone-900 tabular-nums">
                       {calculatorStats.projectedPercent.toFixed(1)}%
                     </span>
-                    <span className="border-2 border-black bg-blue-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide shadow-[2px_2px_0_#0a0a0a]">
+                    <span className="border-2 border-black bg-blue-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide leading-none shadow-[2px_2px_0_#0a0a0a]">
                       Projected
                     </span>
                   </div>
@@ -630,18 +598,18 @@ export default function AttendancePage() {
                       onClick={() =>
                         setPlannedAttend((prev) => Math.max(0, prev - 1))
                       }
-                      className="h-8 w-8 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a]"
+                      className="h-8 w-8 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-150 hover:shadow-[3px_3px_0_#0a0a0a] hover:bg-yellow-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2 motion-reduce:transition-none"
                       aria-label="Decrease planned attendance"
                     >
                       <Minus className="h-4 w-4" />
                     </button>
-                    <span className="text-lg font-black text-stone-900">
+                    <span className="text-lg font-black text-stone-900 tabular-nums">
                       {plannedAttend}
                     </span>
                     <button
                       type="button"
                       onClick={() => setPlannedAttend((prev) => prev + 1)}
-                      className="h-8 w-8 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a]"
+                      className="h-8 w-8 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-150 hover:shadow-[3px_3px_0_#0a0a0a] hover:bg-yellow-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2 motion-reduce:transition-none"
                       aria-label="Increase planned attendance"
                     >
                       <Plus className="h-4 w-4" />
@@ -658,18 +626,18 @@ export default function AttendancePage() {
                       onClick={() =>
                         setPlannedMiss((prev) => Math.max(0, prev - 1))
                       }
-                      className="h-8 w-8 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a]"
+                      className="h-8 w-8 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-150 hover:shadow-[3px_3px_0_#0a0a0a] hover:bg-yellow-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2 motion-reduce:transition-none"
                       aria-label="Decrease planned misses"
                     >
                       <Minus className="h-4 w-4" />
                     </button>
-                    <span className="text-lg font-black text-stone-900">
+                    <span className="text-lg font-black text-stone-900 tabular-nums">
                       {plannedMiss}
                     </span>
                     <button
                       type="button"
                       onClick={() => setPlannedMiss((prev) => prev + 1)}
-                      className="h-8 w-8 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-200 hover:shadow-[3px_3px_0_#0a0a0a]"
+                      className="h-8 w-8 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_#0a0a0a] transition-all duration-150 hover:shadow-[3px_3px_0_#0a0a0a] hover:bg-yellow-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2 motion-reduce:transition-none"
                       aria-label="Increase planned misses"
                     >
                       <Plus className="h-4 w-4" />
@@ -684,7 +652,7 @@ export default function AttendancePage() {
                     Projected Change
                   </p>
                   <span
-                    className={`text-sm font-black uppercase ${
+                    className={`text-sm font-black uppercase tabular-nums ${
                       calculatorStats.delta >= 0
                         ? "text-green-600"
                         : "text-red-600"
@@ -698,7 +666,7 @@ export default function AttendancePage() {
                   <div
                     className={`h-full ${getProgressTone(
                       calculatorStats.projectedPercent,
-                    )} transition-all duration-300`}
+                    )} transition-all duration-200 motion-reduce:transition-none`}
                     style={{
                       width: `${Math.min(
                         calculatorStats.projectedPercent,
@@ -720,7 +688,7 @@ export default function AttendancePage() {
                   <p className="text-[10px] font-black uppercase tracking-wide text-stone-600">
                     Target Goal
                   </p>
-                  <p className="text-base font-black text-stone-900">
+                  <p className="text-base font-black text-stone-900 tabular-nums">
                     {attendanceGoal}%
                   </p>
                 </div>
@@ -728,7 +696,7 @@ export default function AttendancePage() {
                   <p className="text-[10px] font-black uppercase tracking-wide text-stone-600">
                     Can Skip
                   </p>
-                  <p className="text-base font-black text-stone-900">
+                  <p className="text-base font-black text-stone-900 tabular-nums">
                     {calculatorStats.canSkip}
                   </p>
                 </div>
@@ -736,7 +704,7 @@ export default function AttendancePage() {
                   <p className="text-[10px] font-black uppercase tracking-wide text-stone-600">
                     Must Attend
                   </p>
-                  <p className="text-base font-black text-stone-900">
+                  <p className="text-base font-black text-stone-900 tabular-nums">
                     {calculatorStats.mustAttend}
                   </p>
                 </div>
@@ -745,7 +713,7 @@ export default function AttendancePage() {
               <button
                 type="button"
                 onClick={() => setCalculatorCourse(null)}
-                className="w-full flex items-center justify-center gap-2 h-11 border-2 border-black bg-white px-4 text-sm font-black uppercase tracking-wide text-stone-900 shadow-[4px_4px_0_#0a0a0a] transition-all duration-300 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a]"
+                className="w-full flex items-center justify-center gap-2 h-11 border-2 border-black bg-white px-4 text-sm font-black uppercase tracking-wide text-stone-900 shadow-[4px_4px_0_#0a0a0a] transition-all duration-150 hover:shadow-[5px_5px_0_#0a0a0a] hover:-translate-y-0.5 hover:bg-yellow-50 active:translate-y-0.5 active:shadow-[2px_2px_0_#0a0a0a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/60 focus-visible:ring-offset-2 motion-reduce:transition-none"
               >
                 Close
               </button>

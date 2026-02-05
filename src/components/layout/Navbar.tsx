@@ -235,6 +235,18 @@ export default function Navbar() {
                   ATTENDRIX
                 </span>
               </div>
+              <div className="flex items-center gap-3">
+                {user ? (
+                  <UserMenu />
+                ) : (
+                  <Link
+                    href="/auth/signup"
+                    className="inline-flex items-center justify-center px-4 py-2 bg-[#FFD02F] text-black border-2 border-black font-bold uppercase text-[11px] tracking-wider shadow-[3px_3px_0px_0px_#000] transition-shadow duration-200 hover:shadow-[4px_4px_0px_0px_#000] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+                  >
+                    Get Started
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -351,9 +363,7 @@ export default function Navbar() {
               {/* CTA & User Menu */}
               <div className="flex items-center gap-3">
                 {user ? (
-                  <div className="lg:hidden">
-                    <UserMenu />
-                  </div>
+                  <UserMenu />
                 ) : (
                   <>
                     <motion.div

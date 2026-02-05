@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { Clock, MapPin, Check, RotateCcw } from "lucide-react";
+import { CourseSlotBadge } from "@/components/ui/CourseSlotBadge";
 import { TodayScheduleClass } from "@/types/supabase-academic";
 import { parseTimestampAsIST } from "@/lib/time/ist";
 import { useEffect, useState } from "react";
@@ -51,7 +52,7 @@ function StatusTile({
         "h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 border-2 border-black flex flex-col items-center justify-center",
         "shadow-[2px_2px_0px_0px_#000] sm:shadow-[3px_3px_0px_0px_#000] md:shadow-[4px_4px_0px_0px_#000]",
         "select-none",
-        "transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2",
+        "transition-colors duration-150 transition-transform motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2",
         !(disabled || !onClick) &&
           "cursor-pointer hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-x-0.5 active:translate-y-0.5",
         (disabled || !onClick) && "opacity-60 cursor-not-allowed",
@@ -221,10 +222,10 @@ function ClassRow({
     <div
       className={cn(
         "group relative flex flex-row items-stretch border-2 border-black bg-white transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
-        "shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000]",
-        "hover:-translate-y-1 hover:-translate-x-1 hover:shadow-[6px_6px_0px_0px_#000] sm:hover:shadow-[10px_10px_0px_0px_#000]",
-        "active:translate-x-1 active:translate-y-1 active:shadow-[2px_2px_0px_0px_#000]",
-        "touch-manipulation cursor-pointer",
+        "shadow-[3px_3px_0px_0px_#000] sm:shadow-[4px_4px_0px_0px_#000]",
+        "hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[4px_4px_0px_0px_#000]",
+        "active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_#000]",
+        "touch-manipulation cursor-default motion-reduce:transition-none",
         classData.isCancelled && "opacity-60",
       )}
       style={{
@@ -245,10 +246,11 @@ function ClassRow({
       {/* 2. Info Column */}
       <div className="flex-1 flex flex-col justify-between px-2 py-2 sm:px-3 sm:py-3 md:px-4 md:py-4 lg:px-6 lg:py-6 min-w-0">
         <div>
-          <div className="mb-0.5 sm:mb-1 md:mb-1.5 flex items-center gap-2">
+          <div className="mb-0.5 sm:mb-1 md:mb-1.5 flex items-center gap-2 flex-wrap">
             <span className="font-mono text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs font-bold text-neutral-500 uppercase tracking-wide">
               {classData.courseID}
             </span>
+            <CourseSlotBadge courseId={classData.courseID} />
             {classData.isCancelled && (
               <span className="bg-red-200 border border-black px-1 text-[8px] sm:text-[9px] font-black uppercase">
                 CANCELLED
@@ -384,7 +386,7 @@ export function TodayClasses({
               disabled={isRefreshing || loading}
               aria-busy={isRefreshing || loading}
               className={cn(
-                "ml-2 sm:ml-4 inline-flex items-center gap-1.5 rounded-full p-1.5 sm:p-2 transition-all active:scale-95",
+                "ml-2 sm:ml-4 inline-flex items-center gap-1.5 rounded-full p-1.5 sm:p-2 transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 motion-reduce:transition-none",
                 isRefreshing || loading
                   ? "opacity-70 cursor-not-allowed bg-neutral-100"
                   : "hover:bg-neutral-100",
@@ -429,7 +431,7 @@ export function TodayClasses({
         ) : (
           <div className="border-2 border-dashed border-black/20 p-12 text-center bg-neutral-50 transition-all duration-300 hover:border-black/40 hover:bg-neutral-100">
             <div
-              className="inline-block mb-4 p-4 bg-white border-2 border-black shadow-[4px_4px_0px_0px_#000] animate-bounce"
+              className="inline-block mb-4 p-4 bg-white border-2 border-black shadow-[4px_4px_0px_0px_#000] animate-bounce motion-reduce:animate-none"
               style={{ animationDuration: "3s" }}
             >
               <Clock className="w-8 h-8 stroke-[2px] text-neutral-400" />

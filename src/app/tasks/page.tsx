@@ -186,23 +186,23 @@ export default function TasksPage() {
       <DotPatternBackground />
 
       <div className="mx-auto max-w-3xl relative z-10">
-        <header className="bg-white border-b-4 border-black px-4 py-2 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
+        <header className="bg-white border-b-4 border-black px-4 py-1 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => router.back()}
-                aria-label="Go back"
-                className="h-10 w-10 border-2 border-black bg-white flex items-center justify-center shadow-[3px_3px_0_#0a0a0a] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a]"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  aria-label="Go back"
+                className="h-10 w-10 border-2 border-black bg-white flex items-center justify-center shadow-[3px_3px_0_#0a0a0a] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
               <div>
                 <h1 className="font-display text-2xl sm:text-3xl font-black uppercase text-stone-900 tracking-tight">
                   Tasks
                 </h1>
                 <p className="text-xs sm:text-sm font-bold uppercase tracking-wide text-stone-500">
-                  Upcoming exams & assignments
+                  Upcoming exams and assignments
                 </p>
                 {tasksQuery.isFetching && (
                   <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-stone-400">

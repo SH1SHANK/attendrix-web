@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import DotPatternBackground from "@/components/ui/DotPatternBackground";
 import { DashboardHeaderMenu } from "@/components/dashboard/DashboardHeaderMenu";
+import { CourseSlotBadge } from "@/components/ui/CourseSlotBadge";
 import { useAuth } from "@/context/AuthContext";
 import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { useAttendanceActions } from "@/hooks/useAttendanceActions";
@@ -46,6 +47,7 @@ import type {
   PastClass,
 } from "@/types/types-defination";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type TabType = "all" | "missed";
 type MissedViewMode = "list" | "date" | "class";
@@ -82,6 +84,7 @@ const formatDateHeader = (dateString: string) => formatDateLabel(dateString);
 
 
 export default function ClassesPage() {
+  const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { formatTime } = useUserPreferences();
   const userId = user?.uid ?? null;
@@ -1286,6 +1289,13 @@ export default function ClassesPage() {
               <h3 className="font-black text-base sm:text-lg uppercase tracking-wide truncate text-stone-900 transition-all duration-300 group-hover:tracking-wider leading-tight">
                 {item.courseName}
               </h3>
+              <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase text-stone-700">
+                <span className="font-mono">{item.courseID}</span>
+                <CourseSlotBadge
+                  courseId={item.courseID}
+                  className="text-[8px] px-1.5 py-0.5"
+                />
+              </div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5 text-sm font-bold text-stone-800">
                 <span className="font-mono text-sm">{timeRange}</span>
                 {showDateLabel && (
@@ -1309,8 +1319,8 @@ export default function ClassesPage() {
       <DotPatternBackground />
 
       <div className="mx-auto max-w-3xl relative z-10">
-        <header className="bg-white border-b-4 border-black px-4 py-2 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
-          <div className="mb-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <header className="bg-white border-b-4 border-black px-4 py-1 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
+          <div className="mb-0 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-col gap-2">
               <nav aria-label="Breadcrumb">
                 <ol className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase">
@@ -1734,6 +1744,7 @@ export default function ClassesPage() {
                           <h2 className="text-xs font-black uppercase tracking-wider text-stone-900 break-words sm:truncate">
                             {group?.name ?? "Class"}
                           </h2>
+                          <CourseSlotBadge courseId={courseId} />
                           <span className="text-[10px] font-black uppercase tracking-wide text-stone-700 border-2 border-black bg-white px-2 py-0.5 shadow-[2px_2px_0_#0a0a0a]">
                             {classItems.length}{" "}
                             {classItems.length === 1 ? "class" : "classes"}
@@ -2011,6 +2022,13 @@ export default function ClassesPage() {
           const canMarkAbsent = dayClasses.some(
             (item) => item.attendanceStatus === "PRESENT",
           );
+          const resourceCourses = Array.from(
+            new Map(
+              dayClasses
+                .filter((item) => item.courseID)
+                .map((item) => [item.courseID, item.courseName]),
+            ),
+          );
 
           return createPortal(
             <div
@@ -2054,6 +2072,26 @@ export default function ClassesPage() {
               >
                 Mark All Absent
               </button>
+              {resourceCourses.length > 0 && (
+                <>
+                  <div className="px-4 py-2 text-[10px] font-black uppercase tracking-wider text-stone-400 border-t border-stone-200">
+                    Course resources
+                  </div>
+                  {resourceCourses.map(([courseId, courseName]) => (
+                    <button
+                      key={courseId}
+                      type="button"
+                      onClick={() => {
+                        setOpenDateMenu(null);
+                        router.push(`/resources/course/${courseId}`);
+                      }}
+                      className="w-full px-4 py-3 text-xs font-black uppercase text-left border-t border-stone-200 hover:bg-yellow-100"
+                    >
+                      {courseName || courseId}
+                    </button>
+                  ))}
+                </>
+              )}
             </div>,
             document.body,
           );

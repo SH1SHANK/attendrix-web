@@ -117,6 +117,7 @@ export async function POST(request: Request) {
     const existingCourses = Array.isArray(existingUser?.coursesEnrolled)
       ? (existingUser?.coursesEnrolled as FirebaseCourseEnrollment[])
       : [];
+    const existingLastFetchTime = existingUser?.lastDataFetchTime ?? null;
 
     const existingMap = new Map(
       existingCourses.map((course) => [course.courseID, course]),
@@ -178,6 +179,20 @@ export async function POST(request: Request) {
     );
 
     if (rpcError) {
+      try {
+        await userRef.set(
+          {
+            coursesEnrolled: existingCourses,
+            ...(existingLastFetchTime
+              ? { lastDataFetchTime: existingLastFetchTime }
+              : {}),
+          },
+          { merge: true },
+        );
+      } catch (rollbackError) {
+        console.error("Failed to rollback courses after RPC error", rollbackError);
+      }
+
       const response = NextResponse.json(
         buildApiError("SUPABASE_ERROR", rpcError.message || "RPC failed"),
         { status: 500 },

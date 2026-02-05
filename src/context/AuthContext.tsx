@@ -154,7 +154,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const isPublicPage =
         pathname === "/" ||
-        pathname.startsWith("/legal") ||
+        pathname.startsWith("/privacy") ||
+        pathname.startsWith("/terms") ||
+        pathname.startsWith("/cookies") ||
         pathname.startsWith("/api") ||
         pathname.startsWith("/download");
 
@@ -176,7 +178,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const isPublicPage =
       pathname === "/" ||
-      pathname.startsWith("/legal") ||
+      pathname.startsWith("/privacy") ||
+      pathname.startsWith("/terms") ||
+      pathname.startsWith("/cookies") ||
       pathname.startsWith("/api") ||
       pathname.startsWith("/download");
 

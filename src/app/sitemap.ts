@@ -8,9 +8,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes = [
     "",
     "/download",
-    "/legal/privacy",
-    "/legal/terms",
-    "/legal/cookies",
+    "/privacy",
+    "/terms",
+    "/cookies",
   ].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date().toISOString(),

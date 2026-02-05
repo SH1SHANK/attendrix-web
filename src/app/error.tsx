@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { TriangleAlert, RotateCcw } from "lucide-react";
+import { OfflineFallbackButton } from "@/components/resources/OfflineFallbackButton";
 
 export default function Error({
   error,
@@ -42,17 +43,19 @@ export default function Error({
         </p>
 
         {/* Actions */}
-        <div className="mt-10">
+        <div className="mt-10 space-y-3">
           <Link
-            href="/app/dashboard"
+            href="/dashboard"
             className="block w-full bg-black text-[#FFD02F] font-black uppercase py-4 border-2 border-black hover:bg-neutral-800 transition-colors"
           >
             Return to Dashboard
           </Link>
-
+          <div className="flex justify-center">
+            <OfflineFallbackButton />
+          </div>
           <button
             onClick={reset}
-            className="flex items-center justify-center gap-2 w-full bg-white text-black font-bold uppercase py-4 border-2 border-black border-t-0 hover:bg-neutral-50 transition-colors"
+            className="flex items-center justify-center gap-2 w-full bg-white text-black font-bold uppercase py-4 border-2 border-black hover:bg-neutral-50 transition-colors"
           >
             <RotateCcw className="w-4 h-4" /> Try Again
           </button>

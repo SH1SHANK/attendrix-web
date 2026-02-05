@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FileQuestion } from "lucide-react";
+import { OfflineFallbackButton } from "@/components/resources/OfflineFallbackButton";
 
 export const metadata = {
   title: "404 - Sector Not Found",
@@ -35,11 +36,14 @@ export default function NotFound() {
         {/* Actions */}
         <div className="mt-10 space-y-3">
           <Link
-            href="/placeholder"
+            href="/dashboard"
             className="block w-full bg-black text-[#FFD02F] font-black uppercase py-4 border-2 border-black hover:bg-neutral-800 transition-colors"
           >
             Return to App
           </Link>
+          <div className="flex justify-center">
+            <OfflineFallbackButton />
+          </div>
           <Link
             href="/"
             className="block w-full bg-white text-black font-bold uppercase py-4 border-2 border-black hover:bg-neutral-50 transition-colors"

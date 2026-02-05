@@ -132,7 +132,7 @@ export default function DashboardPage() {
   // Generate greeting based on time of day
   const hour = getISTParts(new Date()).hour;
   const greeting =
-    hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   // Format current date
   const dateString = new Date().toLocaleDateString("en-US", {
@@ -161,7 +161,7 @@ export default function DashboardPage() {
           </p>
           <button
             onClick={() => router.push("/auth/signin")}
-            className="w-full bg-black text-white font-bold py-3 px-4 uppercase border-2 border-black hover:bg-neutral-800 transition-colors"
+            className="w-full bg-black text-white font-bold py-3 px-4 uppercase border-2 border-black hover:bg-neutral-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
           >
             Go to Sign In
           </button>
@@ -196,16 +196,16 @@ export default function DashboardPage() {
         opacity={0.15}
       />
 
-      <div className="mx-auto max-w-7xl px-4 pt-2 pb-3 sm:px-6 sm:pt-3 sm:pb-4 lg:px-8 lg:pt-4 lg:pb-5 relative z-10">
+      <div className="mx-auto max-w-7xl px-4 pt-0 pb-2 sm:px-6 sm:pt-1 sm:pb-3 lg:px-8 lg:pt-2 lg:pb-4 relative z-10">
         {/* Top Navigation */}
-        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col gap-2">
             <nav aria-label="Breadcrumb">
               <ol className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase">
                 <li>
                   <Link
                     href="/"
-                    className="text-neutral-500 hover:text-black transition-colors"
+                    className="text-neutral-500 hover:text-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
                   >
                     Home
                   </Link>
@@ -219,7 +219,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Header Section */}
-        <header className="mb-6 flex flex-col items-start gap-3">
+        <header className="mb-3 flex flex-col items-start gap-3">
           <div>
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase text-black tracking-tighter leading-[0.9]">
               {firstName ? (
@@ -230,16 +230,18 @@ export default function DashboardPage() {
                   </span>
                 </>
               ) : (
-                greeting
+                `${greeting} — welcome back`
               )}
             </h1>
             <p className="mt-2 font-mono text-base sm:text-lg font-bold text-neutral-500 uppercase tracking-wide sm:tracking-widest">
-              Here&apos;s what&apos;s on deck for {dateString}.
+              {firstName
+                ? `Here's what's on your schedule for ${dateString}.`
+                : `Here's what's on the schedule for ${dateString}.`}
             </p>
           </div>
         </header>
 
-        <InstallPrompt variant="banner" className="mb-4" />
+        <InstallPrompt variant="banner" className="mb-3" />
 
         {/* Vertical Stack Layout */}
         <div className="flex flex-col gap-6 sm:gap-8 md:gap-10 lg:gap-12">
@@ -291,7 +293,7 @@ export default function DashboardPage() {
                 </p>
                 <button
                   onClick={handleManualRefresh}
-                  className="mt-4 px-4 py-2 bg-black text-white font-bold uppercase text-xs transition-transform hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_0px_#000] active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_#000]"
+                  className="mt-4 px-4 py-2 bg-black text-white font-bold uppercase text-xs transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_0px_#000] hover:bg-neutral-900 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_#000] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
                 >
                   Refresh
                 </button>

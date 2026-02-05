@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { cn } from "@/lib/utils";
+import { CourseSlotBadge } from "@/components/ui/CourseSlotBadge";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { ClassByDate, UpcomingClass } from "@/types/supabase-academic";
 import { useClassesByDate } from "@/hooks/useDashboardData";
@@ -55,7 +56,7 @@ function HorizontalCalendar({
                 disabled={dateData.isWeekend}
                 className={cn(
                   "group relative shrink-0 flex flex-col items-center justify-center h-16 w-14 sm:h-20 sm:w-16 md:h-24 md:w-20 lg:w-24 border-2 border-black",
-                  "transition-all duration-200 ease-out touch-manipulation",
+                  "transition-all duration-200 ease-out touch-manipulation motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2",
                   isSelected
                     ? "bg-[#FFD02F] shadow-[4px_4px_0px_0px_#000] -translate-y-1 scale-105" // Active: Brand Yellow + Lift
                     : dateData.isWeekend
@@ -77,7 +78,7 @@ function HorizontalCalendar({
 
                 {/* Today Dot Indicator */}
                 {dateData.isToday && (
-                  <div className="absolute top-1 right-1 sm:top-2 sm:right-2 h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-red-500 animate-pulse" />
+                  <div className="absolute top-1 right-1 sm:top-2 sm:right-2 h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-red-500 animate-pulse motion-reduce:animate-none" />
                 )}
               </button>
             );
@@ -105,7 +106,7 @@ function UpcomingClassRow({
         "flex w-full items-center gap-2 sm:gap-3 md:gap-4 bg-white border-2 border-black p-2 sm:p-3 md:p-4",
         "shadow-sm hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
         "hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-y-0 active:translate-x-0 active:shadow-none",
-        "transition-all duration-200 ease-out touch-manipulation cursor-pointer",
+        "transition-all duration-200 ease-out touch-manipulation cursor-pointer motion-reduce:transition-none",
         "group",
       )}
     >
@@ -123,13 +124,14 @@ function UpcomingClassRow({
           <span className="text-[9px] sm:text-[10px] md:text-xs font-mono font-bold text-neutral-500">
             {classData.courseID}
           </span>
+          <CourseSlotBadge courseId={classData.courseID} />
           {isLab && (
-            <span className="bg-purple-200 border border-black px-0.5 sm:px-1 text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase">
+            <span className="bg-purple-200 border border-black px-0.5 sm:px-1 text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase leading-none">
               LAB
             </span>
           )}
           {isPlusSlot && (
-            <span className="bg-yellow-200 border border-black px-0.5 sm:px-1 text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase">
+            <span className="bg-yellow-200 border border-black px-0.5 sm:px-1 text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase leading-none">
               PLUS
             </span>
           )}
@@ -314,7 +316,7 @@ export function UpcomingClasses({
         ) : (
           <div className="flex h-24 sm:h-28 md:h-32 flex-col items-center justify-center border-2 border-dashed border-black/20 bg-neutral-50/50 transition-all duration-300 hover:border-black/40 hover:bg-neutral-100/50">
             <div
-              className="inline-block mb-3 p-3 bg-white border-2 border-black shadow-[3px_3px_0px_0px_#000] animate-bounce"
+              className="inline-block mb-3 p-3 bg-white border-2 border-black shadow-[3px_3px_0px_0px_#000] animate-bounce motion-reduce:animate-none"
               style={{ animationDuration: "3s" }}
             >
               <CalendarIcon className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2px] text-neutral-400" />

@@ -4,7 +4,7 @@ export const metadata = {
   title: "Privacy Policy",
   description: "How Attendrix collects, uses, and protects your data.",
   alternates: {
-    canonical: "/legal/privacy",
+    canonical: "/privacy",
   },
 };
 

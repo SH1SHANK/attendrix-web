@@ -1,5 +1,13 @@
 import LegalLayout from "@/components/legal/LegalLayout";
 
+export const metadata = {
+  title: "Cookie Policy",
+  description: "How Attendrix uses cookies.",
+  alternates: {
+    canonical: "/cookies",
+  },
+};
+
 export default function CookiePage() {
   return (
     <LegalLayout title="Cookie Policy" lastUpdated="January 24, 2026">

@@ -49,6 +49,7 @@ import { db } from "@/lib/firebase";
 import { recordMetric } from "@/lib/metrics/client-metrics";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { SmoothSection } from "@/components/ui/SmoothSection";
+import { CourseSlotBadge } from "@/components/ui/CourseSlotBadge";
 import {
   Dialog,
   DialogContent,
@@ -691,17 +692,17 @@ export default function ProfilePage() {
     },
     {
       label: "Terms of Service",
-      href: "/docs/terms",
+      href: "/terms",
       icon: <Scale className="h-4 w-4" />,
     },
     {
       label: "Privacy Policy",
-      href: "/docs/privacy",
+      href: "/privacy",
       icon: <Shield className="h-4 w-4" />,
     },
     {
       label: "Cookie Policy",
-      href: "/docs/cookies",
+      href: "/cookies",
       icon: <Cookie className="h-4 w-4" />,
     },
     {
@@ -975,9 +976,9 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-[#f5f5f5] pb-24 relative isolate">
       <DotPatternBackground />
 
-      <div className="mx-auto max-w-6xl relative z-10 px-4 sm:px-6 pt-3 pb-4 sm:pt-4 sm:pb-5">
+      <div className="mx-auto max-w-6xl relative z-10 px-4 sm:px-6 pt-0 pb-3 sm:pt-1 sm:pb-4">
         {/* Top Navigation */}
-        <div className="mb-4 flex flex-col gap-3">
+        <div className="mb-1 flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href="/"
@@ -1015,7 +1016,7 @@ export default function ProfilePage() {
               PROFILE
             </h1>
             <p className="text-xs sm:text-sm font-bold uppercase text-neutral-600 mt-1">
-              Manage identity, academics, and preferences in one place.
+              Manage identity, academics, and sync settings in one place.
             </p>
           </div>
         </div>
@@ -1322,6 +1323,7 @@ export default function ProfilePage() {
                       </p>
                       <div className="text-xs font-black uppercase text-black/80 flex flex-wrap gap-2">
                         <span>{course.courseID}</span>
+                        <CourseSlotBadge courseId={course.courseID} />
                         <span>• {typeLabel}</span>
                         <span>• {course.credits} credits</span>
                       </div>

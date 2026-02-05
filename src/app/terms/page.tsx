@@ -1,5 +1,13 @@
 import LegalLayout from "@/components/legal/LegalLayout";
 
+export const metadata = {
+  title: "Terms of Service",
+  description: "Terms and conditions for using Attendrix.",
+  alternates: {
+    canonical: "/terms",
+  },
+};
+
 export default function TermsPage() {
   return (
     <LegalLayout title="Terms of Service" lastUpdated="January 24, 2026">
@@ -18,7 +26,7 @@ export default function TermsPage() {
       <h2>2. Educational Project Disclaimer</h2>
       <p>
         Attendrix is an independent student project developed to assist students
-        in tracking attendance.{" "}
+        in tracking attendance.
         <strong>
           It is not an official product of the National Institute of Technology
           Calicut (NITC) administration.

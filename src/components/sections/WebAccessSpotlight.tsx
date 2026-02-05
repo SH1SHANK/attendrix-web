@@ -166,7 +166,7 @@ function BrowserWindow() {
             <div className="bg-white border-2 border-black px-3 py-1 flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.05)]">
               <Globe className="w-3 h-3 text-neutral-400" />
               <span className="font-mono text-xs text-neutral-600">
-                attendrix.site/app
+                attendrix.app/dashboard
               </span>
             </div>
           </div>

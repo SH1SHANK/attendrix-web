@@ -191,7 +191,7 @@ export default function OnboardingStepIdentity({
               <p className="text-xs sm:text-sm font-bold text-black">
                 Agree to the{" "}
                 <Link
-                  href="/legal/terms"
+                  href="/terms"
                   className="underline text-blue-600 hover:text-blue-700"
                   target="_blank"
                 >
@@ -199,7 +199,7 @@ export default function OnboardingStepIdentity({
                 </Link>{" "}
                 and{" "}
                 <Link
-                  href="/legal/privacy"
+                  href="/privacy"
                   className="underline text-blue-600 hover:text-blue-700"
                   target="_blank"
                 >

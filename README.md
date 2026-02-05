@@ -23,9 +23,14 @@ Attendrix Web combines a modern Next.js app router frontend with Firebase-authen
 
 - Drive-backed course folders and file browsing.
 - Favorites, recently opened, tagged sections, and drag-and-drop section ordering.
+- Slash-based tag search with pinned tags and a mobile-safe tag manager drawer.
 - Inline quick actions for star/unstar and offline access; overflow menu for secondary actions.
-- Offline cache with storage usage indicator, cache limits, and manual clear.
+- Command Center (⌘/Ctrl+K) and keyboard shortcuts for fast navigation.
+- Dedicated study materials settings at `/resources/settings` with cache and offline controls.
+- Offline-only view at `/resources/offline`, grouped by course, tags, and recent access.
+- Offline cache with storage usage indicator, cache limit slider, cleanup assistant, and manual clear.
 - Offline storage mode options: web app cache (default) or a dedicated device folder with explicit permission.
+- Focus Mode to hide actions and filters for distraction-free browsing.
 - Offline files remain on the client only; no file blobs are synced to Firebase.
 
 ## Documentation

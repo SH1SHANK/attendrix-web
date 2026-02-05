@@ -40,8 +40,7 @@ export const PROTECTED_ROUTES = [
   "/profile",
   "/settings",
   "/onboarding",
-  "/app/dashboard",
-  "/app",
+  "/dashboard",
 ];
 
 /**

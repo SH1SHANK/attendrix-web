@@ -15,11 +15,14 @@ export function useAvailableBatches() {
   });
 }
 
-export function useBatchOnboardingData(batchID: string | null) {
+export function useBatchOnboardingData(
+  batchID: string | null,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: ["onboarding", "batch", batchID],
     queryFn: () => getBatchOnboardingData(batchID as string),
-    enabled: Boolean(batchID),
+    enabled: Boolean(batchID) && (options?.enabled ?? true),
     staleTime: 30 * 60 * 1000,
   });
 }

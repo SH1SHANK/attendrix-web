@@ -24,7 +24,7 @@ export function DashboardHeaderMenu({ className }: DashboardHeaderMenuProps) {
             type="button"
             aria-label="Open menu"
             className={
-              "h-10 w-10 border-2 border-black bg-white flex items-center justify-center shadow-[3px_3px_0_#0a0a0a] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a]"
+              "h-10 w-10 border-2 border-black bg-white flex items-center justify-center shadow-[3px_3px_0_#0a0a0a] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] hover:bg-yellow-50 active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
             }
           >
             <MenuIcon className="h-5 w-5" />
@@ -38,7 +38,7 @@ export function DashboardHeaderMenu({ className }: DashboardHeaderMenuProps) {
           <Menu.Item asChild className={menuItemClass}>
             <Link href="/resources">
               <BookOpen className="h-4 w-4" />
-              StudyResourses
+              Study Resources
             </Link>
           </Menu.Item>
           <Menu.Item

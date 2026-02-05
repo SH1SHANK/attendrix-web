@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useState, useMemo, memo } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { TodayScheduleClass, UpcomingClass } from "@/types/supabase-academic";
 import { parseTimestampAsIST } from "@/lib/time/ist";
 import { useUserPreferences } from "@/context/UserPreferencesContext";
+import { Menu } from "@/components/ui/Menu";
+import { CourseSlotBadge } from "@/components/ui/CourseSlotBadge";
+import { MoreVertical, Target } from "lucide-react";
 
 interface CountdownCardProps {
   classData: TodayScheduleClass | UpcomingClass | null;
@@ -53,7 +57,7 @@ function CountdownCardLoading({ className }: { className?: string }) {
         className,
       )}
     >
-      <div className="p-4 sm:p-6 md:p-8 animate-pulse">
+      <div className="p-4 sm:p-6 md:p-8 animate-pulse motion-reduce:animate-none">
         <div className="h-4 bg-gray-300 rounded w-1/4 mb-4"></div>
         <div className="h-8 bg-gray-300 rounded w-1/2 mb-4"></div>
         <div className="h-4 bg-gray-300 rounded w-1/3"></div>
@@ -172,6 +176,7 @@ function CountdownCardView({
   onMarkAbsent,
   pendingByClassId,
 }: CountdownCardViewProps) {
+  const router = useRouter();
   const { formatTime, attendanceGoal } = useUserPreferences();
   const [timeLeft, setTimeLeft] = useState({
     hours: 0,
@@ -346,11 +351,11 @@ function CountdownCardView({
       className={cn(
         "relative overflow-hidden w-full border-2 border-black transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
         cardBg,
-        "shadow-[4px_4px_0px_0px_#000] sm:shadow-[6px_6px_0px_0px_#000] md:shadow-[8px_8px_0px_0px_#000]",
-        "hover:-translate-y-1 hover:-translate-x-1 hover:shadow-[6px_6px_0px_0px_#000] sm:hover:shadow-[10px_10px_0px_0px_#000] md:hover:shadow-[12px_12px_0px_0px_#000]",
-        "active:translate-x-1 active:translate-y-1 active:shadow-[2px_2px_0px_0px_#000] active:scale-[0.99]",
-        "touch-manipulation select-none",
-        "group cursor-pointer",
+        "shadow-[3px_3px_0px_0px_#000] sm:shadow-[4px_4px_0px_0px_#000] md:shadow-[5px_5px_0px_0px_#000]",
+        "hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[4px_4px_0px_0px_#000] sm:hover:shadow-[5px_5px_0px_0px_#000]",
+        "active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_#000]",
+        "touch-manipulation select-none motion-reduce:transition-none",
+        "group cursor-default focus-within:outline-none focus-within:ring-2 focus-within:ring-black focus-within:ring-offset-2",
         className,
       )}
     >
@@ -371,13 +376,14 @@ function CountdownCardView({
       <div className="relative p-4 sm:p-6 md:p-8 lg:p-10 flex flex-col md:flex-row gap-4 sm:gap-6 md:gap-8 items-start justify-between">
         {/* Left Section: Info */}
         <div className="flex-1 space-y-6 z-10 w-full">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             <div
               className={cn(
                 "inline-flex items-center border-2 border-black px-4 py-1.5 text-sm font-black uppercase tracking-[0.12em] shadow-[3px_3px_0px_0px_#000]",
-                "transition-all duration-200",
+                "transition-all duration-200 motion-reduce:transition-none",
                 isCurrent
-                  ? "bg-black text-white animate-pulse"
+                  ? "bg-black text-white animate-pulse motion-reduce:animate-none"
                   : "bg-white text-black",
               )}
               style={{
@@ -385,7 +391,7 @@ function CountdownCardView({
               }}
             >
               {isCurrent && (
-                <span className="mr-2 h-2 w-2 rounded-full bg-white animate-pulse" />
+                <span className="mr-2 h-2 w-2 rounded-full bg-white animate-pulse motion-reduce:animate-none" />
               )}
               {isCurrent ? "LIVE NOW" : "UP NEXT"}
             </div>
@@ -397,6 +403,36 @@ function CountdownCardView({
             )}
           </div>
 
+          <Menu>
+            <Menu.Trigger asChild>
+              <button
+                type="button"
+                aria-label="Open course actions"
+                className="h-9 w-9 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0px_0px_#000] transition-colors duration-150 transition-transform hover:bg-yellow-50 active:scale-95 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </Menu.Trigger>
+            <Menu.Content
+              align="end"
+              sideOffset={6}
+              className="border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000] min-w-[190px]"
+            >
+              <Menu.Item
+                className="flex items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-wide hover:bg-yellow-100 focus:bg-yellow-100"
+                disabled={!classData.courseID}
+                onSelect={() => {
+                  if (!classData.courseID) return;
+                  router.push(`/resources/course/${classData.courseID}`);
+                }}
+              >
+                <Target className="h-4 w-4" />
+                Go to Course Resources
+              </Menu.Item>
+            </Menu.Content>
+          </Menu>
+        </div>
+
           <div className="space-y-2">
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase leading-[0.85] text-black tracking-tighter drop-shadow-sm stroke-black">
               {classData.courseName}
@@ -406,20 +442,24 @@ function CountdownCardView({
             </div>
             <div className="flex flex-wrap gap-2 pt-3">
               {dateLabel && (
-                <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000]">
+                <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] leading-none shadow-[2px_2px_0px_0px_#000]">
                   {dateLabel}
                 </span>
               )}
-              <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000]">
+              <CourseSlotBadge
+                courseId={classData.courseID}
+                className="bg-black text-white shadow-[2px_2px_0px_0px_#000]"
+              />
+              <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] leading-none shadow-[2px_2px_0px_0px_#000]">
                 Type: {courseTypeLabel ?? "N/A"}
               </span>
               {classData.classVenue && (
-                <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000]">
+                <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] leading-none shadow-[2px_2px_0px_0px_#000]">
                   Venue: {classData.classVenue}
                 </span>
               )}
               {attendanceSummary && (
-                <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000]">
+                <span className="inline-flex items-center border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] leading-none shadow-[2px_2px_0px_0px_#000]">
                   Attendance: {attendanceSummary.attended}/
                   {attendanceSummary.total} •{" "}
                   {attendanceSummary.percent.toFixed(1)}%
@@ -450,7 +490,7 @@ function CountdownCardView({
                         }
                         disabled={!onCheckIn || isPending}
                         className={cn(
-                          "border-2 border-black px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000] transition-transform",
+                          "border-2 border-black px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000] transition-colors duration-150 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2",
                           isPending || !onCheckIn
                             ? "bg-neutral-200 text-neutral-500 cursor-not-allowed"
                             : "bg-[#51CF66] text-black hover:-translate-y-0.5 hover:-translate-x-0.5",
@@ -469,7 +509,7 @@ function CountdownCardView({
                         }
                         disabled={!onMarkAbsent || isPending}
                         className={cn(
-                          "border-2 border-black px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000] transition-transform",
+                          "border-2 border-black px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] shadow-[2px_2px_0px_0px_#000] transition-colors duration-150 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2",
                           isPending || !onMarkAbsent
                             ? "bg-neutral-200 text-neutral-500 cursor-not-allowed"
                             : "bg-[#FF6B6B] text-black hover:-translate-y-0.5 hover:-translate-x-0.5",
@@ -497,7 +537,7 @@ function CountdownCardView({
 
         {/* Right Section: Timer */}
         <div className="w-full md:w-auto z-10">
-          <div className="bg-white border-2 border-black p-6 shadow-[6px_6px_0px_0px_#000] transition-transform duration-200 hover:scale-105">
+          <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0px_0px_#000] transition-transform duration-150 hover:scale-[1.02] motion-reduce:transition-none">
             <div className="text-center mb-3 font-display font-black uppercase tracking-[0.12em] text-xs border-b-2 border-black pb-2">
               Time Remaining
             </div>

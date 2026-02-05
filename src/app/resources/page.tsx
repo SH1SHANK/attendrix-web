@@ -11,74 +11,58 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import {
-  BookOpen,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
   Folder,
   GripVertical,
-  HardDrive,
   MoreVertical,
   Search,
-  SlidersHorizontal,
   Star,
-  Trash2,
 } from "lucide-react";
 import DotPatternBackground from "@/components/ui/DotPatternBackground";
 import { Menu } from "@/components/ui/Menu";
 import { RetroSkeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/Dialog";
+import { OfflineFallbackButton } from "@/components/resources/OfflineFallbackButton";
+import { ShortcutsSheet } from "@/components/resources/ShortcutsSheet";
 import { useAuth } from "@/context/AuthContext";
-import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { useResourceCourses } from "@/hooks/useResources";
 import { useStudyMaterialsPreferences } from "@/hooks/useStudyMaterialsPreferences";
-import { useOfflineStorageUsage } from "@/hooks/useOfflineStorageUsage";
+import { useOnlineStatus } from "@/hooks/useOptimizations";
 import { buildResourceId, parseResourceId } from "@/lib/resources/resource-id";
 import { removeCachedFile } from "@/lib/resources/offline-cache";
-import {
-  hasFolderAccessSupport,
-  removeOfflineFolderFile,
-  requestOfflineFolderAccess,
-} from "@/lib/resources/offline-folder";
+import { removeOfflineFolderFile } from "@/lib/resources/offline-folder";
 import { cn } from "@/lib/utils";
 import type { ResourceCourse } from "@/types/resources";
-import { toast } from "sonner";
+import { CommandCenter, type CommandItem } from "@/components/resources/CommandCenter";
 
 type ResourceTab = "academic" | "personal";
 
 const TAB_ORDER: ResourceTab[] = ["academic", "personal"];
+const SECTION_LABELS: Record<string, string> = {
+  favorites: "Favorites",
+  recent: "Recently Opened",
+  offline: "Available Offline",
+  tagged: "Tagged",
+  all: "All Courses",
+};
 
-function formatLastOpened(value?: string) {
-  if (!value) return "Not opened yet";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not opened yet";
+const COURSE_PALETTE = [
+  { bg: "bg-[#E9DDFF]", accent: "bg-[#5B3DF3]" },
+  { bg: "bg-[#FFD7D7]", accent: "bg-[#D92D20]" },
+  { bg: "bg-[#D8F5E4]", accent: "bg-[#039855]" },
+  { bg: "bg-[#DDEBFF]", accent: "bg-[#2E5AAC]" },
+  { bg: "bg-[#FFE9B6]", accent: "bg-[#B54708]" },
+  { bg: "bg-[#E8F1FF]", accent: "bg-[#3B82F6]" },
+];
 
-  const diffMs = Date.now() - date.getTime();
-  const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return "Last opened just now";
-  if (minutes < 60) return `Last opened ${minutes} min ago`;
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return `Last opened ${hours} hour${hours === 1 ? "" : "s"} ago`;
+const hashCourseKey = (value: string) => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) % 2147483647;
   }
-
-  const days = Math.floor(hours / 24);
-  if (days < 7) {
-    return `Last opened ${days} day${days === 1 ? "" : "s"} ago`;
-  }
-
-  const label = date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  return `Last opened ${label}`;
-}
+  return hash;
+};
 
 function buildSearchKey(course: ResourceCourse) {
   return `${course.courseName ?? ""} ${course.courseID}`.toLowerCase();
@@ -88,30 +72,84 @@ const ResourceFolderCard = memo(function ResourceFolderCard({
   course,
   resourceId,
   isFavorite,
-  lastOpenedAt,
   onOpenCourse,
   onToggleFavorite,
+  variant = "grid",
 }: {
   course: ResourceCourse;
   resourceId: string | null;
   isFavorite: boolean;
-  lastOpenedAt?: string;
   onOpenCourse: (courseId: string) => void;
   onToggleFavorite: (resourceId: string) => void;
+  variant?: "grid" | "row";
 }) {
   const hasAssets = Boolean(course.syllabusAssets?.folderId);
+  const paletteIndex =
+    hashCourseKey(course.courseID || course.courseName || "course") %
+    COURSE_PALETTE.length;
+  const palette =
+    COURSE_PALETTE[paletteIndex] ??
+    COURSE_PALETTE[0] ?? {
+      bg: "bg-white",
+      accent: "bg-black",
+    };
+  const isGrid = variant === "grid";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressTriggeredRef = useRef(false);
   const handleOpen = useCallback(() => {
     if (!hasAssets) return;
     onOpenCourse(course.courseID);
   }, [course.courseID, hasAssets, onOpenCourse]);
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+  const handleLongPressStart = useCallback(
+    (event: React.PointerEvent) => {
+      if (event.pointerType !== "touch") return;
+      if (!hasAssets && !resourceId) return;
+      clearLongPress();
+      longPressTriggeredRef.current = false;
+      longPressTimerRef.current = window.setTimeout(() => {
+        longPressTriggeredRef.current = true;
+        setMenuOpen(true);
+      }, 450);
+    },
+    [clearLongPress, hasAssets, resourceId],
+  );
+  const handleLongPressCancel = useCallback(() => {
+    clearLongPress();
+  }, [clearLongPress]);
+  const handleMenuOpenChange = useCallback((open: boolean) => {
+    setMenuOpen(open);
+    if (!open) {
+      longPressTriggeredRef.current = false;
+    }
+  }, []);
   const menuItemClass =
     "flex items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-wide hover:bg-yellow-100 focus:bg-yellow-100";
+
+  const menuButtonClass = cn(
+    "h-8 w-8 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0px_0px_#000] transition-colors duration-150 transition-transform active:scale-95 hover:bg-yellow-50 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2",
+    isGrid ? "absolute right-2 top-2" : "ml-auto shrink-0",
+    isGrid
+      ? "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+      : "opacity-100 sm:opacity-0 sm:pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto",
+    menuOpen && "opacity-100 pointer-events-auto",
+  );
 
   return (
     <div
       role={hasAssets ? "button" : "group"}
       tabIndex={hasAssets ? 0 : -1}
       onClick={() => {
+        if (longPressTriggeredRef.current) {
+          longPressTriggeredRef.current = false;
+          return;
+        }
         handleOpen();
       }}
       onKeyDown={(event) => {
@@ -121,97 +159,118 @@ const ResourceFolderCard = memo(function ResourceFolderCard({
           handleOpen();
         }
       }}
+      onPointerDown={handleLongPressStart}
+      onPointerUp={handleLongPressCancel}
+      onPointerCancel={handleLongPressCancel}
+      onPointerMove={handleLongPressCancel}
       aria-disabled={!hasAssets}
       className={cn(
-        "group relative border-2 border-black bg-white p-4 shadow-[4px_4px_0px_0px_#000] transition-all duration-200",
-        hasAssets
-          ? "hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_#000]"
-          : "opacity-80 cursor-not-allowed",
+        "group relative border-2 border-black p-4 shadow-[2px_2px_0px_0px_#000] transition-all duration-150 overflow-hidden active:scale-[0.99] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2",
+        hasAssets ? palette.bg : "bg-neutral-100 opacity-80 cursor-not-allowed",
+        hasAssets &&
+          "hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_0px_#000]",
+        isGrid ? "aspect-[4/3] sm:aspect-square" : "flex items-center gap-3",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 items-center justify-center border-2 border-black bg-[#FFD700] shadow-[3px_3px_0px_0px_#000]">
-            <Folder className="h-5 w-5" />
-          </span>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="truncate text-sm sm:text-base font-black uppercase tracking-wide text-stone-900">
+      {isGrid ? (
+        <>
+          <div className="flex items-start justify-between gap-2">
+            <span className="flex h-11 w-11 items-center justify-center border-2 border-black bg-[#FFD700] shadow-[3px_3px_0px_0px_#000]">
+              <Folder className="h-5 w-5" />
+            </span>
+            {isFavorite && (
+              <span className="border-2 border-black bg-white px-2 py-0.5 text-[9px] font-black uppercase leading-none shadow-[2px_2px_0px_0px_#000]">
+                Starred
+              </span>
+            )}
+          </div>
+          <div className="mt-auto pt-3 min-w-0">
+            <h3 className="text-sm sm:text-base font-black uppercase tracking-tight text-stone-900 line-clamp-3">
+              {course.courseName || course.courseID}
+            </h3>
+            <div className="mt-1 flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className={cn("h-2.5 w-2.5 border border-black", palette.accent)}
+              />
+              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-600">
+                {course.courseID}
+              </p>
+            </div>
+            {!hasAssets && (
+              <p className="mt-2 text-[10px] font-bold uppercase text-stone-400">
+                Resources unavailable
+              </p>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <span className="flex h-10 w-10 items-center justify-center border-2 border-black bg-[#FFD700] shadow-[3px_3px_0px_0px_#000]">
+              <Folder className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <h3 className="text-sm font-black uppercase tracking-tight text-stone-900 truncate">
                 {course.courseName || course.courseID}
               </h3>
-              {isFavorite && (
-                <Star
-                  className="h-4 w-4 text-yellow-500"
-                  fill="currentColor"
-                  aria-label="Favorite folder"
-                />
+              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-600">
+                {course.courseID}
+              </p>
+              {!hasAssets && (
+                <p className="mt-2 text-[10px] font-bold uppercase text-stone-400">
+                  Resources unavailable
+                </p>
               )}
             </div>
-            <p className="text-xs font-bold uppercase tracking-wide text-stone-500">
-              {course.courseID}
-            </p>
-            <p className="mt-1 text-[11px] font-bold uppercase text-stone-500">
-              {hasAssets
-                ? formatLastOpened(lastOpenedAt)
-                : "Resources not available for this course"}
-            </p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 opacity-100 transition-opacity sm:opacity-0 sm:pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto">
-            <button
-              type="button"
-              aria-label={isFavorite ? "Unstar folder" : "Star folder"}
-              onClick={(event) => {
-                event.stopPropagation();
-                if (!resourceId) return;
-                onToggleFavorite(resourceId);
-              }}
-              className="h-9 w-9 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_0px_#000]"
-            >
-              <Star
-                className={cn(
-                  "h-4 w-4",
-                  isFavorite ? "text-yellow-500" : "text-black",
-                )}
-                fill={isFavorite ? "currentColor" : "none"}
-              />
-            </button>
-          </div>
-          <Menu>
-            <Menu.Trigger asChild>
-              <button
-                type="button"
-                aria-label="Open folder menu"
-                onClick={(event) => event.stopPropagation()}
-                className="h-9 w-9 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0px_0px_#000] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_0px_#000]"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-            </Menu.Trigger>
-            <Menu.Content
-              align="end"
-              sideOffset={6}
-              className="border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000] min-w-[170px]"
-            >
-              <Menu.Item
-                className={cn(
-                  menuItemClass,
-                  !hasAssets && "opacity-50",
-                )}
-                disabled={!hasAssets}
-                onSelect={() => {
-                  if (!hasAssets) return;
-                  handleOpen();
-                }}
-              >
-                <Folder className="h-4 w-4" />
-                Open folder
-              </Menu.Item>
-            </Menu.Content>
-          </Menu>
-        </div>
-      </div>
+          {isFavorite && (
+            <span className="border-2 border-black bg-white px-2 py-0.5 text-[9px] font-black uppercase leading-none shadow-[2px_2px_0px_0px_#000]">
+              Starred
+            </span>
+          )}
+        </>
+      )}
+      <Menu open={menuOpen} onOpenChange={handleMenuOpenChange}>
+        <Menu.Trigger asChild>
+          <button
+            type="button"
+            aria-label="Open folder actions"
+            onClick={(event) => event.stopPropagation()}
+            className={menuButtonClass}
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
+        </Menu.Trigger>
+        <Menu.Content
+          align="end"
+          sideOffset={6}
+          className="border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000] min-w-[170px] max-w-[calc(100vw-2rem)] max-h-[min(60svh,320px)] overflow-y-auto"
+        >
+          <Menu.Item
+            className={cn(menuItemClass, !hasAssets && "opacity-50")}
+            disabled={!hasAssets}
+            onSelect={() => {
+              if (!hasAssets) return;
+              handleOpen();
+            }}
+          >
+            <Folder className="h-4 w-4" />
+            Open folder
+          </Menu.Item>
+          <Menu.Item
+            className={cn(menuItemClass, !resourceId && "opacity-50")}
+            disabled={!resourceId}
+            onSelect={() => {
+              if (!resourceId) return;
+              onToggleFavorite(resourceId);
+            }}
+          >
+            <Star className="h-4 w-4" />
+            {isFavorite ? "Unstar" : "Star"}
+          </Menu.Item>
+        </Menu.Content>
+      </Menu>
     </div>
   );
 });
@@ -222,6 +281,10 @@ export default function ResourcesPage() {
   const [activeTab, setActiveTab] = useState<ResourceTab>("academic");
   const [searchTerm, setSearchTerm] = useState("");
   const deferredSearchTerm = useDeferredValue(searchTerm);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [draggingSectionId, setDraggingSectionId] = useState<string | null>(
     null,
@@ -229,12 +292,20 @@ export default function ResourcesPage() {
   const [dragOverSectionId, setDragOverSectionId] = useState<string | null>(
     null,
   );
-  const [folderConfirmOpen, setFolderConfirmOpen] = useState(false);
-  const [folderConfirmLoading, setFolderConfirmLoading] = useState(false);
+  const [reorderAnnouncement, setReorderAnnouncement] = useState("");
+  const [canDragSections, setCanDragSections] = useState(true);
   const evictionRef = useRef(false);
+  const isOnline = useOnlineStatus();
 
   const coursesQuery = useResourceCourses(user?.uid ?? null);
   const courses = useMemo(() => coursesQuery.data ?? [], [coursesQuery.data]);
+  const syncStatus = useMemo(() => {
+    if (!isOnline) return "Offline";
+    if (coursesQuery.isFetching || coursesQuery.isLoading) {
+      return "Syncing";
+    }
+    return "Synced";
+  }, [coursesQuery.isFetching, coursesQuery.isLoading, isOnline]);
   const {
     favorites,
     tags,
@@ -242,16 +313,12 @@ export default function ResourcesPage() {
     offlineFiles,
     sectionOrder,
     cacheConfig,
-    offlineStorageMode,
     toggleFavorite,
     markOpened,
     removeOfflineFiles,
     updateSectionOrder,
-    updateCacheConfig,
-    updateOfflineStorageMode,
   } = useStudyMaterialsPreferences(user?.uid ?? null);
   const cacheLimitMb = cacheConfig.limitMb ?? null;
-  const storageUsage = useOfflineStorageUsage(offlineFiles, cacheLimitMb);
   const favoritesSet = useMemo(
     () => new Set(Object.keys(favorites)),
     [favorites],
@@ -264,11 +331,18 @@ export default function ResourcesPage() {
       }) as React.CSSProperties,
     [],
   );
+  const gridClass = useMemo(
+    () =>
+      "grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
+    [],
+  );
+  const rowClass = useMemo(() => "space-y-3", []);
   const courseSearchIndex = useMemo(() => {
     return new Map(
       courses.map((course) => [course.courseID, buildSearchKey(course)]),
     );
   }, [courses]);
+
   const courseResourceIds = useMemo(() => {
     const map = new Map<string, string>();
     courses.forEach((course) => {
@@ -285,6 +359,69 @@ export default function ResourcesPage() {
     });
     return map;
   }, [courses]);
+
+  const handleBackNavigation = useCallback(() => {
+    router.push("/dashboard");
+  }, [router]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let timer: number | null = null;
+    const update = () => {
+      setCanDragSections(window.matchMedia("(pointer: fine)").matches);
+    };
+    const schedule = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(update, 150);
+    };
+    update();
+    window.addEventListener("resize", schedule);
+    window.addEventListener("orientationchange", schedule);
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("orientationchange", schedule);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (commandOpen) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        setCommandOpen(true);
+        return;
+      }
+
+      if (
+        event.key === "/" &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey
+      ) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [commandOpen]);
 
   const filteredCourses = useMemo(() => {
     const query = deferredSearchTerm.trim().toLowerCase();
@@ -370,12 +507,6 @@ export default function ResourcesPage() {
 
   const handleOpenCourse = useCallback(
     (courseId: string) => {
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem(
-          "resources.scrollY",
-          String(window.scrollY),
-        );
-      }
       const resourceId = courseResourceIds.get(courseId);
       if (resourceId) markOpened(resourceId);
       router.push(`/resources/course/${courseId}`);
@@ -390,6 +521,38 @@ export default function ResourcesPage() {
     [toggleFavorite],
   );
 
+  const commandItems = useMemo<CommandItem[]>(() => {
+    const items: CommandItem[] = [
+      {
+        id: "nav-offline",
+        label: "Go to Offline Study Materials",
+        description: "See cached files only",
+        group: "Navigation",
+        onSelect: () => router.push("/resources/offline"),
+      },
+      {
+        id: "nav-settings",
+        label: "Open Study Materials Settings",
+        description: "Cache limits and offline mode",
+        group: "Navigation",
+        onSelect: () => router.push("/resources/settings"),
+      },
+    ];
+
+    courses.forEach((course) => {
+      items.push({
+        id: `course-${course.courseID}`,
+        label: course.courseName || course.courseID,
+        description: "Open course resources",
+        group: "Courses",
+        keywords: course.courseID,
+        onSelect: () => handleOpenCourse(course.courseID),
+      });
+    });
+
+    return items;
+  }, [courses, handleOpenCourse, router]);
+
   const orderedSections = useMemo(() => {
     const defaultOrder = ["favorites", "recent", "offline", "tagged", "all"];
     const incoming = sectionOrder.length ? sectionOrder : defaultOrder;
@@ -402,13 +565,53 @@ export default function ResourcesPage() {
     return unique;
   }, [sectionOrder]);
 
+  const announceReorder = useCallback(
+    (sectionId: string, nextIndex: number, total: number) => {
+      const label = SECTION_LABELS[sectionId] ?? sectionId;
+      setReorderAnnouncement(
+        `${label} moved to position ${nextIndex + 1} of ${total}.`,
+      );
+    },
+    [],
+  );
+
+  const moveSection = useCallback(
+    (sectionId: string, direction: "up" | "down") => {
+      const index = orderedSections.indexOf(sectionId);
+      if (index === -1) return;
+      const nextIndex = direction === "up" ? index - 1 : index + 1;
+      if (nextIndex < 0 || nextIndex >= orderedSections.length) return;
+      const nextOrder = orderedSections.slice();
+      nextOrder.splice(index, 1);
+      nextOrder.splice(nextIndex, 0, sectionId);
+      updateSectionOrder(nextOrder);
+      announceReorder(sectionId, nextIndex, nextOrder.length);
+    },
+    [announceReorder, orderedSections, updateSectionOrder],
+  );
+
+  const handleReorderKeyDown = useCallback(
+    (sectionId: string) => (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        moveSection(sectionId, "up");
+      }
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        moveSection(sectionId, "down");
+      }
+    },
+    [moveSection],
+  );
+
   const handleDragStart = useCallback(
     (sectionId: string) => (event: React.DragEvent<HTMLButtonElement>) => {
+      if (!canDragSections) return;
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", sectionId);
       setDraggingSectionId(sectionId);
     },
-    [],
+    [canDragSections],
   );
 
   const handleDragEnd = useCallback(() => {
@@ -430,18 +633,20 @@ export default function ResourcesPage() {
       nextOrder.splice(fromIndex, 1);
       nextOrder.splice(toIndex, 0, sourceId);
       updateSectionOrder(nextOrder);
+      announceReorder(sourceId, toIndex, nextOrder.length);
     },
-    [draggingSectionId, orderedSections, updateSectionOrder],
+    [announceReorder, draggingSectionId, orderedSections, updateSectionOrder],
   );
 
   const handleDragOver = useCallback(
     (sectionId: string) => (event: React.DragEvent<HTMLDivElement>) => {
+      if (!canDragSections) return;
       event.preventDefault();
       if (dragOverSectionId !== sectionId) {
         setDragOverSectionId(sectionId);
       }
     },
-    [dragOverSectionId],
+    [canDragSections, dragOverSectionId],
   );
 
   const offlineCourses = useMemo(() => {
@@ -453,46 +658,6 @@ export default function ResourcesPage() {
     return filteredCourses.filter((course) => courseIds.has(course.courseID));
   }, [filteredCourses, offlineFiles]);
 
-  const handleCacheLimitChange = useCallback(
-    (nextLimit: number | null) => {
-      updateCacheConfig(nextLimit);
-    },
-    [updateCacheConfig],
-  );
-
-  const handleStorageModeChange = useCallback(
-    async (nextMode: "web" | "folder") => {
-      if (nextMode === "folder") {
-        if (!hasFolderAccessSupport()) {
-          toast.error("Dedicated folders are not supported in this browser.");
-          return;
-        }
-        setFolderConfirmOpen(true);
-        return;
-      }
-      updateOfflineStorageMode("web");
-    },
-    [updateOfflineStorageMode],
-  );
-
-  const handleConfirmFolderMode = useCallback(async () => {
-    if (folderConfirmLoading) return;
-    setFolderConfirmLoading(true);
-    try {
-      const handle = await requestOfflineFolderAccess();
-      if (!handle) {
-        toast.error("Folder access was denied. Staying on web cache.");
-        updateOfflineStorageMode("web");
-        return;
-      }
-      updateOfflineStorageMode("folder");
-      toast.message("Dedicated folder access enabled.");
-    } finally {
-      setFolderConfirmLoading(false);
-      setFolderConfirmOpen(false);
-    }
-  }, [folderConfirmLoading, updateOfflineStorageMode]);
-
   const removeOfflineEntry = useCallback(
     async (resourceId: string, fileId?: string) => {
       await removeCachedFile(resourceId);
@@ -503,18 +668,6 @@ export default function ResourcesPage() {
     [],
   );
 
-  const handleClearOfflineCache = useCallback(async () => {
-    if (Object.keys(offlineFiles).length === 0) {
-      toast.message("No offline files to clear.");
-      return;
-    }
-    const entries = Object.entries(offlineFiles);
-    for (const [resourceId, meta] of entries) {
-      await removeOfflineEntry(resourceId, meta.fileId);
-    }
-    removeOfflineFiles(entries.map(([resourceId]) => resourceId));
-    toast.message("Offline cache cleared.");
-  }, [offlineFiles, removeOfflineEntry, removeOfflineFiles]);
 
   useEffect(() => {
     if (cacheLimitMb === null || !Number.isFinite(cacheLimitMb)) return;
@@ -552,47 +705,86 @@ export default function ResourcesPage() {
     void evict();
   }, [cacheLimitMb, offlineFiles, removeOfflineEntry, removeOfflineFiles]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.sessionStorage.getItem("resources.scrollY");
-    if (!saved) return;
-    window.sessionStorage.removeItem("resources.scrollY");
-    const position = Number(saved);
-    if (Number.isFinite(position)) {
-      window.requestAnimationFrame(() => window.scrollTo(0, position));
-    }
-  }, []);
-
   const getCourseResourceId = useCallback((course: ResourceCourse) => {
     return courseResourceIds.get(course.courseID) ?? null;
   }, [courseResourceIds]);
 
   const renderSectionHeader = useCallback(
-    (label: string, sectionId: string) => (
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label={`Reorder ${label} section`}
-            draggable
-            onDragStart={handleDragStart(sectionId)}
-            onDragEnd={handleDragEnd}
-            className="h-7 w-7 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0px_0px_#000] cursor-grab active:cursor-grabbing"
-          >
-            <GripVertical className="h-3.5 w-3.5" />
-          </button>
-          <h2 className="text-sm font-black uppercase tracking-wide text-stone-700">
-            {label}
-          </h2>
+    (label: string, sectionId: string) => {
+      const index = orderedSections.indexOf(sectionId);
+      const isFirst = index <= 0;
+      const isLast = index === orderedSections.length - 1;
+      return (
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              type="button"
+              aria-label={`Reorder ${label} section`}
+              aria-keyshortcuts="ArrowUp ArrowDown"
+              draggable={canDragSections}
+              onDragStart={handleDragStart(sectionId)}
+              onDragEnd={handleDragEnd}
+              onKeyDown={handleReorderKeyDown(sectionId)}
+              className={cn(
+                "h-7 w-7 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0px_0px_#000] transition-transform motion-reduce:transition-none",
+                canDragSections
+                  ? "cursor-grab active:cursor-grabbing active:scale-95"
+                  : "cursor-default opacity-80",
+              )}
+              title="Drag or use arrow keys to reorder"
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+            </button>
+            <h2 className="text-sm font-black uppercase tracking-wide text-stone-700 truncate">
+              {label}
+            </h2>
+            {!canDragSections && (
+              <span className="text-[10px] font-black uppercase text-stone-400">
+                Tap arrows
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {!canDragSections && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => moveSection(sectionId, "up")}
+                  aria-label={`Move ${label} up`}
+                  disabled={isFirst}
+                  className="h-7 w-7 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0px_0px_#000] transition-transform active:scale-95 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveSection(sectionId, "down")}
+                  aria-label={`Move ${label} down`}
+                  disabled={isLast}
+                  className="h-7 w-7 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0px_0px_#000] transition-transform active:scale-95 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+            {draggingSectionId === sectionId && (
+              <span className="text-[10px] font-black uppercase text-stone-500">
+                Dragging
+              </span>
+            )}
+          </div>
         </div>
-        {draggingSectionId === sectionId && (
-          <span className="text-[10px] font-black uppercase text-stone-500">
-            Dragging
-          </span>
-        )}
-      </div>
-    ),
-    [draggingSectionId, handleDragEnd, handleDragStart],
+      );
+    },
+    [
+      canDragSections,
+      draggingSectionId,
+      handleDragEnd,
+      handleDragStart,
+      handleReorderKeyDown,
+      moveSection,
+      orderedSections,
+    ],
   );
 
   if (authLoading) {
@@ -621,23 +813,70 @@ export default function ResourcesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 pb-24 transition-colors duration-300 relative isolate">
+    <div className="min-h-screen bg-neutral-50 pb-24 transition-colors duration-300 relative isolate overflow-x-hidden">
       <DotPatternBackground />
 
       <div className="mx-auto max-w-5xl relative z-10">
+        <p className="sr-only" aria-live="polite">
+          {reorderAnnouncement}
+        </p>
         <header className="bg-white border-b-4 border-black px-4 py-4 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
-          <div className="flex items-start gap-3">
-            <span className="flex h-12 w-12 items-center justify-center border-2 border-black bg-[#FFD700] shadow-[3px_3px_0px_0px_#000]">
-              <BookOpen className="h-6 w-6" />
-            </span>
-            <div>
-              <h1 className="font-display text-2xl sm:text-3xl font-black uppercase text-stone-900 tracking-tight">
-                Academic Resources
-              </h1>
-              <p className="text-xs sm:text-sm font-bold uppercase tracking-wide text-stone-500">
-                Study materials for your enrolled courses
-              </p>
-            </div>
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={handleBackNavigation}
+              aria-label="Go back"
+              className="h-10 w-10 border-2 border-black bg-white flex items-center justify-center shadow-[3px_3px_0_#0a0a0a] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] hover:bg-yellow-50 active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="flex-1 font-display text-xl sm:text-2xl font-black uppercase text-stone-900 tracking-tight truncate">
+              Study Materials
+            </h1>
+            <Menu open={overflowOpen} onOpenChange={setOverflowOpen}>
+              <Menu.Trigger asChild>
+                <button
+                  type="button"
+                  aria-label="Open menu"
+                  className="h-10 w-10 border-2 border-black bg-white flex items-center justify-center shadow-[3px_3px_0_#0a0a0a] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] hover:bg-yellow-50 active:translate-y-0 active:shadow-[2px_2px_0_#0a0a0a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+                >
+                  <MoreVertical className="h-5 w-5" />
+                </button>
+              </Menu.Trigger>
+              <Menu.Content
+                align="end"
+                sideOffset={8}
+                className="border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000] min-w-[200px] max-w-[calc(100vw-2rem)] max-h-[min(60svh,320px)] overflow-y-auto"
+              >
+                <div className="px-3 py-2 text-[10px] font-black uppercase text-stone-500 border-b border-stone-200">
+                  Status: {syncStatus}
+                </div>
+                <Menu.Item
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-wide hover:bg-yellow-100 focus:bg-yellow-100"
+                  onSelect={() => router.push("/resources/offline")}
+                >
+                  Offline Materials
+                </Menu.Item>
+                <Menu.Item
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-wide hover:bg-yellow-100 focus:bg-yellow-100"
+                  onSelect={() => setCommandOpen(true)}
+                >
+                  Command Center
+                </Menu.Item>
+                <Menu.Item
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-wide hover:bg-yellow-100 focus:bg-yellow-100"
+                  onSelect={() => setShortcutsOpen(true)}
+                >
+                  Keyboard Shortcuts
+                </Menu.Item>
+                <Menu.Item
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-wide hover:bg-yellow-100 focus:bg-yellow-100"
+                  onSelect={() => router.push("/resources/settings")}
+                >
+                  Settings
+                </Menu.Item>
+              </Menu.Content>
+            </Menu>
           </div>
         </header>
 
@@ -688,133 +927,10 @@ export default function ResourcesPage() {
               placeholder="Search through materials"
               aria-label="Search through materials"
               className="flex-1 bg-transparent text-sm font-bold outline-none"
+              ref={searchInputRef}
             />
           </div>
         </section>
-
-        {activeTab === "academic" && (
-          <section className="bg-white border-b-4 border-black px-4 py-5 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 items-center justify-center border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000]">
-                  <SlidersHorizontal className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-stone-700">
-                    Study Materials Settings
-                  </p>
-                  <p className="text-[11px] font-bold uppercase text-stone-500">
-                    Offline cache preferences
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 border-2 border-black bg-white px-3 py-2 text-[10px] font-black uppercase shadow-[2px_2px_0px_0px_#000]">
-                <HardDrive className="h-3.5 w-3.5" />
-                <span>
-                  {storageUsage.usedMb} MB /{" "}
-                  {storageUsage.limitMb === null
-                    ? "Unlimited"
-                    : `${storageUsage.limitMb} MB`}
-                </span>
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="border-2 border-black bg-white p-4 shadow-[3px_3px_0px_0px_#000]">
-                <p className="text-xs font-black uppercase text-stone-700 mb-3">
-                  Cache limit
-                </p>
-                <div className="space-y-2">
-                  {[
-                    { label: "250 MB", value: 250 },
-                    { label: "500 MB", value: 500 },
-                    { label: "Unlimited", value: null },
-                  ].map((option) => {
-                    const id = `cache-${option.label.replace(/\s+/g, "-")}`;
-                    return (
-                      <label
-                        key={option.label}
-                        htmlFor={id}
-                        className="flex items-center gap-2 border-2 border-black bg-white px-3 py-2 text-[11px] font-black uppercase shadow-[2px_2px_0px_0px_#000] cursor-pointer"
-                      >
-                        <input
-                          id={id}
-                          type="radio"
-                          name="cache-limit"
-                          checked={cacheLimitMb === option.value}
-                          onChange={() => handleCacheLimitChange(option.value)}
-                          className="h-3.5 w-3.5 border-2 border-black"
-                        />
-                        {option.label}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="border-2 border-black bg-white p-4 shadow-[3px_3px_0px_0px_#000]">
-                <p className="text-xs font-black uppercase text-stone-700 mb-3">
-                  Offline storage mode
-                </p>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="offline-web"
-                    className="flex items-center gap-2 border-2 border-black bg-white px-3 py-2 text-[11px] font-black uppercase shadow-[2px_2px_0px_0px_#000] cursor-pointer"
-                  >
-                    <input
-                      id="offline-web"
-                      type="radio"
-                      name="offline-mode"
-                      checked={offlineStorageMode === "web"}
-                      onChange={() => handleStorageModeChange("web")}
-                      className="h-3.5 w-3.5 border-2 border-black"
-                    />
-                    Web app cache
-                  </label>
-                  <label
-                    htmlFor="offline-folder"
-                    className={cn(
-                      "flex items-center gap-2 border-2 border-black px-3 py-2 text-[11px] font-black uppercase shadow-[2px_2px_0px_0px_#000] cursor-pointer",
-                      hasFolderAccessSupport()
-                        ? "bg-white"
-                        : "bg-neutral-100 text-neutral-400 cursor-not-allowed",
-                      folderConfirmOpen &&
-                        "bg-yellow-50 border-dashed shadow-[1px_1px_0px_0px_#000]",
-                    )}
-                  >
-                    <input
-                      id="offline-folder"
-                      type="radio"
-                      name="offline-mode"
-                      checked={offlineStorageMode === "folder"}
-                      onChange={() => handleStorageModeChange("folder")}
-                      disabled={!hasFolderAccessSupport()}
-                      className="h-3.5 w-3.5 border-2 border-black"
-                    />
-                    Dedicated device folder
-                    {folderConfirmOpen && (
-                      <span className="ml-auto text-[9px] font-black uppercase text-stone-500">
-                        Pending
-                      </span>
-                    )}
-                  </label>
-                </div>
-                <p className="mt-3 text-[10px] font-bold uppercase text-stone-500">
-                  Folder mode stores files locally (not synced) and
-                  requests permission before saving.
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleClearOfflineCache}
-                className="inline-flex items-center gap-2 border-2 border-black bg-white px-4 py-2 text-[11px] font-black uppercase shadow-[3px_3px_0px_0px_#000]"
-              >
-                <Trash2 className="h-4 w-4" />
-                Clear offline cache
-              </button>
-            </div>
-          </section>
-        )}
 
         {activeTab === "academic" ? (
           <section className="bg-white border-b-4 border-black px-4 py-6 sm:px-6 shadow-[0_6px_0_#0a0a0a]">
@@ -823,11 +939,17 @@ export default function ResourcesPage() {
                 <p className="text-sm font-bold text-red-600">
                   Unable to load resources. Please try again.
                 </p>
+                <div className="mt-4">
+                  <OfflineFallbackButton />
+                </div>
               </div>
             ) : coursesQuery.isLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className={gridClass}>
                 {Array.from({ length: 4 }).map((_, index) => (
-                  <RetroSkeleton key={index} className="h-28 w-full" />
+                  <RetroSkeleton
+                    key={index}
+                    className="w-full aspect-[4/3] sm:aspect-square"
+                  />
                 ))}
               </div>
             ) : filteredCourses.length === 0 ? (
@@ -848,34 +970,29 @@ export default function ResourcesPage() {
                         onDragOver={handleDragOver(sectionId)}
                         onDrop={handleDrop(sectionId)}
                       >
-                        {renderSectionHeader("All Courses", sectionId)}
-                        <div
-                          className="grid gap-4 sm:grid-cols-2"
-                          style={listVisibilityStyle}
-                        >
-                          {filteredCourses.map((course) => {
-                            const resourceId = getCourseResourceId(course);
-                            return (
-                              <ResourceFolderCard
-                                key={course.courseID}
-                                course={course}
-                                resourceId={resourceId}
-                                isFavorite={
-                                  resourceId
-                                    ? favoritesSet.has(resourceId)
-                                    : false
-                                }
-                                lastOpenedAt={
-                                  resourceId ? lastOpened[resourceId] : undefined
-                                }
-                                onOpenCourse={handleOpenCourse}
-                                onToggleFavorite={handleToggleFavorite}
-                              />
-                            );
-                          })}
-                        </div>
+                      {renderSectionHeader("All Courses", sectionId)}
+                      <div className={gridClass} style={listVisibilityStyle}>
+                        {filteredCourses.map((course) => {
+                          const resourceId = getCourseResourceId(course);
+                          return (
+                            <ResourceFolderCard
+                              key={course.courseID}
+                              course={course}
+                              resourceId={resourceId}
+                              isFavorite={
+                                resourceId
+                                  ? favoritesSet.has(resourceId)
+                                  : false
+                              }
+                              onOpenCourse={handleOpenCourse}
+                              onToggleFavorite={handleToggleFavorite}
+                              variant="grid"
+                            />
+                          );
+                        })}
                       </div>
-                    );
+                    </div>
+                  );
                   }
 
                   if (sectionId === "favorites") {
@@ -891,10 +1008,7 @@ export default function ResourcesPage() {
                             Star folders to pin them here.
                           </p>
                         ) : (
-                          <div
-                            className="grid gap-4 sm:grid-cols-2"
-                            style={listVisibilityStyle}
-                          >
+                          <div className={rowClass} style={listVisibilityStyle}>
                             {favoriteCourses.map((course) => {
                               const resourceId = getCourseResourceId(course);
                               return (
@@ -907,13 +1021,9 @@ export default function ResourcesPage() {
                                       ? favoritesSet.has(resourceId)
                                       : false
                                   }
-                                  lastOpenedAt={
-                                    resourceId
-                                      ? lastOpened[resourceId]
-                                      : undefined
-                                  }
                                   onOpenCourse={handleOpenCourse}
                                   onToggleFavorite={handleToggleFavorite}
+                                  variant="row"
                                 />
                               );
                             })}
@@ -936,10 +1046,7 @@ export default function ResourcesPage() {
                             Open a folder to see it here.
                           </p>
                         ) : (
-                          <div
-                            className="grid gap-4 sm:grid-cols-2"
-                            style={listVisibilityStyle}
-                          >
+                          <div className={rowClass} style={listVisibilityStyle}>
                             {recentCourses.map((course) => {
                               const resourceId = getCourseResourceId(course);
                               return (
@@ -952,13 +1059,9 @@ export default function ResourcesPage() {
                                       ? favoritesSet.has(resourceId)
                                       : false
                                   }
-                                  lastOpenedAt={
-                                    resourceId
-                                      ? lastOpened[resourceId]
-                                      : undefined
-                                  }
                                   onOpenCourse={handleOpenCourse}
                                   onToggleFavorite={handleToggleFavorite}
+                                  variant="row"
                                 />
                               );
                             })}
@@ -981,10 +1084,7 @@ export default function ResourcesPage() {
                             Mark files for offline access to list courses here.
                           </p>
                         ) : (
-                          <div
-                            className="grid gap-4 sm:grid-cols-2"
-                            style={listVisibilityStyle}
-                          >
+                          <div className={rowClass} style={listVisibilityStyle}>
                             {offlineCourses.map((course) => {
                               const resourceId = getCourseResourceId(course);
                               return (
@@ -997,13 +1097,9 @@ export default function ResourcesPage() {
                                       ? favoritesSet.has(resourceId)
                                       : false
                                   }
-                                  lastOpenedAt={
-                                    resourceId
-                                      ? lastOpened[resourceId]
-                                      : undefined
-                                  }
                                   onOpenCourse={handleOpenCourse}
                                   onToggleFavorite={handleToggleFavorite}
+                                  variant="row"
                                 />
                               );
                             })}
@@ -1026,10 +1122,7 @@ export default function ResourcesPage() {
                             Tag files to surface related courses here.
                           </p>
                         ) : (
-                          <div
-                            className="grid gap-4 sm:grid-cols-2"
-                            style={listVisibilityStyle}
-                          >
+                          <div className={rowClass} style={listVisibilityStyle}>
                             {taggedCourses.map((course) => {
                               const resourceId = getCourseResourceId(course);
                               return (
@@ -1042,13 +1135,9 @@ export default function ResourcesPage() {
                                       ? favoritesSet.has(resourceId)
                                       : false
                                   }
-                                  lastOpenedAt={
-                                    resourceId
-                                      ? lastOpened[resourceId]
-                                      : undefined
-                                  }
                                   onOpenCourse={handleOpenCourse}
                                   onToggleFavorite={handleToggleFavorite}
+                                  variant="row"
                                 />
                               );
                             })}
@@ -1074,55 +1163,22 @@ export default function ResourcesPage() {
         )}
       </div>
 
-      <DashboardNav />
-
-      <Dialog
-        open={folderConfirmOpen}
-        onOpenChange={(open) => {
-          if (!open && !folderConfirmLoading) {
-            setFolderConfirmOpen(false);
-          }
-        }}
-      >
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">
-              Enable Dedicated Folder?
-            </DialogTitle>
-            <DialogDescription>
-              Choose a local folder on this device to store offline files.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-6 py-4 text-sm font-semibold text-neutral-700 space-y-3">
-            <p>
-              This keeps files on your device only. They are not synced to the
-              cloud and won&apos;t appear on other devices.
-            </p>
-            <p>
-              You can revoke access any time in your browser settings. If
-              permission is denied, we will keep using the web app cache.
-            </p>
-          </div>
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => setFolderConfirmOpen(false)}
-              disabled={folderConfirmLoading}
-              className="inline-flex items-center justify-center gap-2 border-2 border-black bg-white px-4 py-2 text-xs font-black uppercase shadow-[3px_3px_0px_0px_#000] disabled:opacity-60"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirmFolderMode}
-              disabled={folderConfirmLoading}
-              className="inline-flex items-center justify-center gap-2 border-2 border-black bg-[#FFD700] px-4 py-2 text-xs font-black uppercase shadow-[3px_3px_0px_0px_#000] disabled:opacity-60"
-            >
-              Continue
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CommandCenter
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        items={commandItems}
+        placeholder="Search courses or commands"
+        emptyLabel="No matching courses."
+        onOpenShortcuts={() => setShortcutsOpen(true)}
+      />
+      <ShortcutsSheet
+        open={shortcutsOpen}
+        onOpenChange={setShortcutsOpen}
+        shortcuts={[
+          { keys: "/", label: "Focus search" },
+          { keys: "⌘K / Ctrl+K", label: "Open Command Center" },
+        ]}
+      />
     </div>
   );
 }
